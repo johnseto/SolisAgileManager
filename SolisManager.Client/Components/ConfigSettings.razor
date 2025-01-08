@@ -66,11 +66,11 @@
 
     private async Task TestCharge()
     {
+        MarkupString msg = new MarkupString("To validate the inverter configuration, a five-minute test charge will be run on your battery." +
+                           "<br/><br/>This will override existing charging slot settings in the SolisCloud Inverter Control, so if you don't enable " +
+                           "Solis Agile Manager immediately, you'll need to reconfigure them via the SolisCloud app.");
         var result = await dialogService.ShowMessageBox("Run A Test Charge?",
-            "To validate the inverter configuration, a five-minute test charge will be run on your battery.\n"+
-                "This will override existing charging slot settings in the SolisCloud Inverter Control, so if you don't enable " +
-                "Solis Agile Manager immediately, you'll need to reconfigure them via the SolisCloud app.",
-            yesText: "Charge My Battery", cancelText: "Cancel");
+                                msg, yesText: "Charge My Battery", cancelText: "Cancel");
 
         if (result != null && result.Value)
         {

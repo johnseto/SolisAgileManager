@@ -371,7 +371,7 @@ public class InverterManager(SolisManagerConfig config,
         logger.LogInformation("Starting test charge for 5 minutes");
         var start = DateTime.UtcNow;
         var end = start.AddMinutes(5);
-        await solisApi.SetCharge(start, end);
+        //await solisApi.SetCharge(start, end);
     }
     
     public async Task ChargeBattery()
