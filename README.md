@@ -31,6 +31,7 @@ secret, your inverter serial number, and the Octopus Product details of the curr
 that for this to work, you'll need to have raised a ticket with Solis to get access to control the inverter
 via the SolisCloud app. 
 
+<img width="600" alt="SettingsScreenshot" src="https://github.com/user-attachments/assets/2346f008-10e4-408b-a0ac-97b1af6c0a1c" />
 
 You'll also need to set some other config setting:
 
