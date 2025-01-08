@@ -69,14 +69,14 @@ public class InverterManager(SolisManagerConfig config,
             logger.LogError(ex, "Failed to add entry to execution history");
         }
     }
-    
+
     private async Task RefreshData()
     {
         logger.LogTrace("Refreshing data...");
 
         var inverterStateTask = solisApi.InverterState();
         var octRatesTask = octopusAPI.GetOctopusRates();
-        
+
         await Task.WhenAll(inverterStateTask, octRatesTask);
 
         // Stamp the last time we did an update
@@ -96,19 +96,19 @@ public class InverterManager(SolisManagerConfig config,
         var slots = await octRatesTask;
 
         inverterState.Prices = EvaluateSlotActions(slots.OrderBy(x => x.valid_from).ToArray());
-        
+
         var firstSlot = inverterState.Prices.FirstOrDefault();
         if (firstSlot != null)
         {
             var now = DateTime.UtcNow;
-           
+
             // Do we care if we run this multiple times?!
             // if ( firstSlot.valid_from <= now && firstSlot.valid_to >= now )
             {
                 logger.LogInformation("Execute action for slot: {S}", firstSlot);
 
                 await AddToExecutionHistory(firstSlot);
-                
+
                 if (firstSlot.Action == SlotAction.Charge)
                 {
                     await solisApi.SetCharge(firstSlot.valid_from, firstSlot.valid_to, true, config.Simulate);
@@ -120,7 +120,10 @@ public class InverterManager(SolisManagerConfig config,
             }
         }
 
-        await EnrichSlotsFromSolcast(inverterState.Prices);
+        if (!System.Diagnostics.Debugger.IsAttached)
+        {
+            await EnrichSlotsFromSolcast(inverterState.Prices);
+        }
     }
 
     private IEnumerable<OctopusPriceSlot> EvaluateSlotActions(OctopusPriceSlot[]? slots)

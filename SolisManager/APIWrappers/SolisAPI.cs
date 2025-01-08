@@ -77,7 +77,7 @@ public class SolisAPI
             var requestBody = new
             {
                 inverterSn = config.SolisInverterSerial,
-                cid = 4643,
+                cid = 103,
                 value = chargeValues
             };
 
@@ -89,7 +89,7 @@ public class SolisAPI
             else
             {
                 // Actually submit it. 
-                return await Post<object>(2, "atRead", requestBody);
+                return await Post<object>(2, "control", requestBody);
             }
     }
 
