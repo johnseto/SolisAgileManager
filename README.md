@@ -11,7 +11,7 @@ pick a strategy to charge your battery based on the cheapest periods.
 
 **PLEASE NOTE:** This application is provided as-is, with no guarantees; I accept no liability for any issues that arise with 
 your electricity bill, inverter, battery, or any other system, as a result of using this application. **Your
-choice to run the app is entirely at your own risk. **
+choice to run the app is entirely at your own risk.**
 
 ## Installation
 
