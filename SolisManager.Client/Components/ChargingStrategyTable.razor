@@ -50,7 +50,7 @@ else
 
 @code {
     private SolisManagerState? prices;
-    private string BatteryText => $"Battery Charge: {prices.BatterySOC}%";
+    private string BatteryText => $"Battery Charge: {prices?.BatterySOC}%";
     private readonly PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
 
     private async Task RefreshData()

@@ -11,9 +11,6 @@
             <MudTextField T="string" Label="Solis API Key" @bind-Value="@config.SolisAPIKey" Variant="UIConstants.MudVariant"/>
             <MudTextField T="string" Label="Solis API Secret" @bind-Value="@config.SolisAPISecret" Variant="UIConstants.MudVariant"/>
             <MudTextField T="string" Label="Solis Inverter Serial Number" @bind-Value="@config.SolisInverterSerial" Variant="UIConstants.MudVariant"/>
-            <MudSlider @bind-Value="@config.SlotsForFullBatteryCharge" Min="1" Max="10" Immediate="true" Variant="UIConstants.MudVariant">
-                Charge Slots for Full Battery (@(config.SlotsForFullBatteryCharge/2.0) hours)
-            </MudSlider>
         </div>
         <div class="config-fields">
             <h5>Octopus Product</h5>
@@ -26,12 +23,16 @@
             <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Variant="UIConstants.MudVariant"/>
         </div>
         <div class="config-fields">
-            <h5>General Options</h5>
-            <MudCheckBox Label="Simulate only (do not adjust Inverter behaviour)" LabelPosition="LabelPosition.End" @bind-Value="@config.Simulate"/>
+            <h5>General/Battery Options</h5>
+            <MudSlider @bind-Value="@config.SlotsForFullBatteryCharge" Size="Size.Large" TickMarks="true" ValueLabel="true"
+                        Min="1" Max="10" Immediate="true" Variant="UIConstants.MudVariant">
+                Charge Slots needed to achieve Full Battery (@(config.SlotsForFullBatteryCharge/2.0) hours)
+            </MudSlider>
             <div class="config-field-row">
                 <MudNumericField T="int" Label="Always charge below (p/kWh)" @bind-Value="@config.AlwaysChargeBelowPrice" Min="0" Max="15" Variant="UIConstants.MudVariant"/>
                 <MudNumericField T="int" Label="Low Battery Threshold (%)" @bind-Value="@config.LowBatteryPercentage" Min="1" Max="50" Variant="UIConstants.MudVariant"/>
                 <MudNumericField T="int" Label="Max Charge Rate (Amps)" @bind-Value="@config.MaxChargeRateAmps" Min="5" Max="95" Variant="UIConstants.MudVariant"/>
+                <MudCheckBox Label="Simulate (no inverter changes)" LabelPosition="LabelPosition.End" @bind-Value="@config.Simulate"/>
             </div>
         </div>
         <MudButton OnClick="SaveConfig" Variant="UIConstants.MudVariant" Color="Color.Primary">Save Settings</MudButton>
