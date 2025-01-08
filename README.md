@@ -47,8 +47,11 @@ You'll also need to set some other config setting:
   
 Once you've filled these in, the server will start running.
 
-As it runs, the charging decisions will be logged to `SolisManagerExecutionHistory.csv` so you can monitor the 
-decisions it's taking to ensure they're as you require.
+As it runs, the last 30 days' worth of charging decisions will be logged to `SolisManagerExecutionHistory.csv` 
+so you can monitor the decisions it's taking to ensure they're as you require. There's also a History page that 
+allows you to convienently check what it did, and why it did it:
+
+<img width="1411" alt="HistoryView" src="https://github.com/user-attachments/assets/42078bb4-6f47-4adc-8f66-0f2f0c8e2eed" />
   
 ### How does it work?
 
