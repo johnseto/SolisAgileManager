@@ -1,4 +1,6 @@
 
+![favicon](https://github.com/user-attachments/assets/65727c13-a402-45c4-907c-3bc3ef7bbca7)
+
 # Solis Manager - Automated Battery Management for Solis Inverters and Octopus Agile
 
 This app is designed to optimally manage the battery charging for your Solar/PV/Battery system, when
