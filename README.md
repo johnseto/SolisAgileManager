@@ -119,5 +119,6 @@ There are also _manual overrides_ which can be set vie the tools screen. For exa
 
 ### Technical Details
 
-For those who are interested, the application is built using Blazor WebAssembly, with an ASP.Net back-end. The
-app is written entirely in C#, using .Net 9. It was written over the course of about 5 days. 
+For those who are interested, the application is built using Blazor WebAssembly, with an ASP.Net back-end, with
+[MudBlazor](https://github.com/mudblazor/mudblazor) used for the UI controls. The app is written entirely in C#, 
+using .Net 9. It was written over the course of about 5 days. 
