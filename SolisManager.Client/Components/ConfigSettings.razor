@@ -1,4 +1,5 @@
 @inject IInverterService inverterService
+@inject IDialogService dialogService
 
 <div class="config-settings">
 
@@ -39,7 +40,7 @@
             <MudButton OnClick="SaveConfig" Variant="UIConstants.MudVariant" Color="Color.Primary" Disabled="@(!config.IsValid())">Save Settings</MudButton>
             @if (config.IsValid())
             {
-                <MudButton OnClick="@inverterService.TestCharge" Variant="UIConstants.MudVariant" Color="Color.Warning">Test Charge (5 minutes)</MudButton>
+                <MudButton OnClick="@TestCharge" Variant="UIConstants.MudVariant" Color="Color.Warning">Test Charge (5 minutes)</MudButton>
             }
         </div>
     }
@@ -62,4 +63,17 @@
         await inverterService.SaveConfig(config);
         await OnSettingsChanged.InvokeAsync();
     }
+
+    private async Task TestCharge()
+    {
+        var result = await dialogService.ShowMessageBox("Run A Test Charge?",
+            "To validate the inverter configuration, a five-minute test charge will be run on your battery",
+            yesText: "Charge My Battery", cancelText: "Cancel");
+
+        if (result != null && result.Value)
+        {
+            await inverterService.TestCharge();
+        }
+    }
+
 }
