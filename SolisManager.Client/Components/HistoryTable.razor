@@ -20,20 +20,22 @@ else
         <tr>
             <th>Date</th>
             <th>Period</th>
-            <th>Agile Price (p/kWh)</th>
+            <th>Price (p/kWh)</th>
             <th>Battery SOC</th>
             <th>Action Taken</th>
+            <th>Explanation</th>
         </tr>
         </thead>
         <tbody>
-        @foreach (var entry in historyEntries)
+        @foreach (var entry in historyEntries.OrderByDescending(x => x.Start))
         {
             <tr>
-                <td>@entry.Start.ToString("dd-MMM")</td>
+                <td>@entry.Start.ToString("dd-MMM-yyyy")</td>
                 <td>@entry.Start.ToString("HH:mm") - @entry.End.ToString("HH:mm")</td>
                 <td>@Math.Round(entry.Price, 2)</td>
                 <td>@Math.Round((decimal)entry.BatterySOC, 2)%</td>
                 <td>@entry.Action.Humanize()</td>
+                <td>@entry.Reason</td>
             </tr>
         }
         </tbody>
