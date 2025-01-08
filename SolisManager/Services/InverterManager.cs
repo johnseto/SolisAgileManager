@@ -252,6 +252,7 @@ public class InverterManager(SolisManagerConfig config,
                 while (prePeakSlot >= 0)
                 {
                     var slotTocheck = slots[prePeakSlot];
+                    // TODO: Make this less of an arbitrary threshold - https://github.com/Webreaper/SolisAgileManager/issues/7
                     if( slotTocheck.value_inc_vat > 50)
                     {
                         // It's a bit pricey. See if we're allowed to look 
@@ -294,8 +295,8 @@ public class InverterManager(SolisManagerConfig config,
             // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
             if (inverterState.BatterySOC < config.LowBatteryPercentage)
             {
-                foreach (var slot in slots.Take(config.SlotsForFullBatteryCharge)
-                             .Where(x => x.Action == SlotAction.ChargeIfLowBattery))
+                foreach (var slot in slots.Where(x => x.Action == SlotAction.ChargeIfLowBattery)
+                                          .Take(config.SlotsForFullBatteryCharge))
                 {
                     slot.Action = SlotAction.Charge;
                     slot.ActionReason = $"Upcoming slot is set to charge if low battery; battery is currently at {inverterState.BatterySOC}%";
