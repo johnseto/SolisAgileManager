@@ -183,16 +183,21 @@ public class InverterManager(SolisManagerConfig config,
             // the day are a bit cheaper. So look for anything that's 90% of the average, or below, and mark it
             // as BelowAverage. For those slots, if the battery is low, we'll take the opportunity to charge as 
             // they're a bit cheaper-than-average.
-            var averagePrice = slots.Where(x => x.PriceType == PriceType.Average)
-                .Average(x => x.value_inc_vat);
-            decimal cheapThreshold = averagePrice * (decimal)0.9;
-
-            foreach (var slot in slots.Where(x =>
-                         x.PriceType == PriceType.Average && x.value_inc_vat < cheapThreshold))
+            var averagePriceSlots = slots.Where(x => x.PriceType == PriceType.Average).ToList();
+            
+            if (averagePriceSlots.Any())
             {
-                slot.PriceType = PriceType.BelowAverage;
-                slot.Action = SlotAction.ChargeIfLowBattery;
-                slot.ActionReason = $"Price is at least 10% below the average price of {averagePrice}p/kWh, so flagging as potential top-up";
+                var averagePrice = averagePriceSlots.Average(x => x.value_inc_vat);
+                decimal cheapThreshold = averagePrice * (decimal)0.9;
+
+                foreach (var slot in slots.Where(x =>
+                             x.PriceType == PriceType.Average && x.value_inc_vat < cheapThreshold))
+                {
+                    slot.PriceType = PriceType.BelowAverage;
+                    slot.Action = SlotAction.ChargeIfLowBattery;
+                    slot.ActionReason =
+                        $"Price is at least 10% below the average price of {averagePrice}p/kWh, so flagging as potential top-up";
+                }
             }
 
             if (cheapestSlots != null)

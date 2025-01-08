@@ -1,0 +1,46 @@
+
+.battery-indicator {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    column-gap: 5px;
+    flex-wrap: nowrap;
+}
+
+.battery-box { 
+    border: 1px solid black;
+    border-radius: 2px;
+    display: flex;
+    flex-direction: row;
+    column-gap: 2px;
+    padding: 3px;
+}
+
+.full-block {
+    width: 5px;
+    height: 13px;
+    border-radius: 1px;
+}
+
+.full-block-100 {
+    background-color: darkgreen;
+}
+
+.full-block-75 {
+    background-color: yellowgreen;
+}
+
+.full-block-50 {
+    background-color: darkorange;
+}
+
+.full-block-25 {
+    background-color: darkred;
+}
+
+.empty-block {
+    width: 5px;
+    height: 13px;
+    background-color: white;
+    border-radius: 1px;
+}

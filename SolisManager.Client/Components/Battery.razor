@@ -1,0 +1,48 @@
+
+@if (ChargePercentage != null)
+{
+    <div class="battery-indicator">
+        <strong>Battery: </strong>
+        <div class="battery-box">
+            @foreach (var block in Enumerable.Range(0, fullBlocks))
+            {
+                <div class="@BlockStyle"></div>
+            }
+            @foreach (var block in Enumerable.Range(0, emptyBlocks))
+            {
+                <div class="empty-block"></div>
+            }
+        </div>
+        <strong>@ChargePercentage%</strong>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int? ChargePercentage { get; set; }
+
+    int emptyBlocks;
+    int fullBlocks;
+
+    private string BlockStyle => "full-block " + ChargePercentage switch
+    {
+        >= 75 => "full-block-100",
+        >= 50 => "full-block-75",
+        >= 25 => "full-block-50",
+        _ => "full-block-25",
+    };
+
+    protected override void OnParametersSet()
+    {
+        emptyBlocks = 10;
+        fullBlocks = 0;
+        
+        if (ChargePercentage != null)
+        {
+            fullBlocks = (ChargePercentage.Value) / 10;
+            emptyBlocks = 10 - fullBlocks;
+        }
+
+        base.OnParametersSet();
+    }
+}
