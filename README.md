@@ -7,6 +7,12 @@ pick a strategy to charge your battery based on the cheapest periods.
 
 <img width="1672" alt="SolisManagerScreenshot" src="https://github.com/user-attachments/assets/926fb797-c8b5-4b13-bd8d-6a386954f794" />
 
+### Warranty / Disclaimer 
+
+**PLEASE NOTE:** This application is provided as-is, with no guarantees; I accept no liability for any issues that arise with 
+your electricity bill, inverter, battery, or any other system, as a result of using this application. **Your
+choice to run the app is entirely at your own risk. **
+
 ## Installation
 
 SolisManager runs as a server-based app, and is designed to run 24/7, in the background, with minimal 
@@ -34,14 +40,27 @@ You'll also need to set some other config setting:
   than average
 * The `Always charge below` rate. For example, if you set this to 10p/kWh, then _any_ slot lower than that
   price will always be set to charge, regardless of anything else.
+* Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
+  any changes to the behaviour.
   
 Once you've filled these in, the server will start running.
 
+As it runs, the charging decisions will be logged to `SolisManagerExecutionHistory.csv` so you can monitor the 
+decisions it's taking to ensure they're as you require.
+  
 ### How does it work?
 
 At first launch SolisManager will load the next set of Agile Tariff data, along with some information about
 your inverter. It will then estimate the best charging strategy based on a number of rules, as set out below. 
 Note that this strategy is based on my needs for battery-management, but should apply to many other people too.
+
+### Who Will It Work For?
+
+This application is based on a number of assumptions, the primary one of which is that the person running it 
+is a high-consumption power user, probably with an Air Source Heat Pump or EV, and wants to optimise their 
+battery charging to charge at the cheapest times. The goal of the app is to charge the battery at the cheapest
+times possible, without too much unnecessary battery cycling. If you are a lower-useage household, you may find
+that Rob Tweed's [Agility](https://github.com/robtweed/agility) app is better suited to your needs.
 
 ### The Algorithm/Strategy
 
@@ -84,7 +103,21 @@ There are also _manual overrides_ which can be set vie the tools screen. For exa
 
 * The intention is to provide pre-built docker images for ARM64 (RasPi) and other X64 Linus platforms. I run
   this on my Synology NAS.
+* A future feature enhancement is to allow the app to determine if Octopus prices fall below zero for a certain
+  period, and if so to automatically dump the battery charge to the grid, and then recharge the battery.
 * The app will read in Solcast forecast data if you provide an API key and Site ID. Currently this information
   is only used for display purposes, but will eventually be used to optimise the algorithm (e.g., by skipping
   overnight charging if the forecast is for a decent PV yield.
 
+### Thanks/Credits
+
+* Thanks must go to [Rob Tweed](https://github.com/robtweed) whose Agility project was the inspiration for this
+  application. 
+* Thanks also to [Jon Glass](https://github.com/jmg48/solis-cloud) for his sample .Net wrapper for the Solis API,
+  without which I'd have spent an inordinate amount of time figuring out the complicated Solis Authentication
+  process.
+
+### Technical Details
+
+For those who are interested, the application is built using Blazor WebAssembly, with an ASP.Net back-end. The
+app is written entirely in C#, using .Net 9. It was written over the course of about 5 days. 
