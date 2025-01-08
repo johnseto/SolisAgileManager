@@ -1,26 +1,15 @@
-
-// Update data
-///  {"method":"POST","headers":{"Content-type":"application/json;charset=UTF-8","Time":"Mon, 06 Jan 2025 08:00:29 GMT","Authorization":"API 1300386381677149806:/h+B/udrUz/zCEMoAzOcIiVbHao=","Content-Md5":"5EUdpOts7ylvHp96trhtXA==","Content-Length":72},"body":"{\"sn\":\"6031050232030275\",\"money\":\"UKP\",\"time\":\"2025-01-06\",\"timeZone\":0}"}
-
-/// 07:30:30: solis.request at Mon, 06 Jan 2025 07:30:30 GMT: https://www.soliscloud.com:13333/v2/api/atRead
-// 07:30:30: options: {"method":"POST","headers":{"Content-type":"application/json;charset=UTF-8","Time":"Mon, 06 Jan 2025 07:30:30 GMT","Authorization":"API 1300386381677149806:T64DS9s374zxDAk4131StJ1Uz0A=","Content-Md5":"qgG2Hl48QtgikSz63vLs/A==","Content-Length":44},"body":"{\"inverterSn\":\"6031050232030275\",\"cid\":4643}"}
-// 07:30:30: solis.request successful
-
-// Set slots
-/// 07:30:30: solis.request at Mon, 06 Jan 2025 07:30:30 GMT: https://www.soliscloud.com:13333/v2/api/control
-// 07:30:30: options: {"method":"POST","headers":{"Content-type":"application/json;charset=UTF-8","Time":"Mon, 06 Jan 2025 07:30:30 GMT","Authorization":"API 1300386381677149806:dUwziBwtDJzUuh9VxRDViWptVms=","Content-Md5":"kTQTUX2FBqVzYw+5m8vc+A==","Content-Length":139},"body":"{\"inverterSn\":\"6031050232030275\",\"cid\":4643,\"value\":\"95,0,07:30-08:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00\"}"}
-///07:30:31: solis.request successful
-
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using SolisManager.Client.Pages;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.APIWrappers;
 
-/// From https://github.com/jmg48/solis-cloud
+/// A wrapper for the Solis API Based on Jon Glass's implementation
+/// here: https://github.com/jmg48/solis-cloud
+/// But extended to support setting charges (based on
+/// https://github.com/stevegal/solis-control
 public class SolisAPI
 {
     private readonly HttpClient client = new();
