@@ -8,24 +8,24 @@
     {
         <div class="config-fields">
             <h5>Solis Inverter Settings</h5>
-            <MudTextField T="string" Label="Solis API Key" @bind-Value="@config.SolisAPIKey" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Solis API Secret" @bind-Value="@config.SolisAPISecret" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Solis Inverter Serial Number" @bind-Value="@config.SolisInverterSerial" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Solis API Key" @bind-Value="@config.SolisAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Solis API Secret" @bind-Value="@config.SolisAPISecret" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Solis Inverter Serial Number" @bind-Value="@config.SolisInverterSerial" Immediate="true" Variant="UIConstants.MudVariant"/>
         </div>
         <div class="config-fields">
             <h5>Octopus Product</h5>
-            <MudTextField T="string" Label="Octopus Product" @bind-Value="@config.OctopusProduct" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Octopus Product Code" @bind-Value="@config.OctopusProductCode" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Octopus Product" @bind-Value="@config.OctopusProduct" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Octopus Product Code" @bind-Value="@config.OctopusProductCode" Immediate="true" Variant="UIConstants.MudVariant"/>
         </div>
         <div class="config-fields">
             <h5>Solcast Settings</h5>
-            <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
         </div>
         <div class="config-fields">
             <h5>General/Battery Options</h5>
             <MudSlider @bind-Value="@config.SlotsForFullBatteryCharge" Size="Size.Large" TickMarks="true" ValueLabel="true"
-                        Min="1" Max="10" Immediate="true" Variant="UIConstants.MudVariant">
+                       Min="1" Max="10" Immediate="true" Variant="UIConstants.MudVariant">
                 Charge Slots needed to achieve Full Battery (@(config.SlotsForFullBatteryCharge/2.0) hours)
             </MudSlider>
             <div class="config-field-row">
@@ -35,7 +35,13 @@
                 <MudCheckBox Label="Simulate (no inverter changes)" LabelPosition="LabelPosition.End" @bind-Value="@config.Simulate"/>
             </div>
         </div>
-        <MudButton OnClick="SaveConfig" Variant="UIConstants.MudVariant" Color="Color.Primary">Save Settings</MudButton>
+        <div class="button-bar">
+            <MudButton OnClick="SaveConfig" Variant="UIConstants.MudVariant" Color="Color.Primary" Disabled="@(!config.IsValid())">Save Settings</MudButton>
+            @if (config.IsValid())
+            {
+                <MudButton OnClick="@inverterService.TestCharge" Variant="UIConstants.MudVariant" Color="Color.Warning">Test Charge (5 minutes)</MudButton>
+            }
+        </div>
     }
 </div>
 

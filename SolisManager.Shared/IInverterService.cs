@@ -9,6 +9,7 @@ public interface IInverterService
     public Task<SolisManagerConfig> GetConfig();
     public Task SaveConfig(SolisManagerConfig config);
 
+    public Task TestCharge();
     public Task ChargeBattery();
     public Task DischargeBattery();
     public Task DumpAndChargeBattery();

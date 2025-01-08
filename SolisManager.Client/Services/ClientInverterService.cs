@@ -39,6 +39,11 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
         await httpClient.GetAsync("inverter/clearoverrides");
     }
     
+    public async Task TestCharge()
+    {
+        await httpClient.GetAsync("inverter/testcharge");
+    }
+    
     public async Task ChargeBattery()
     {
         await httpClient.GetAsync("inverter/chargebattery");

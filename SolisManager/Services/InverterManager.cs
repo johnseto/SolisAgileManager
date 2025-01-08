@@ -33,8 +33,6 @@ public class InverterManager(SolisManagerConfig config,
 
     private async Task AddToExecutionHistory( OctopusPriceSlot slot )
     {
-        logger.LogInformation("Execute action for slot: {S}", slot);
-
         try
         {
             if (!executionHistory.Any() && File.Exists(executionHistoryFile))
@@ -107,6 +105,8 @@ public class InverterManager(SolisManagerConfig config,
             // Do we care if we run this multiple times?!
             // if ( firstSlot.valid_from <= now && firstSlot.valid_to >= now )
             {
+                logger.LogInformation("Execute action for slot: {S}", firstSlot);
+
                 await AddToExecutionHistory(firstSlot);
                 
                 if (firstSlot.Action == SlotAction.Charge)
@@ -364,6 +364,14 @@ public class InverterManager(SolisManagerConfig config,
         }
         
         return overrides;
+    }
+    
+    public async Task TestCharge()
+    {
+        logger.LogInformation("Starting test charge for 5 minutes");
+        var start = DateTime.UtcNow;
+        var end = start.AddMinutes(5);
+        await solisApi.SetCharge(start, end);
     }
     
     public async Task ChargeBattery()

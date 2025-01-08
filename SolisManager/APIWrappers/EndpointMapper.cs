@@ -35,6 +35,13 @@ public static class EndpointMapper
                 return TypedResults.Ok(history);
             });
 
+        group.MapGet("testcharge",
+            async ([FromServices] IInverterService service) =>
+            {
+                await service.TestCharge();
+                return TypedResults.Ok();
+            });
+
         return group;
     }
 
