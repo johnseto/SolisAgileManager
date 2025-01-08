@@ -28,6 +28,13 @@ public static class EndpointMapper
                 return TypedResults.Ok(prices);
             });
 
+        group.MapGet("history",
+            async ([FromServices] IInverterService service) =>
+            {
+                var history = await service.GetHistory();
+                return TypedResults.Ok(history);
+            });
+
         return group;
     }
 

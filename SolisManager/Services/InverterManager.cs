@@ -13,7 +13,7 @@ public class InverterManager(SolisManagerConfig config,
 {
     private readonly SolisManagerState inverterState  = new();
     private readonly List<OctopusPriceSlot> manualOverrides = new();
-    private readonly List<string> executionHistory = new();
+    private readonly List<HistoryEntry> executionHistory = new();
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
 
     private async Task EnrichSlotsFromSolcast(IEnumerable<OctopusPriceSlot> slots)
@@ -33,7 +33,8 @@ public class InverterManager(SolisManagerConfig config,
 
     private async Task AddToExecutionHistory( OctopusPriceSlot slot )
     {
-        const string dateFormat = "dd-MMM-yyyy HH:mm";
+        logger.LogInformation("Execute action for slot: {S}", slot);
+
         try
         {
             if (!executionHistory.Any() && File.Exists(executionHistoryFile))
@@ -43,35 +44,27 @@ public class InverterManager(SolisManagerConfig config,
                     executionHistoryFile);
 
                 // Limit to 1440 items. At 48 slots per day, that gives us 30 days of history. 
-                executionHistory.AddRange(lines.TakeLast(1440));
+                var entries = lines.TakeLast(1440)
+                    .Select(x => HistoryEntry.TryParse(x))
+                    .Where(x => x != null)
+                    .Select(x => x!)
+                    .ToList();
+
+                executionHistory.AddRange(entries);
             }
+            
+            var newEntry = new HistoryEntry(slot, inverterState.BatterySOC);
+            
+            var lastEntry = executionHistory.LastOrDefault();
 
-            var columns = new[]
+            if (lastEntry == null || lastEntry.Start != newEntry.Start)
             {
-                slot.valid_from.ToString(dateFormat),
-                slot.valid_to.ToString(dateFormat),
-                slot.value_inc_vat.ToString("0.00"),
-                slot.Action.ToString(),
-                slot.PriceType.ToString(),
-                inverterState.BatterySOC.ToString() + '%',
-                $"\"{slot.ActionReason}\""
-            };
+                // Add the item
+                executionHistory.Add(newEntry);
 
-            var newEntry = string.Join(", ", columns);
-            var lastLine = executionHistory.LastOrDefault();
-
-            logger.LogInformation("Execute action for slot: {S}", slot);
-
-            var timeStampCompare = (dateFormat.Length * 2) + 2;
-            // If the timestamp section of the last entry is the same as the new entry, it's a dupe
-            if (!string.IsNullOrEmpty(lastLine) && lastLine.Substring(0, timeStampCompare) == newEntry.Substring(0, timeStampCompare))
-                return;
-
-            // Add the item
-            executionHistory.Add(newEntry);
-
-            // And write
-            await File.WriteAllLinesAsync(executionHistoryFile, executionHistory);
+                // And write
+                await File.WriteAllLinesAsync(executionHistoryFile, executionHistory.Select(x => x.GetAsCSV()));
+            }
         }
         catch (Exception ex)
         {
@@ -332,6 +325,11 @@ public class InverterManager(SolisManagerConfig config,
     public Task<SolisManagerState?> GetAgilePriceSlots()
     {
         return Task.FromResult(inverterState);
+    }
+
+    public Task<List<HistoryEntry>> GetHistory()
+    {
+        return Task.FromResult(executionHistory);
     }
 
     public Task<SolisManagerConfig> GetConfig()

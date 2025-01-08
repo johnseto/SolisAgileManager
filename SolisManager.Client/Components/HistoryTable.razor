@@ -1,0 +1,51 @@
+@using Humanizer
+@inject IInverterService clientInverterService
+
+<PageTitle>Solis Manager</PageTitle>
+
+<div class="title-bar">
+    <h1>Historical Actions</h1>
+</div>
+
+@if (historyEntries == null)
+{
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Date</th>
+            <th>Period</th>
+            <th>Agile Price (p/kWh)</th>
+            <th>Battery SOC</th>
+            <th>Action Taken</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var entry in historyEntries)
+        {
+            <tr>
+                <td>@entry.Start.ToString("dd-MMM")</td>
+                <td>@entry.Start.ToString("HH:mm") - @entry.End.ToString("HH:mm")</td>
+                <td>@Math.Round(entry.Price, 2)</td>
+                <td>@Math.Round((decimal)entry.BatterySOC, 2)%</td>
+                <td>@entry.Action.Humanize()</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    IEnumerable<HistoryEntry>? historyEntries = null;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        historyEntries = await clientInverterService.GetHistory();
+        await base.OnInitializedAsync();
+    }
+}

@@ -78,5 +78,7 @@ else
     {
         await RefreshData();
         _ = RunTimer();
+
+        await base.OnInitializedAsync();
     }
 }

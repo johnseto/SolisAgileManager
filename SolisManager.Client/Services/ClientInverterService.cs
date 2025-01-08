@@ -12,6 +12,15 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
         return await httpClient.GetFromJsonAsync<SolisManagerState>("inverter/agileprices");
     }
 
+    public async Task<List<HistoryEntry>> GetHistory()
+    {
+        var result = await httpClient.GetFromJsonAsync<List<HistoryEntry>>("inverter/history");
+        if (result != null)
+            return result;
+
+        return [];
+    }
+
     public async Task<SolisManagerConfig> GetConfig()
     {
         return await httpClient.GetFromJsonAsync<SolisManagerConfig>("inverter/getconfig");
