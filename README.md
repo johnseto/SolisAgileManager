@@ -7,7 +7,7 @@ This app is designed to optimally manage the battery charging for your Solar/PV/
 used with the Octopus Agile tariff. The idea is that it will analyse upcoming Agile prices, and then
 pick a strategy to charge your battery based on the cheapest periods.
 
-<img width="1672" alt="SolisManagerScreenshot" src="https://github.com/user-attachments/assets/926fb797-c8b5-4b13-bd8d-6a386954f794" />
+<img width="1464" alt="SolisManagerScreenshot" src="https://github.com/user-attachments/assets/db2e3eb5-fc0e-418f-bc8d-8a8e9a5dcdca" />
 
 ### Warranty / Disclaimer 
 
@@ -31,7 +31,7 @@ secret, your inverter serial number, and the Octopus Product details of the curr
 that for this to work, you'll need to have raised a ticket with Solis to get access to control the inverter
 via the SolisCloud app. 
 
-<img width="630" alt="SolisManagerSettings" src="https://github.com/user-attachments/assets/a1c40d71-2d46-4222-bdd5-e4c1d298b01d" />
+<img width="600" alt="SettingsScreenshot" src="https://github.com/user-attachments/assets/2346f008-10e4-408b-a0ac-97b1af6c0a1c" />
 
 You'll also need to set some other config setting:
 
@@ -47,8 +47,11 @@ You'll also need to set some other config setting:
   
 Once you've filled these in, the server will start running.
 
-As it runs, the charging decisions will be logged to `SolisManagerExecutionHistory.csv` so you can monitor the 
-decisions it's taking to ensure they're as you require.
+As it runs, the last 30 days' worth of charging decisions will be logged to `SolisManagerExecutionHistory.csv` 
+so you can monitor the decisions it's taking to ensure they're as you require. There's also a History page that 
+allows you to convienently check what it did, and why it did it:
+
+<img width="1411" alt="HistoryView" src="https://github.com/user-attachments/assets/42078bb4-6f47-4adc-8f66-0f2f0c8e2eed" />
   
 ### How does it work?
 
