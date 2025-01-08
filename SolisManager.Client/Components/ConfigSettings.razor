@@ -40,7 +40,7 @@
             <MudButton OnClick="SaveConfig" Variant="UIConstants.MudVariant" Color="Color.Primary" Disabled="@(!config.IsValid())">Save Settings</MudButton>
             @if (config.IsValid())
             {
-                <MudButton OnClick="@TestCharge" Variant="UIConstants.MudVariant" Color="Color.Warning">Test Charge (5 minutes)</MudButton>
+                <MudButton OnClick="@TestCharge" Variant="UIConstants.MudVariant" Color="Color.Warning">Save and Test Charge (5 minutes)</MudButton>
             }
         </div>
     }
@@ -74,6 +74,7 @@
 
         if (result != null && result.Value)
         {
+            await SaveConfig();
             await inverterService.TestCharge();
         }
     }
