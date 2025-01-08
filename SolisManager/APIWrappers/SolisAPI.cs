@@ -67,8 +67,9 @@ public class SolisAPI
     /// <param name="slotStart">E.g., 08:30</param>
     /// <param name="slotEnd">E.g., 09:00</param>
     /// <param name="charge">True to charge, false to discharge</param>
+    /// <param name="simulateOnly">Goes through the motions but doesn't actually charge</param>
     /// <returns></returns>
-    public async Task<object?> SetCharge( DateTime slotStart, DateTime slotEnd, bool charge = true )
+    public async Task<object?> SetCharge( DateTime slotStart, DateTime slotEnd, bool charge, bool simulateOnly )
     {
             int chargePower = charge ? config.MaxChargeRateAmps : 0;
             int dischargePower = charge ? 0 : config.MaxChargeRateAmps;
@@ -80,7 +81,7 @@ public class SolisAPI
                 value = chargeValues
             };
 
-            if (config.Simulate)
+            if (simulateOnly)
             {
                 logger.LogInformation("Simulate Charge request: {P}", JsonSerializer.Serialize(requestBody) );
                 return null;

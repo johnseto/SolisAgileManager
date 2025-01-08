@@ -111,7 +111,11 @@ public class InverterManager(SolisManagerConfig config,
                 
                 if (firstSlot.Action == SlotAction.Charge)
                 {
-                    await solisApi.SetCharge(firstSlot.valid_from, firstSlot.valid_to);
+                    await solisApi.SetCharge(firstSlot.valid_from, firstSlot.valid_to, true, config.Simulate);
+                }
+                else if (firstSlot.Action == SlotAction.Discharge)
+                {
+                    await solisApi.SetCharge(firstSlot.valid_from, firstSlot.valid_to, false, config.Simulate);
                 }
             }
         }
@@ -371,7 +375,7 @@ public class InverterManager(SolisManagerConfig config,
         logger.LogInformation("Starting test charge for 5 minutes");
         var start = DateTime.UtcNow;
         var end = start.AddMinutes(5);
-        //await solisApi.SetCharge(start, end);
+        await solisApi.SetCharge(start, end, true, false);
     }
     
     public async Task ChargeBattery()
