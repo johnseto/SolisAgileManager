@@ -1,14 +1,16 @@
 @using Humanizer
 @inject IInverterService clientInverterService
 
-<PageTitle>Agile Prices</PageTitle>
+<PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
     <h1>Octopus Agile Prices and Charging Plan</h1>
     <div class="extra-info">
         <text>@BatteryText</text>
-        <MudIconButton OnClick="@ClearOverrides" Icon="@Icons.Material.Filled.Clear"
-                       Variant="Variant.Filled" Size="Size.Small"/>
+        <div title="Clear any manual overrides that are currently in effect">
+            <MudIconButton OnClick="@ClearOverrides" Icon="@Icons.Material.Filled.Clear"
+                           Variant="Variant.Filled" Size="Size.Small" />
+        </div>
     </div>
 </div>
 
