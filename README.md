@@ -5,7 +5,7 @@ This app is designed to optimally manage the battery charging for your Solar/PV/
 used with the Octopus Agile tariff. The idea is that it will analyse upcoming Agile prices, and then
 pick a strategy to charge your battery based on the cheapest periods.
 
-<img width="1686" alt="Screenshot 2025-01-07 at 22 52 50" src="https://github.com/user-attachments/assets/3ae80cd5-349b-4187-9f9a-526780fecaa5" />
+<img width="1672" alt="SolisManagerScreenshot" src="https://github.com/user-attachments/assets/926fb797-c8b5-4b13-bd8d-6a386954f794" />
 
 ## Installation
 
@@ -23,7 +23,7 @@ secret, your inverter serial number, and the Octopus Product details of the curr
 that for this to work, you'll need to have raised a ticket with Solis to get access to control the inverter
 via the SolisCloud app. 
 
-<img width="611" alt="Screenshot 2025-01-07 at 22 56 55" src="https://github.com/user-attachments/assets/f64e9891-cb53-4cff-8978-48c72ba23261" />
+<img width="630" alt="SolisManagerSettings" src="https://github.com/user-attachments/assets/a1c40d71-2d46-4222-bdd5-e4c1d298b01d" />
 
 You'll also need to set some other config setting:
 
