@@ -26,10 +26,10 @@
 
     private string BlockStyle => "full-block " + ChargePercentage switch
     {
-        >= 75 => "full-block-100",
-        >= 50 => "full-block-75",
-        >= 25 => "full-block-50",
-        _ => "full-block-25",
+        <= 25 => "full-block-25",
+        <= 50 => "full-block-50",
+        <= 75 => "full-block-75",
+        _ => "full-block-100",
     };
 
     protected override void OnParametersSet()
