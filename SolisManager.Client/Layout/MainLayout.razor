@@ -1,0 +1,38 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+
+<div class="page">
+        @if (showSidebar)
+        {
+            <div class="sidebar">
+                <NavMenu/>
+            </div>
+        }
+
+        <main>
+            @if (showSidebar)
+            {
+                <div class="top-row px-4">
+                    <a href="https://www.soliscloud.com/#/station" target="_blank">Solis Cloud</a>
+                </div>
+            }
+            
+            <article class="content px-4">
+                <ConfigValidator @bind-ConfigIsValid="@showSidebar">
+                    @Body
+                </ConfigValidator>
+            </article>
+        </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private bool showSidebar = true;
+}

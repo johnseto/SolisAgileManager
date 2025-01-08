@@ -1,0 +1,14 @@
+.config-settings{
+    max-width: 600px;
+    margin: 20px;
+    border-radius: 15px;
+    padding: 20px;
+    color: black;
+    background-color: white;
+}
+
+.config-field-row { 
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+}

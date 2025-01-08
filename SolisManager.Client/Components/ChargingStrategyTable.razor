@@ -1,0 +1,80 @@
+@using Humanizer
+@inject IInverterService clientInverterService
+
+<PageTitle>Agile Prices</PageTitle>
+
+<div class="title-bar">
+    <h1>Octopus Agile Prices and Charging Plan</h1>
+    <div class="extra-info">
+        <text>@BatteryText</text>
+        <MudIconButton OnClick="@ClearOverrides" Icon="@Icons.Material.Filled.Clear"
+                       Variant="Variant.Filled" Size="Size.Small"/>
+    </div>
+</div>
+
+@if (prices == null)
+{
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Date</th>
+            <th>Period</th>
+            <th>Agile Price (p/kWh)</th>
+            <th>Price Type</th>
+            <th>Battery Action</th>
+            <th>PV Forecast (kWh)</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var slot in prices.Prices)
+        {
+            <tr>
+                <td>@slot.valid_from.ToString("dd-MMM")</td>
+                <td>@slot.valid_from.ToString("HH:mm") - @slot.valid_to.ToString("HH:mm")</td>
+                <td>@Math.Round(slot.value_inc_vat, 2)</td>
+                <td><PriceType Type="@slot.PriceType"/></td>
+                <td><SlotAction Slot="@slot"/></td>
+                <td>@Math.Round(slot.pv_est_kwh, 2)</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    <p>Last update: @prices.TimeStamp, last page refresh @DateTime.UtcNow</p>
+}
+
+@code {
+    private SolisManagerState? prices;
+    private string BatteryText => $"Battery Charge: {prices.BatterySOC}%";
+    private readonly PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
+
+    private async Task RefreshData()
+    {
+        prices = await clientInverterService.GetAgilePriceSlots();
+        
+        StateHasChanged();
+    }
+
+    private async Task ClearOverrides()
+    {
+        await clientInverterService.ClearOverrides();
+        await RefreshData();
+    }
+    
+    private async Task RunTimer()
+    {
+        while (await timer.WaitForNextTickAsync())
+            await RefreshData();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshData();
+        _ = RunTimer();
+    }
+}

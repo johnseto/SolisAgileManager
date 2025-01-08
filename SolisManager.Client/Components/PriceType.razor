@@ -1,0 +1,23 @@
+@using Humanizer
+
+<div class="action-icon">
+    <div class="type-icon" style="@Style" />
+    @Type.Humanize()
+</div>
+
+
+@code {
+    [Parameter]
+    public Shared.Models.PriceType Type { get; set; }
+
+    private string Style => "background-color: " + Type switch
+    {
+        Shared.Models.PriceType.Cheapest => "darkgreen",
+        Shared.Models.PriceType.MostExpensive => "red",
+        Shared.Models.PriceType.BelowAverage => "green",
+        Shared.Models.PriceType.Dropping => "gold",
+        Shared.Models.PriceType.BelowThreshold => "lightgreen",
+        _ => "gray"
+    } + ";";
+
+}

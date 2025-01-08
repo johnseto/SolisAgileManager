@@ -1,0 +1,23 @@
+@using Humanizer
+
+@if (Slot != null)
+{
+    <div class="action-icon" title="@Slot.ActionReason">
+        <MudIcon Icon="@Icon"/>
+        @Slot.Action.Humanize()
+    </div>
+}
+
+@code {
+    [Parameter]
+    public OctopusPriceSlot? Slot { get; set; }
+
+    private string Icon => Slot?.Action switch
+    {
+        Shared.Models.SlotAction.Charge => Icons.Material.Filled.BatteryChargingFull,
+        Shared.Models.SlotAction.Discharge => Icons.Material.Filled.Battery0Bar,
+        Shared.Models.SlotAction.ChargeIfLowBattery => Icons.Material.Filled.BatteryUnknown,
+        _ => Icons.Material.Filled.PauseCircle
+    };
+
+}

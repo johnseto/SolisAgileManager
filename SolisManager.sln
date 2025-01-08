@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SolisManager", "SolisManager\SolisManager.csproj", "{DF029999-AA25-4686-B63A-597CC73446BA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SolisManager.Client", "SolisManager.Client\SolisManager.Client.csproj", "{124B5683-C6EC-4492-906C-BCC3FF293EF9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SolisManager.Shared", "SolisManager.Shared\SolisManager.Shared.csproj", "{5FC71B01-F948-4991-A861-9848BC2F93C0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DF029999-AA25-4686-B63A-597CC73446BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF029999-AA25-4686-B63A-597CC73446BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF029999-AA25-4686-B63A-597CC73446BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF029999-AA25-4686-B63A-597CC73446BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{124B5683-C6EC-4492-906C-BCC3FF293EF9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{124B5683-C6EC-4492-906C-BCC3FF293EF9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{124B5683-C6EC-4492-906C-BCC3FF293EF9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{124B5683-C6EC-4492-906C-BCC3FF293EF9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FC71B01-F948-4991-A861-9848BC2F93C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FC71B01-F948-4991-A861-9848BC2F93C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FC71B01-F948-4991-A861-9848BC2F93C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FC71B01-F948-4991-A861-9848BC2F93C0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

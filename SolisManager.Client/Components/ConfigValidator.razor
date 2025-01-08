@@ -1,0 +1,43 @@
+@inject IInverterService inverterService
+
+@if (ConfigIsValid)
+{
+    @ChildContent
+}
+else
+{
+    <div class="config-validator">
+        <ConfigSettings OnSettingsChanged="CheckValidState"/>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+    
+    [Parameter]
+    public bool ConfigIsValid { get; set; }
+    
+    [Parameter]
+    public EventCallback<bool> ConfigIsValidChanged { get; set; }
+    
+    private async Task CheckValidState()
+    {
+        var config = await inverterService.GetConfig();
+
+        bool newState = config.IsValid();
+
+        if (newState != ConfigIsValid)
+        {
+            ConfigIsValid = newState;
+            await ConfigIsValidChanged.InvokeAsync(ConfigIsValid);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckValidState();
+        
+        await base.OnInitializedAsync();
+    }
+}
