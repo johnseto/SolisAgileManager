@@ -116,11 +116,13 @@ There are also _manual overrides_ which can be set vie the tools screen. For exa
 
 ### Thanks/Credits
 
-* Thanks must go to [Rob Tweed](https://github.com/robtweed) whose Agility project was the inspiration for this
-  application. 
+* Thanks to [Steve Gal](https://github.com/stevegal/solis_control) for his Solis-Control script that gave me the 
+  info needed to build the API wrapper to set the charging slots on the inverter.
 * Thanks also to [Jon Glass](https://github.com/jmg48/solis-cloud) for his sample .Net wrapper for the Solis API,
   without which I'd have spent an inordinate amount of time figuring out the complicated Solis Authentication
   process.
+* Thanks must go to [Rob Tweed](https://github.com/robtweed) whose Agility project made me think about building
+  this application.
 
 ### Technical Details
 
