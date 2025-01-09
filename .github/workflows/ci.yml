@@ -41,12 +41,11 @@ jobs:
     - name: Build SolisManager-${{matrix.target}}
       run: dotnet publish SolisManager.sln -c Release --runtime ${{matrix.runtime}} --self-contained true -p:PublishTrimmed=false -o ./artifacts/SolisManager-${{matrix.upload}} /p:Version=1.0.${{github.run_number}}
         
-    - name: Zip the elease
+    - name: Zip the release
       run: zip -r ./artifacts/SolisManager-${{matrix.upload}}.zip ./artifacts/SolisManager-${{matrix.upload}}/
 
     - name: Release
       uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/')
       with:
         files: SolisManager-${{ matrix.target }}.zip
 
