@@ -30,7 +30,7 @@
             <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(prices.CurrentPVkW,2))" 
                        Description="Current Solar PV generation" Units="kW"/>
             <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(prices.TodayPVkWh,2))" 
-                       Description="Total Solar PV Generation today" Units="kW"/>
+                       Description="Total Solar PV Generation today" Units="kWh"/>
             <Battery ChargePercentage="@prices.BatterySOC"/>
         }
     </div>
