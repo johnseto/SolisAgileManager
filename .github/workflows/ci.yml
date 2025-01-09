@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy: 
       matrix: 
-        target: [linux, windows]
+        target: [mac, linux, windows]
         include: 
           - target: windows
             os: ubuntu-latest
