@@ -30,6 +30,7 @@ public record OctopusPriceSlot
     public SlotAction Action { get; set; } = SlotAction.DoNothing;
     public string ActionReason { get; set; } = string.Empty;
     public Guid Id { get; set; } = Guid.NewGuid();
+    public bool IsManualOverride { get; set; }
     public decimal? pv_est_kwh { get; set; }
 
     public override string ToString()

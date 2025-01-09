@@ -6,6 +6,15 @@
 <div class="title-bar">
     <h1>Prices &amp; Charging Plan</h1>
     <div class="extra-info">
+        @if (manualOverridesExist)
+        {
+            <div title="Clear any manual overrides that are currently in effect">
+                <MudButton OnClick="@ClearOverrides" StartIcon="@Icons.Material.Filled.Cancel"
+                           Variant="UIConstants.MudVariant" Size="Size.Small">
+                    Clear Overrides
+                </MudButton>
+            </div>
+        }
         @if (isSimulateMode)
         {
             <div class="simulate-indicator">
@@ -13,10 +22,6 @@
             </div>
         }
         <Battery ChargePercentage="@prices?.BatterySOC"/>
-        <div title="Clear any manual overrides that are currently in effect">
-            <MudIconButton OnClick="@ClearOverrides" Icon="@Icons.Material.Filled.Clear"
-                           Variant="Variant.Filled" Size="Size.Small"/>
-        </div>
     </div>
 </div>
 
@@ -63,10 +68,13 @@ else
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString() : string.Empty;
     private string SolcastUpdate => prices?.SolcastTimeStamp?.ToString() ?? "never";
     private bool isSimulateMode = false;
+    private bool manualOverridesExist = false;
 
     private async Task RefreshData()
     {
         prices = await clientInverterService.GetAgilePriceSlots();
+
+        manualOverridesExist = prices.Prices.Any(x => x.IsManualOverride);
         
         StateHasChanged();
     }

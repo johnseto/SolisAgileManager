@@ -312,6 +312,7 @@ public class InverterManager(SolisManagerConfig config,
                     {
                         slot.Action = over_ride.Action;
                         slot.ActionReason = "Manual override applied.";
+                        slot.IsManualOverride = true;
                     }
                 }
             }
