@@ -8,8 +8,24 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    
+    runs-on: ${{ matrix.os }}
+    strategy: 
+      matrix: 
+        target: [universal, linux, windows]
+        include: 
+          - target: windows
+            os: windows-latest
+            upload: windows
+            runtime: win-x64
+          - target: linux
+            os: ubuntu-latest
+            upload: linux
+            runtime: linux-x64
+          - target: universal
+            os: macos-latest
+            upload: macos
+            runtime: osx-x64
+     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -22,35 +38,11 @@ jobs:
     - name: Install WASM-Tools
       run: dotnet workload install wasm-tools
 
-    - name: Install dependencies
-      run: dotnet restore
-
-    - name: Build win-x64
-      run: dotnet publish SolisManager.sln -c Release --runtime win-x64 --self-contained -p:PublishTrimmed=false -o ./artifacts/SolisManager-win /p:Version=1.0.${{ github.run_number }}
+    - name: Build SolisManager
+      run: dotnet publish SolisManager.sln -c Release --runtime ${{matrix.runtime}} --self-contained true -p:PublishTrimmed=false -o ./artifacts/SolisManager-${{matrix.upload}} /p:Version=1.0.${{github.run_number}}
       
-    - name: Build linux-x64
-      run: dotnet publish SolisManager.sln -c Release --runtime linux-x64 --self-contained -p:PublishTrimmed=false -o ./artifacts/SolisManager-linux /p:Version=1.0.${{ github.run_number }}
-      
-    - name: Build osx-x64
-      run: dotnet publish SolisManager.sln -c Release --runtime osx-x64 --self-contained -p:PublishTrimmed=false -o ./artifacts/SolisManager-osx  /p:Version=1.0.${{ github.run_number }}
-    
-    - name: List Output linux-x64
-      run: ls -r ./artifacts/SolisManager-linux
-
-    - name: List Output osx-x64
-      run: ls -r ./artifacts/SolisManager-osx
-
-    - name: List Output win-x64
-      run: ls -r ./artifacts/SolisManager-win
-
-    - name: Zip the Win release
-      run: zip -r ./artifacts/SolisManager-win.zip ./artifacts/SolisManager-win/*.*
-
-    - name: Zip the OSX release
-      run: zip -r ./artifacts/SolisManager-osx.zip ./artifacts/SolisManager-osx/*.*
-
-    - name: Zip the Linux release
-      run: zip -r ./artifacts/SolisManager-linux.zip ./artifacts/SolisManager-linux/*.*
+    - name: Zip the elease
+      run: zip -r ./artifacts/SolisManager-${{matrix.upload}}.zip ./artifacts/SolisManager-${{matrix.upload}}/
 
     - name: Create the Release
       id: create_release
@@ -63,35 +55,14 @@ jobs:
         release_name: Release 1.0.${{ github.run_number }}
         draft: false
         
-    - name: Upload SolisManager-win
+    - name: Upload SolisManager-${{matrix.target}}
       if: ${{ github.event_name == 'push' }}
       uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/SolisManager-win.zip
-        asset_name: SolisManager-win.zip
+        asset_path: ./artifacts/SolisManager-${{matrix.upload}}.zip
+        asset_name: SolisManager-${{matrix.upload}}.zip
         asset_content_type: application/exe
 
-    - name: Upload SolisManager-linux
-      if: ${{ github.event_name == 'push' }}
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/SolisManager-linux.zip
-        asset_name: SolisManager-linux.zip
-        asset_content_type: application/exe
-
-    - name: Upload SolisManager-osx
-      if: ${{ github.event_name == 'push' }}
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/SolisManager-osx.zip
-        asset_name: SolisManager-osx.zip
-        asset_content_type: application/exe
