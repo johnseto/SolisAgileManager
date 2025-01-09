@@ -189,7 +189,7 @@ public class InverterManager(SolisManagerConfig config,
             
             if (averagePriceSlots.Any())
             {
-                var averagePrice = averagePriceSlots.Average(x => x.value_inc_vat);
+                var averagePrice = decimal.Round(averagePriceSlots.Average(x => x.value_inc_vat), 2);
                 decimal cheapThreshold = averagePrice * (decimal)0.9;
 
                 foreach (var slot in slots.Where(x =>
