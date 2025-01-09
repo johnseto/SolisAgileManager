@@ -39,12 +39,12 @@ jobs:
       run: dotnet publish SolisManager.sln -c Release --runtime ${{matrix.runtime}} --self-contained true -p:PublishTrimmed=false --property:PublishDir=${{github.workspace}}/publish /p:Version=1.0.${{github.run_number}}
         
     - name: Zip the release
-      run: zip -r /artifacts/SolisManager-${{matrix.target}}.zip ${{github.workspace}}/publish
+      run: zip -r ${{github.workspace}}/publish/SolisManager-${{matrix.target}}.zip ${{github.workspace}}/publish
 
     - name: Release
       uses: softprops/action-gh-release@v2
       with:
-        files: /artifacts/SolisManager-${{matrix.target}}.zip
+        files: ${{github.workspace}}/publish/SolisManager-${{matrix.target}}.zip
         name: Release 1.0.${{ github.run_number }}
         tag_name: 1.0.${{ github.run_number }}
         make_latest: true
