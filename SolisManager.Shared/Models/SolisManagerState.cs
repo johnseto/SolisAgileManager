@@ -7,6 +7,7 @@ public class SolisManagerState
     public int BatterySOC { get; set; }
     public decimal TodayPVkWh { get; set; }
     public decimal CurrentPVkW { get; set; }
+    public string StationId { get; set; } = string.Empty;
     public DateTime BatteryTimeStamp { get; set; }
     public DateTime? SolcastTimeStamp { get; set; }
 }

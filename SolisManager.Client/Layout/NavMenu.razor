@@ -1,4 +1,6 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@inject IInverterService inverterService
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <div class="navmenu-title">
             <img src="/favicon.png" alt="Solis Agile Manager" width="30px" height="30px"/>
@@ -44,7 +46,7 @@
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="https://www.soliscloud.com/#/station" target="_blank">
+            <NavLink class="nav-link" href="@SolisURL" target="_blank">
                 <MudIcon Icon="@Icons.Material.Filled.WbSunny"/>
                 &nbsp;
                 Solis Cloud
@@ -52,3 +54,20 @@
         </div>
     </nav>
 </div>
+
+@code {
+    private string stationId = string.Empty;
+
+    private string SolisURL => !string.IsNullOrEmpty(stationId) ?
+            $"https://www.soliscloud.com/#/station/stationDetails/generalSituation/{stationId}" : 
+            "https://www.soliscloud.com/#/station";
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await inverterService.GetAgilePriceSlots();
+        if (state != null)
+            stationId = state.StationId;
+        
+        await base.OnInitializedAsync();
+    }
+}
