@@ -42,19 +42,20 @@ else
                 <td>@Math.Round(slot.value_inc_vat, 2)</td>
                 <td><PriceType Type="@slot.PriceType"/></td>
                 <td><SlotAction Slot="@slot"/></td>
-                <td>@Math.Round(slot.pv_est_kwh, 2)</td>
+                <td>@ForecastEstimate(slot)</td>
             </tr>
         }
         </tbody>
     </table>
-    <p>Last update: @prices.TimeStamp, last page refresh @DateTime.UtcNow</p>
+    <p>Last update: @prices.TimeStamp, last battery update: @prices.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
 }
 
 @code {
     private SolisManagerState? prices;
     private string BatteryText => $"Battery Charge: {prices?.BatterySOC}%";
     private readonly PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
-
+    private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString() : string.Empty;
+    private string SolcastUpdate => prices?.SolcastTimeStamp?.ToString() ?? "never";
     private async Task RefreshData()
     {
         prices = await clientInverterService.GetAgilePriceSlots();

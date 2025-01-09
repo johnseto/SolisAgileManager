@@ -20,6 +20,7 @@ public class InverterManager(SolisManagerConfig config,
     {
         var forecast = await solcastApi.GetSolcastForecast();
         var lookup = forecast.ToDictionary(x => x.period_end);
+        inverterState.SolcastTimeStamp = null;
 
         foreach (var slot in slots)
         {
@@ -27,6 +28,12 @@ public class InverterManager(SolisManagerConfig config,
             {
                 // Estimate is in kW. Since slots are 30 mins, divide by 2 to get kWh.
                 slot.pv_est_kwh = (solcastEstimate.pv_estimate / 2.0M);
+                inverterState.SolcastTimeStamp = DateTime.UtcNow;
+            }
+            else
+            {
+                // No data
+                slot.pv_est_kwh = null;
             }
         }
     }
@@ -109,10 +116,10 @@ public class InverterManager(SolisManagerConfig config,
                 else
                 {
                     var midnight = DateTime.UtcNow.Date;
-                    // Clear the charging slot
-                    await solisApi.SetCharge(midnight, midnight, true, config.Simulate);
                     // And the discharge slot.
                     await solisApi.SetCharge(midnight, midnight, false, config.Simulate);
+                    // Clear the charging slot
+                    await solisApi.SetCharge(midnight, midnight, true, config.Simulate);
                 }
             }
         }
@@ -333,6 +340,7 @@ public class InverterManager(SolisManagerConfig config,
             inverterState.BatterySOC = solisState.data.batteryList
                 .Select(x => x.batteryCapacitySoc)
                 .FirstOrDefault();
+            inverterState.BatteryTimeStamp = DateTime.UtcNow;
         }
     }
 
@@ -367,9 +375,9 @@ public class InverterManager(SolisManagerConfig config,
     }
 
     private int NearestHalfHour(int minute) => minute - (minute % 30);
-    private List<OctopusPriceSlot> CreateOverrides(DateTime start, SlotAction action, int count)
+    private List<OctopusPriceSlot> CreateOverrides(DateTime start, SlotAction action, int slotCount)
     {
-        var overrides = Enumerable.Range(0, config.SlotsForFullBatteryCharge)
+        var overrides = Enumerable.Range(0, slotCount)
             .Select(x => new OctopusPriceSlot())
             .ToList();
 
@@ -395,19 +403,29 @@ public class InverterManager(SolisManagerConfig config,
     
     public async Task ChargeBattery()
     {
-        var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Charge, config.SlotsForFullBatteryCharge);
+        // Work out the percentage charge, and then calculate how many slots it'll take to achieve that
+        double percentageToCharge = (100 - inverterState.BatterySOC) / 100.0;
+        var slotsRequired = (int)Math.Round(config.SlotsForFullBatteryCharge * percentageToCharge, MidpointRounding.ToPositiveInfinity);
+        
+        var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Charge, slotsRequired);
         await SetManualOverrides(overrides);
     }
 
     public async Task DischargeBattery()
     {
-        var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, config.SlotsForFullBatteryCharge);
+        var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, CalculateDischargeSlots());
         await SetManualOverrides(overrides);
     }
 
+    private int CalculateDischargeSlots()
+    {
+        double slotsRequired = config.SlotsForFullBatteryCharge * (inverterState.BatterySOC / 100.0);
+        return (int)Math.Round(slotsRequired, MidpointRounding.ToPositiveInfinity);
+    }
+    
     public async Task DumpAndChargeBattery()
     {
-        var discharge = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, config.SlotsForFullBatteryCharge);
+        var discharge = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, CalculateDischargeSlots());
         var charge = CreateOverrides(discharge.Last().valid_to, SlotAction.Charge, config.SlotsForFullBatteryCharge);
         await SetManualOverrides(discharge.Concat(charge).ToList());
     }
