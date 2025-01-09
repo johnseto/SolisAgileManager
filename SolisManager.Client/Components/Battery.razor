@@ -1,8 +1,7 @@
 
 @if (ChargePercentage != null)
 {
-    <div class="battery-indicator">
-        <strong>Battery: </strong>
+    <div class="battery-indicator" title="Battery state-of-charge">
         <div class="battery-box">
             @foreach (var block in Enumerable.Range(0, fullBlocks))
             {

@@ -4,7 +4,13 @@
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
-    <h2>Prices &amp; Charging Plan</h2>
+    <h3>Prices &amp; Charging Plan</h3>
+    @if (isSimulateMode)
+    {
+        <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
+            Simulation Mode
+        </div>
+    }
     <div class="extra-info">
         @if (manualOverridesExist)
         {
@@ -16,20 +22,13 @@
             </div>
         }
 
-        @if (isSimulateMode)
-        {
-            <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
-                Simulation Mode
-            </div>
-        }
-        
         @if (prices != null)
         {
-            <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(prices.HouseLoadkW,2))" 
+            <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(prices.HouseLoadkW, 2))"
                        Description="Current load being consumed by the house" Units="kW"/>
-            <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(prices.CurrentPVkW,2))" 
+            <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(prices.CurrentPVkW, 2))"
                        Description="Current Solar PV generation" Units="kW"/>
-            <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(prices.TodayPVkWh,2))" 
+            <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(prices.TodayPVkWh, 2))"
                        Description="Total Solar PV Generation today" Units="kWh"/>
             <Battery ChargePercentage="@prices.BatterySOC"/>
         }
