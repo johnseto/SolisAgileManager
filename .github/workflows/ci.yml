@@ -14,7 +14,7 @@ jobs:
         target: [mac, linux, windows]
         include: 
           - target: windows
-            os: windows-latest
+            os: ubuntu-latest
             upload: windows
             runtime: win-x64
           - target: linux
