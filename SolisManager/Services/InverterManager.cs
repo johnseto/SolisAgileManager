@@ -345,6 +345,7 @@ public class InverterManager(SolisManagerConfig config,
             inverterState.CurrentPVkW = solisState.data.pac;
             inverterState.TodayPVkWh = solisState.data.eToday;
             inverterState.StationId = solisState.data.stationId;
+            inverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
         }
     }
 

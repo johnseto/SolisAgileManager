@@ -15,16 +15,22 @@
                 </MudButton>
             </div>
         }
+
         @if (isSimulateMode)
         {
-            <div class="simulate-indicator">
+            <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
                 Simulation Mode
             </div>
         }
+        
         @if (prices != null)
         {
-            <div>PV: @(Math.Round(prices.CurrentPVkW,2))kW</div>
-            <div>Today: @(Math.Round(prices.TodayPVkWh,2))kWh</div>
+            <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(prices.HouseLoadkW,2))" 
+                       Description="Current load being consumed by the house" Units="kW"/>
+            <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(prices.CurrentPVkW,2))" 
+                       Description="Current Solar PV generation" Units="kW"/>
+            <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(prices.TodayPVkWh,2))" 
+                       Description="Total Solar PV Generation today" Units="kW"/>
             <Battery ChargePercentage="@prices.BatterySOC"/>
         }
     </div>

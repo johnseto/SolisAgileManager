@@ -1,0 +1,11 @@
+.value-chip{
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    column-gap: 3px;
+    flex-wrap: nowrap;
+    padding: 3px 5px;
+    background-color: rgba(145, 129, 47, 0.3);
+    color: black;
+    border-radius: 5px;
+}

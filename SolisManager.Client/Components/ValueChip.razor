@@ -1,0 +1,24 @@
+@if(Value != null)
+{
+    <div class="value-chip" title="@Description">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <MudIcon Icon="@Icon"/>
+        }
+        <strong>@Value</strong>
+        @if (!string.IsNullOrEmpty(Units))
+        {
+            @Units
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public decimal? Value { get; set; }
+    
+    [Parameter] public string Icon { get; set; } = string.Empty;
+
+    [Parameter] public string Units { get; set; } = string.Empty;
+    
+    [Parameter] public string? Description { get; set; }
+}

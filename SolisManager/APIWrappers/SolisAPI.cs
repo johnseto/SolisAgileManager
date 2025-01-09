@@ -143,7 +143,7 @@ public record Data<T>(Page<T> page);
 public record Page<T>(int current, int pages, List<T> records);
 
 public record InverterDetails(InverterData data);
-public record InverterData(IEnumerable<Battery> batteryList, decimal eToday, decimal pac, string stationId);
+public record InverterData(IEnumerable<Battery> batteryList, decimal eToday, decimal pac, string stationId, decimal batteryPower, decimal psum);
 public record Battery(int batteryCapacitySoc);
 public record UserStation(string id, string installer, string installerId, double allEnergy1, double allIncome,
     double dayEnergy1, double dayIncome, double gridPurchasedTodayEnergy, double gridPurchasedTotalEnergy,
