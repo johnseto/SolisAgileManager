@@ -13,13 +13,6 @@
         }
 
         <main>
-            @if (showSidebar)
-            {
-                <div class="top-row px-4">
-                    <a href="https://www.soliscloud.com/#/station" target="_blank">Solis Cloud</a>
-                </div>
-            }
-            
             <article class="content px-4">
                 <ConfigValidator @bind-ConfigIsValid="@showSidebar">
                     @Body
