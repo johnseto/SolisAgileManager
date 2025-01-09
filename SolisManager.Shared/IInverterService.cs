@@ -14,5 +14,11 @@ public interface IInverterService
     public Task DischargeBattery();
     public Task DumpAndChargeBattery();
     public Task ClearOverrides();
+}
 
+public interface IInverterRefreshService
+{
+    public Task RefreshBatteryState();
+    public Task RefreshSolcastData();
+    public Task RefreshAgileRates();
 }

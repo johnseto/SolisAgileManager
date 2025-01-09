@@ -33,7 +33,11 @@ public class Program
         builder.Services.AddSingleton<SolisManagerConfig>();
         builder.Services.AddSingleton<InverterManager>();
         builder.Services.AddSingleton<IInverterService>(x => x.GetRequiredService<InverterManager>());
-        builder.Services.AddSingleton<IInvocable>(x => x.GetRequiredService<InverterManager>());
+        builder.Services.AddSingleton<IInverterRefreshService>(x => x.GetRequiredService<InverterManager>());
+
+        builder.Services.AddSingleton<BatteryScheduler>();
+        builder.Services.AddSingleton<RatesScheduler>();
+        builder.Services.AddSingleton<SolcastScheduler>();
 
         builder.Services.AddSingleton<SolisAPI>();
         builder.Services.AddSingleton<SolcastAPI>();
@@ -86,13 +90,26 @@ public class Program
 
         app.ConfigureAPIEndpoints();
 
-        var cron = "0,30 * * * *";
-
+        // Refresh and apply the octopus rates every 30 mins
         app.Services.UseScheduler(s => s
-            .Schedule<InverterManager>()
-            .Cron(cron)
+            .Schedule<RatesScheduler>()
+            .Cron("0,30 * * * *")
             .RunOnceAtStart());
         
+        // Update the battery every 5 minutes. Skip the 0 / 30
+        // minute slots, because it gets updated when we refresh
+        // rates anyway. Don't need to run at startup, for the 
+        // same reason.
+        app.Services.UseScheduler(s => s
+            .Schedule<BatteryScheduler>()
+            .Cron("5,10,15,20,25,35,40,45,50,55 * * * *"));
+
+        // Get the solcast data every four hours
+        app.Services.UseScheduler(s => s
+            .Schedule<SolcastScheduler>()
+            .Cron("0 */4 * * *")
+            .RunOnceAtStart());
+
         await app.RunAsync();
     }
     

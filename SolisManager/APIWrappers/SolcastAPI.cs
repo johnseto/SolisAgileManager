@@ -12,43 +12,36 @@ namespace SolisManager.APIWrappers;
 public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 {
     private SolcastResponse? lastForecast = null;
+
     public async Task<IEnumerable<SolcastForecast>> GetSolcastForecast()
     {
-        if (lastForecast == null || DateTime.UtcNow - lastForecast.lastUpdate < TimeSpan.FromHours(6))
-        {
-            var url = "https://api.solcast.com.au"
-                .AppendPathSegment("rooftop_sites")
-                .AppendPathSegment(config.SolcastSiteIdentifier)
-                .AppendPathSegment("forecasts")
-                .SetQueryParams(new
-                {
-                    format = "json",
-                    api_key = config.SolcastAPIKey
-                });
+        var url = "https://api.solcast.com.au"
+            .AppendPathSegment("rooftop_sites")
+            .AppendPathSegment(config.SolcastSiteIdentifier)
+            .AppendPathSegment("forecasts")
+            .SetQueryParams(new
+            {
+                format = "json",
+                api_key = config.SolcastAPIKey
+            });
 
-            try
-            {
-                lastForecast = await url.GetJsonAsync<SolcastResponse>();
-            }
-            catch (FlurlHttpException ex)
-            {
-                if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
-                {
-                    logger.LogWarning("Solcast API failed - too many requests. Will try again later");
-                    lastForecast = new SolcastResponse();
-                }
-                else
-                    logger.LogError("HTTP Exception getting solcast data: {E}", ex);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError("Exception getting solcast data: {E}", ex);
-            }
+        try
+        {
+            lastForecast = await url.GetJsonAsync<SolcastResponse>();
         }
-
-        if (lastForecast != null && lastForecast.forecasts != null && lastForecast.forecasts.Any())
+        catch (FlurlHttpException ex)
         {
-            return lastForecast.forecasts;
+            if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
+            {
+                logger.LogWarning("Solcast API failed - too many requests. Will try again later");
+                lastForecast = new SolcastResponse();
+            }
+            else
+                logger.LogError("HTTP Exception getting solcast data: {E}", ex);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("Exception getting solcast data: {E}", ex);
         }
 
         return [];

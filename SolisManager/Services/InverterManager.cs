@@ -9,7 +9,7 @@ public class InverterManager(SolisManagerConfig config,
                             OctopusAPI octopusAPI,
                             SolisAPI solisApi,
                             SolcastAPI solcastApi,
-                            ILogger<InverterManager> logger) : IInvocable, IInverterService
+                            ILogger<InverterManager> logger) : IInverterService, IInverterRefreshService
 {
     private readonly SolisManagerState inverterState  = new();
     private readonly List<OctopusPriceSlot> manualOverrides = new();
@@ -74,23 +74,12 @@ public class InverterManager(SolisManagerConfig config,
     {
         logger.LogTrace("Refreshing data...");
 
-        var inverterStateTask = solisApi.InverterState();
         var octRatesTask = octopusAPI.GetOctopusRates();
 
-        await Task.WhenAll(inverterStateTask, octRatesTask);
+        await Task.WhenAll(RefreshBatteryState(), octRatesTask);
 
         // Stamp the last time we did an update
         inverterState.TimeStamp = DateTime.UtcNow;
-
-        // First get the battery charge state from the inverter
-        var solisState = await inverterStateTask;
-
-        if (solisState != null)
-        {
-            inverterState.BatterySOC = solisState.data.batteryList
-                .Select(x => x.batteryCapacitySoc)
-                .FirstOrDefault();
-        }
 
         // Now, process the octopus rates
         var slots = await octRatesTask;
@@ -105,7 +94,7 @@ public class InverterManager(SolisManagerConfig config,
             // Do we care if we run this multiple times?!
             // if ( firstSlot.valid_from <= now && firstSlot.valid_to >= now )
             {
-                logger.LogInformation("Execute action for slot: {S}", firstSlot);
+                logger.LogInformation("Execute action for slot: {E} (Simulate: {S}", firstSlot, config.Simulate);
 
                 await AddToExecutionHistory(firstSlot);
 
@@ -118,11 +107,6 @@ public class InverterManager(SolisManagerConfig config,
                     await solisApi.SetCharge(firstSlot.valid_from, firstSlot.valid_to, false, config.Simulate);
                 }
             }
-        }
-
-        if (!System.Diagnostics.Debugger.IsAttached)
-        {
-            await EnrichSlotsFromSolcast(inverterState.Prices);
         }
     }
 
@@ -326,18 +310,32 @@ public class InverterManager(SolisManagerConfig config,
         
     }
     
-    /// <summary>
-    /// Called by the scheduler
-    /// </summary>
-    public async Task Invoke()
-    {
-        logger.LogTrace("Invoking Scheduled Data refresh...");
-        await RefreshData();
-    }
-
     public Task<SolisManagerState?> GetAgilePriceSlots()
     {
         return Task.FromResult(inverterState);
+    }
+
+    public async Task RefreshBatteryState()
+    {
+        // Get the battery charge state from the inverter
+        var solisState = await solisApi.InverterState();
+
+        if (solisState != null)
+        {
+            inverterState.BatterySOC = solisState.data.batteryList
+                .Select(x => x.batteryCapacitySoc)
+                .FirstOrDefault();
+        }
+    }
+
+    public async Task RefreshSolcastData()
+    {
+        await EnrichSlotsFromSolcast(inverterState.Prices);
+    }
+
+    public async Task RefreshAgileRates()
+    {
+        await RefreshData();
     }
 
     public Task<List<HistoryEntry>> GetHistory()
