@@ -48,4 +48,5 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: SolisManager-${{ matrix.target }}.zip
+        tag_name: 1.0.${{ github.run_number }}
 
