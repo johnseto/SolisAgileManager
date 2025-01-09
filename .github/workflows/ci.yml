@@ -39,10 +39,10 @@ jobs:
       run: dotnet workload install wasm-tools
 
     - name: Build SolisManager-${{matrix.target}}
-      run: dotnet publish SolisManager.sln -c Release --runtime ${{matrix.runtime}} --self-contained true -p:PublishTrimmed=false -o ./artifacts/SolisManager-${{matrix.upload}} /p:Version=1.0.${{github.run_number}}
+      run: dotnet publish SolisManager.sln -c Release --runtime ${{matrix.runtime}} --self-contained true -p:PublishTrimmed=false --property:PublishDir=./artifacts/publish /p:Version=1.0.${{github.run_number}}
         
     - name: Zip the release
-      run: zip -r ./artifacts/SolisManager-${{matrix.upload}}.zip ./artifacts/SolisManager-${{matrix.upload}}/
+      run: zip -r ./artifacts/SolisManager-${{matrix.upload}}.zip ./artifacts/publish
 
     - name: Release
       uses: softprops/action-gh-release@v2
