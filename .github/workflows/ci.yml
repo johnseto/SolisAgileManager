@@ -38,7 +38,7 @@ jobs:
       run: zip ./artifacts/SolisManager-osx.zip ./artifacts/SolisManager-osx/*.*
 
     - name: Zip the Linux release
-      run: zip ./artifacts/SolisManager-linux.zip ./artifacts/QbtManager-linux/*.*
+      run: zip ./artifacts/SolisManager-linux.zip ./artifacts/SolisManager-linux/*.*
 
     - name: Create the Release
       id: create_release
