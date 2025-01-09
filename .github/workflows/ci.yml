@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy: 
       matrix: 
-        target: [universal, linux, windows]
+        target: [mac, linux, windows]
         include: 
           - target: windows
             os: windows-latest
@@ -21,7 +21,7 @@ jobs:
             os: ubuntu-latest
             upload: linux
             runtime: linux-x64
-          - target: universal
+          - target: mac
             os: macos-latest
             upload: macos
             runtime: osx-x64
@@ -40,10 +40,13 @@ jobs:
 
     - name: Build SolisManager
       run: dotnet publish SolisManager.sln -c Release --runtime ${{matrix.runtime}} --self-contained true -p:PublishTrimmed=false -o ./artifacts/SolisManager-${{matrix.upload}} /p:Version=1.0.${{github.run_number}}
-      
+        
     - name: Zip the elease
       run: zip -r ./artifacts/SolisManager-${{matrix.upload}}.zip ./artifacts/SolisManager-${{matrix.upload}}/
 
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
     - name: Create the Release
       id: create_release
       if: ${{ github.event_name == 'push' }}
@@ -55,6 +58,17 @@ jobs:
         release_name: Release 1.0.${{ github.run_number }}
         draft: false
         
+  add-artifacts-to-release:
+    runs-on: ubuntu-latest
+    strategy: 
+      matrix: 
+        target: [mac, linux, windows]
+        include: 
+          - target: windows
+          - target: linux
+          - target: mac
+     
+    steps:
     - name: Upload SolisManager-${{matrix.target}}
       if: ${{ github.event_name == 'push' }}
       uses: actions/upload-release-asset@v1.0.2
@@ -62,7 +76,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./artifacts/SolisManager-${{matrix.upload}}.zip
-        asset_name: SolisManager-${{matrix.upload}}.zip
+        asset_path: ./artifacts/SolisManager-${{matrix.target}}.zip
+        asset_name: SolisManager-${{matrix.target}}.zip
         asset_content_type: application/exe
-
