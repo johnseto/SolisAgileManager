@@ -15,30 +15,33 @@ jobs:
       uses: actions/checkout@v2
       
     - name: Setup .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v4.2.0
       with:
         dotnet-version: 9.0.x
+
+    - name: Install WASM-Tools
+      run: dotnet workload install wasm-tools
 
     - name: Install dependencies
       run: dotnet restore
 
     - name: Build win-x64
-      run: dotnet publish SolisManager.sln -c Release --runtime win-x64 --self-contained -o artifacts/SolisManager-win /p:AssemblyVersion=1.0.${{ github.run_number }}
+      run: dotnet publish SolisManager.sln -c Release --runtime win-x64 --self-contained -o ./publish-dir/SolisManager-win /p:AssemblyVersion=1.0.${{ github.run_number }}
       
     - name: Build linux-x64
-      run: dotnet publish SolisManager.sln -c Release --runtime linux-x64 --self-contained -o artifacts/SolisManager-linux /p:AssemblyVersion=1.0.${{ github.run_number }}
+      run: dotnet publish SolisManager.sln -c Release --runtime linux-x64 --self-contained -o ./publish-dir/SolisManager-linux /p:AssemblyVersion=1.0.${{ github.run_number }}
       
     - name: Build osx-x64
-      run: dotnet publish SolisManager.sln -c Release --runtime osx-x64 --self-contained -o artifacts/SolisManager-osx  /p:AssemblyVersion=1.0.${{ github.run_number }}
+      run: dotnet publish SolisManager.sln -c Release --runtime osx-x64 --self-contained -o ./publish-dir/SolisManager-osx  /p:AssemblyVersion=1.0.${{ github.run_number }}
     
     - name: Zip the Win release
-      run: zip -r ./artifacts/SolisManager-win.zip ./artifacts/SolisManager-win/*.*
+      run: zip -r ./artifacts/SolisManager-win.zip ./publish-dir/SolisManager-win/*.*
 
     - name: Zip the OSX release
-      run: zip -r ./artifacts/SolisManager-osx.zip ./artifacts/SolisManager-osx/*.*
+      run: zip -r ./artifacts/SolisManager-osx.zip ./publish-dir/SolisManager-osx/*.*
 
     - name: Zip the Linux release
-      run: zip -r ./artifacts/SolisManager-linux.zip ./artifacts/SolisManager-linux/*.*
+      run: zip -r ./artifacts/SolisManager-linux.zip ./publish-dir/SolisManager-linux/*.*
 
     - name: Create the Release
       id: create_release
@@ -51,7 +54,7 @@ jobs:
         release_name: Release 1.0.${{ github.run_number }}
         draft: false
         
-    - name: Upload qbtmanager-win
+    - name: Upload SolisManager-win
       if: ${{ github.event_name == 'push' }}
       uses: actions/upload-release-asset@v1.0.2
       env:
@@ -62,7 +65,7 @@ jobs:
         asset_name: SolisManager-win.zip
         asset_content_type: application/exe
 
-    - name: Upload qbtmanager-linux
+    - name: Upload SolisManager-linux
       if: ${{ github.event_name == 'push' }}
       uses: actions/upload-release-asset@v1.0.2
       env:
@@ -73,7 +76,7 @@ jobs:
         asset_name: SolisManager-linux.zip
         asset_content_type: application/exe
 
-    - name: Upload qbtmanager-osx
+    - name: Upload SolisManager-osx
       if: ${{ github.event_name == 'push' }}
       uses: actions/upload-release-asset@v1.0.2
       env:
