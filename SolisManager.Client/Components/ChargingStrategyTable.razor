@@ -6,10 +6,16 @@
 <div class="title-bar">
     <h1>Prices &amp; Charging Plan</h1>
     <div class="extra-info">
+        @if (isSimulateMode)
+        {
+            <div class="simulate-indicator">
+                Simulation Mode
+            </div>
+        }
         <Battery ChargePercentage="@prices?.BatterySOC"/>
         <div title="Clear any manual overrides that are currently in effect">
             <MudIconButton OnClick="@ClearOverrides" Icon="@Icons.Material.Filled.Clear"
-                           Variant="Variant.Filled" Size="Size.Small" />
+                           Variant="Variant.Filled" Size="Size.Small"/>
         </div>
     </div>
 </div>
@@ -56,6 +62,8 @@ else
     private readonly PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString() : string.Empty;
     private string SolcastUpdate => prices?.SolcastTimeStamp?.ToString() ?? "never";
+    private bool isSimulateMode = false;
+
     private async Task RefreshData()
     {
         prices = await clientInverterService.GetAgilePriceSlots();
@@ -77,6 +85,9 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var config = await clientInverterService.GetConfig();
+        isSimulateMode = config.Simulate;
+        
         await RefreshData();
         _ = RunTimer();
 
