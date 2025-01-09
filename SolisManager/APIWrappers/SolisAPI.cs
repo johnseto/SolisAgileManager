@@ -62,7 +62,13 @@ public class SolisAPI
     {
             int chargePower = charge ? config.MaxChargeRateAmps : 0;
             int dischargePower = charge ? 0 : config.MaxChargeRateAmps;
-            var chargeValues = $"{chargePower},{dischargePower},{slotStart:HH:mm}-{slotEnd:HH:mm},00:00-00:00,0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
+            string chargeValues;
+            
+            if( charge )
+                chargeValues = $"{chargePower},{dischargePower},{slotStart:HH:mm}-{slotEnd:HH:mm},00:00-00:00,0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
+            else
+                chargeValues = $"{chargePower},{dischargePower},00:00-00:00,{slotStart:HH:mm}-{slotEnd:HH:mm},0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
+
             var requestBody = new
             {
                 inverterSn = config.SolisInverterSerial,

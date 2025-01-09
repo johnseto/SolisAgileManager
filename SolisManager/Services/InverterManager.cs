@@ -106,6 +106,14 @@ public class InverterManager(SolisManagerConfig config,
                 {
                     await solisApi.SetCharge(firstSlot.valid_from, firstSlot.valid_to, false, config.Simulate);
                 }
+                else
+                {
+                    var midnight = DateTime.UtcNow.Date;
+                    // Clear the charging slot
+                    await solisApi.SetCharge(midnight, midnight, true, config.Simulate);
+                    // And the discharge slot.
+                    await solisApi.SetCharge(midnight, midnight, false, config.Simulate);
+                }
             }
         }
     }

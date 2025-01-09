@@ -39,7 +39,7 @@
         
         if (ChargePercentage != null)
         {
-            fullBlocks = (ChargePercentage.Value) / 10;
+            fullBlocks = (int)Math.Round(ChargePercentage.Value / 10.0, MidpointRounding.AwayFromZero);
             emptyBlocks = 10 - fullBlocks;
         }
 
