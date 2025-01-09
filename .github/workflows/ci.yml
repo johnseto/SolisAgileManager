@@ -32,13 +32,13 @@ jobs:
       run: dotnet publish SolisManager.sln -c Release --runtime osx-x64 --self-contained -o artifacts/SolisManager-osx  /p:AssemblyVersion=1.0.${{ github.run_number }}
     
     - name: Zip the Win release
-      run: zip ./artifacts/SolisManager-win.zip ./artifacts/SolisManager-win/*.*
+      run: zip -r ./artifacts/SolisManager-win.zip ./artifacts/SolisManager-win/*.*
 
     - name: Zip the OSX release
-      run: zip ./artifacts/SolisManager-osx.zip ./artifacts/SolisManager-osx/*.*
+      run: zip -r ./artifacts/SolisManager-osx.zip ./artifacts/SolisManager-osx/*.*
 
     - name: Zip the Linux release
-      run: zip ./artifacts/SolisManager-linux.zip ./artifacts/SolisManager-linux/*.*
+      run: zip -r ./artifacts/SolisManager-linux.zip ./artifacts/SolisManager-linux/*.*
 
     - name: Create the Release
       id: create_release
