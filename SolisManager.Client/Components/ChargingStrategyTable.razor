@@ -21,7 +21,12 @@
                 Simulation Mode
             </div>
         }
-        <Battery ChargePercentage="@prices?.BatterySOC"/>
+        @if (prices != null)
+        {
+            <div>PV: @(Math.Round(prices.CurrentPVkW,2))kW</div>
+            <div>Today: @(Math.Round(prices.TodayPVkWh,2))kWh</div>
+            <Battery ChargePercentage="@prices.BatterySOC"/>
+        }
     </div>
 </div>
 

@@ -342,6 +342,8 @@ public class InverterManager(SolisManagerConfig config,
                 .Select(x => x.batteryCapacitySoc)
                 .FirstOrDefault();
             inverterState.BatteryTimeStamp = DateTime.UtcNow;
+            inverterState.CurrentPVkW = solisState.data.pac;
+            inverterState.TodayPVkWh = solisState.data.eToday;
         }
     }
 
