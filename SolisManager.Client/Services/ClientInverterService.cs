@@ -7,9 +7,14 @@ namespace SolisManager.Client.Services;
 
 public class ClientInverterService( HttpClient httpClient ) : IInverterService
 {
-    public async Task<SolisManagerState?> GetAgilePriceSlots()
+    public SolisManagerState InverterState { get; private set; } = new();
+
+    public async Task RefreshInverterState()
     {
-        return await httpClient.GetFromJsonAsync<SolisManagerState>("inverter/agileprices");
+        // Load the data from the server
+        var state = await httpClient.GetFromJsonAsync<SolisManagerState?>("inverter/refreshinverterdata");
+        if (state != null)
+            InverterState = state;
     }
 
     public async Task<List<HistoryEntry>> GetHistory()

@@ -56,18 +56,7 @@
 </div>
 
 @code {
-    private string stationId = string.Empty;
-
-    private string SolisURL => !string.IsNullOrEmpty(stationId) ?
-            $"https://www.soliscloud.com/#/station/stationDetails/generalSituation/{stationId}" : 
+    private string SolisURL => !string.IsNullOrEmpty(inverterService.InverterState?.StationId) ?
+            $"https://www.soliscloud.com/#/station/stationDetails/generalSituation/{inverterService.InverterState?.StationId}" : 
             "https://www.soliscloud.com/#/station";
-    
-    protected override async Task OnInitializedAsync()
-    {
-        var state = await inverterService.GetAgilePriceSlots();
-        if (state != null)
-            stationId = state.StationId;
-        
-        await base.OnInitializedAsync();
-    }
 }

@@ -11,7 +11,7 @@ public class InverterManager(SolisManagerConfig config,
                             SolcastAPI solcastApi,
                             ILogger<InverterManager> logger) : IInverterService, IInverterRefreshService
 {
-    private readonly SolisManagerState inverterState  = new();
+    public SolisManagerState InverterState { get; } = new();
     private readonly List<OctopusPriceSlot> manualOverrides = new();
     private readonly List<HistoryEntry> executionHistory = new();
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
@@ -20,7 +20,7 @@ public class InverterManager(SolisManagerConfig config,
     {
         var forecast = await solcastApi.GetSolcastForecast();
         var lookup = forecast.ToDictionary(x => x.period_end);
-        inverterState.SolcastTimeStamp = null;
+        InverterState.SolcastTimeStamp = null;
 
         foreach (var slot in slots)
         {
@@ -28,7 +28,7 @@ public class InverterManager(SolisManagerConfig config,
             {
                 // Estimate is in kW. Since slots are 30 mins, divide by 2 to get kWh.
                 slot.pv_est_kwh = (solcastEstimate.pv_estimate / 2.0M);
-                inverterState.SolcastTimeStamp = DateTime.UtcNow;
+                InverterState.SolcastTimeStamp = DateTime.UtcNow;
             }
             else
             {
@@ -58,7 +58,7 @@ public class InverterManager(SolisManagerConfig config,
                 executionHistory.AddRange(entries);
             }
             
-            var newEntry = new HistoryEntry(slot, inverterState.BatterySOC);
+            var newEntry = new HistoryEntry(slot, InverterState.BatterySOC);
             
             var lastEntry = executionHistory.LastOrDefault();
 
@@ -86,14 +86,14 @@ public class InverterManager(SolisManagerConfig config,
         await Task.WhenAll(RefreshBatteryState(), octRatesTask);
 
         // Stamp the last time we did an update
-        inverterState.TimeStamp = DateTime.UtcNow;
+        InverterState.TimeStamp = DateTime.UtcNow;
 
         // Now, process the octopus rates
         var slots = await octRatesTask;
 
-        inverterState.Prices = EvaluateSlotActions(slots.OrderBy(x => x.valid_from).ToArray());
+        InverterState.Prices = EvaluateSlotActions(slots.OrderBy(x => x.valid_from).ToArray());
 
-        var firstSlot = inverterState.Prices.FirstOrDefault();
+        var firstSlot = InverterState.Prices.FirstOrDefault();
         if (firstSlot != null)
         {
             var now = DateTime.UtcNow;
@@ -292,13 +292,13 @@ public class InverterManager(SolisManagerConfig config,
 
             // For any slots that are set to "charge if low battery", update them to 'charge' if the 
             // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
-            if (inverterState.BatterySOC < config.LowBatteryPercentage)
+            if (InverterState.BatterySOC < config.LowBatteryPercentage)
             {
                 foreach (var slot in slots.Where(x => x.Action == SlotAction.ChargeIfLowBattery)
                                           .Take(config.SlotsForFullBatteryCharge))
                 {
                     slot.Action = SlotAction.Charge;
-                    slot.ActionReason = $"Upcoming slot is set to charge if low battery; battery is currently at {inverterState.BatterySOC}%";
+                    slot.ActionReason = $"Upcoming slot is set to charge if low battery; battery is currently at {InverterState.BatterySOC}%";
                 }
             }
 
@@ -325,10 +325,12 @@ public class InverterManager(SolisManagerConfig config,
         return slots;
         
     }
+
     
-    public Task<SolisManagerState?> GetAgilePriceSlots()
+    public Task RefreshInverterState()
     {
-        return Task.FromResult(inverterState);
+        // Nothing to do on the server side, the refresh is triggered by the scheduler
+        return Task.CompletedTask;
     }
 
     public async Task RefreshBatteryState()
@@ -338,20 +340,20 @@ public class InverterManager(SolisManagerConfig config,
 
         if (solisState != null)
         {
-            inverterState.BatterySOC = solisState.data.batteryList
+            InverterState.BatterySOC = solisState.data.batteryList
                 .Select(x => x.batteryCapacitySoc)
                 .FirstOrDefault();
-            inverterState.BatteryTimeStamp = DateTime.UtcNow;
-            inverterState.CurrentPVkW = solisState.data.pac;
-            inverterState.TodayPVkWh = solisState.data.eToday;
-            inverterState.StationId = solisState.data.stationId;
-            inverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
+            InverterState.BatteryTimeStamp = DateTime.UtcNow;
+            InverterState.CurrentPVkW = solisState.data.pac;
+            InverterState.TodayPVkWh = solisState.data.eToday;
+            InverterState.StationId = solisState.data.stationId;
+            InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
         }
     }
 
     public async Task RefreshSolcastData()
     {
-        await EnrichSlotsFromSolcast(inverterState.Prices);
+        await EnrichSlotsFromSolcast(InverterState.Prices);
     }
 
     public async Task RefreshAgileRates()
@@ -409,7 +411,7 @@ public class InverterManager(SolisManagerConfig config,
     public async Task ChargeBattery()
     {
         // Work out the percentage charge, and then calculate how many slots it'll take to achieve that
-        double percentageToCharge = (100 - inverterState.BatterySOC) / 100.0;
+        double percentageToCharge = (100 - InverterState.BatterySOC) / 100.0;
         var slotsRequired = (int)Math.Round(config.SlotsForFullBatteryCharge * percentageToCharge, MidpointRounding.ToPositiveInfinity);
         
         var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Charge, slotsRequired);
@@ -424,7 +426,7 @@ public class InverterManager(SolisManagerConfig config,
 
     private int CalculateDischargeSlots()
     {
-        double slotsRequired = config.SlotsForFullBatteryCharge * (inverterState.BatterySOC / 100.0);
+        double slotsRequired = config.SlotsForFullBatteryCharge * (InverterState.BatterySOC / 100.0);
         return (int)Math.Round(slotsRequired, MidpointRounding.ToPositiveInfinity);
     }
     

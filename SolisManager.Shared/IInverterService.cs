@@ -4,7 +4,8 @@ namespace SolisManager.Shared;
 
 public interface IInverterService
 {
-    public Task<SolisManagerState?> GetAgilePriceSlots();
+    public SolisManagerState InverterState { get; }
+    public Task RefreshInverterState();
     public Task<List<HistoryEntry>> GetHistory();
     public Task<SolisManagerConfig> GetConfig();
     public Task SaveConfig(SolisManagerConfig config);

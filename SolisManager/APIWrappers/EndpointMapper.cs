@@ -21,11 +21,11 @@ public static class EndpointMapper
 
     private static RouteGroupBuilder MapAgilePricesApi(this RouteGroupBuilder group)
     {
-        group.MapGet("agileprices",
+        group.MapGet("refreshinverterdata",
             async ([FromServices] IInverterService service) =>
             {
-                var prices = await service.GetAgilePriceSlots();
-                return TypedResults.Ok(prices);
+                await service.RefreshInverterState();
+                return TypedResults.Ok(service.InverterState);
             });
 
         group.MapGet("history",

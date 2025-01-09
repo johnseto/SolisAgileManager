@@ -1,5 +1,6 @@
+@using System.Globalization
 @using Humanizer
-@inject IInverterService clientInverterService
+@inject IInverterService inverterService
 
 <PageTitle>Solis Manager</PageTitle>
 
@@ -22,27 +23,16 @@
             </div>
         }
 
-        @if (prices != null)
-        {
-            <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(prices.HouseLoadkW, 2))"
-                       Description="Current load being consumed by the house" Units="kW"/>
-            <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(prices.CurrentPVkW, 2))"
-                       Description="Current Solar PV generation" Units="kW"/>
-            <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(prices.TodayPVkWh, 2))"
-                       Description="Total Solar PV Generation today" Units="kWh"/>
-            <Battery ChargePercentage="@prices.BatterySOC"/>
-        }
+        <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(inverterService.InverterState.HouseLoadkW, 2))"
+                   Description="Current load being consumed by the house" Units="kW"/>
+        <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(inverterService.InverterState.CurrentPVkW, 2))"
+                   Description="Current Solar PV generation" Units="kW"/>
+        <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(inverterService.InverterState.TodayPVkWh, 2))"
+                   Description="Total Solar PV Generation today" Units="kWh"/>
+        <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
     </div>
 </div>
 
-@if (prices == null)
-{
-    <p>
-        <em>Loading...</em>
-    </p>
-}
-else
-{
     <table class="table">
         <thead>
         <tr>
@@ -55,7 +45,7 @@ else
         </tr>
         </thead>
         <tbody>
-        @foreach (var slot in prices.Prices)
+        @foreach (var slot in inverterService.InverterState.Prices)
         {
             <tr>
                 <td>@slot.valid_from.ToString("dd-MMM")</td>
@@ -68,30 +58,28 @@ else
         }
         </tbody>
     </table>
-    <p>Last update: @prices.TimeStamp, last battery update: @prices.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
-}
+    <p>Last update: @inverterService.InverterState.TimeStamp, last battery update: @inverterService.InverterState.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
 
 @code {
-    private SolisManagerState? prices;
-    private string BatteryText => $"Battery Charge: {prices?.BatterySOC}%";
-    private readonly PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
-    private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString() : string.Empty;
-    private string SolcastUpdate => prices?.SolcastTimeStamp?.ToString() ?? "never";
+    private readonly PeriodicTimer timer = new (TimeSpan.FromMinutes(1));
+    private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
+    private string SolcastUpdate => inverterService.InverterState?.SolcastTimeStamp?.ToString() ?? "never";
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
 
     private async Task RefreshData()
     {
-        prices = await clientInverterService.GetAgilePriceSlots();
+        // Get the latest data
+        await inverterService.RefreshInverterState();
 
-        manualOverridesExist = prices.Prices.Any(x => x.IsManualOverride);
+        manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.IsManualOverride);
         
         StateHasChanged();
     }
 
     private async Task ClearOverrides()
     {
-        await clientInverterService.ClearOverrides();
+        await inverterService.ClearOverrides();
         await RefreshData();
     }
     
@@ -103,7 +91,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        var config = await clientInverterService.GetConfig();
+        var config = await inverterService.GetConfig();
         isSimulateMode = config.Simulate;
         
         await RefreshData();
