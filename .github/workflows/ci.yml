@@ -44,6 +44,13 @@ jobs:
     - name: Zip the elease
       run: zip -r ./artifacts/SolisManager-${{matrix.upload}}.zip ./artifacts/SolisManager-${{matrix.upload}}/
 
+    - name: Upload server builds to artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: SolisManager-${{ matrix.target }}.zip
+        path: ./aretifacts/*.zip     
+        retention-days: 5
+        
   create-release:
     needs: [build]
     runs-on: ubuntu-latest
@@ -64,7 +71,13 @@ jobs:
         release_name: Release 1.0.${{ github.run_number }}
         draft: false
         
-    - name: Upload SolisManager-${{matrix.target}}
+    - name: Download Build Artifact
+      uses: actions/download-artifact@v4
+      with:
+          name: SolisManager-${{matrix.target}}.zip
+          path: server
+
+    - name: Upload SolisManager-${{matrix.target}} to release
       if: ${{ github.event_name == 'push'}}
       uses: actions/upload-release-asset@v1.0.2
       env:
