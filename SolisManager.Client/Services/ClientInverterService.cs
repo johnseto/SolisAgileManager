@@ -17,6 +17,10 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
             InverterState = state;
     }
 
+    public async Task CancelSlotAction(OctopusPriceSlot slot)
+    {
+        await httpClient.PostAsJsonAsync("inverter/cancelslotaction", slot);
+    }
     public async Task<List<HistoryEntry>> GetHistory()
     {
         var result = await httpClient.GetFromJsonAsync<List<HistoryEntry>>("inverter/history");

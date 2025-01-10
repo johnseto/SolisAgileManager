@@ -1,5 +1,4 @@
 @using System.Globalization
-@using Humanizer
 @inject IInverterService inverterService
 
 <PageTitle>Solis Manager</PageTitle>
@@ -52,7 +51,7 @@
                 <td>@slot.valid_from.ToString("HH:mm") - @slot.valid_to.ToString("HH:mm")</td>
                 <td>@Math.Round(slot.value_inc_vat, 2)</td>
                 <td><PriceType Type="@slot.PriceType"/></td>
-                <td><SlotAction Slot="@slot"/></td>
+                <td><SlotAction Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
                 <td>@ForecastEstimate(slot)</td>
             </tr>
         }
@@ -67,6 +66,12 @@
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
 
+    private async Task CancelSlotAction(OctopusPriceSlot slot)
+    {
+        await inverterService.CancelSlotAction(slot);
+        await RefreshData();
+    }
+    
     private async Task RefreshData()
     {
         // Get the latest data

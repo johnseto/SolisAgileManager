@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using SolisManager.APIWrappers;
 using SolisManager.Components;
 using Coravel;
@@ -16,14 +17,40 @@ namespace SolisManager;
 public class Program
 {
     private const int solisManagerPort = 5169;
+
+    public static string ConfigFolder => configFolder;
+    
+    private static string configFolder = "config";
     
     public static async Task Main(string[] args)
     {
+        if (args.Length > 0)
+        {
+            var folder = args[0];
+            if (!string.IsNullOrEmpty(folder))
+            {
+                if (Directory.Exists(folder))
+                {
+                    Console.WriteLine($"Config folder set to {folder}.");
+                    configFolder = folder;
+                }
+                else
+                {
+                    Console.WriteLine($"ERR: Invalid config folder specified - {folder} did not exist. Using default {ConfigFolder}.");
+                }
+            }
+
+            if( string.IsNullOrEmpty(folder))
+            {
+                Console.WriteLine($"Using default folder \"{configFolder}\".");
+            }
+        }
+
         var builder = WebApplication.CreateBuilder(args);
 
         builder.Host.UseSerilog((hostContext, services, configuration) =>
         {
-            InitLogConfiguration(configuration, ".");
+            InitLogConfiguration(configuration, ConfigFolder);
         });
 
         // Add services to the container.
@@ -55,10 +82,14 @@ public class Program
         }
 
         var app = builder.Build();
+
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        
+        logger.LogInformation("Application started. Logs being written to {C}", ConfigFolder);
         
         // First, load the config
         var config = app.Services.GetRequiredService<SolisManagerConfig>();
-        if (!config.ReadFromFile())
+        if (!config.ReadFromFile(ConfigFolder))
         {
             config.OctopusProduct = "AGILE-24-10-01";
             config.OctopusProductCode = "E-1R-AGILE-24-10-01-A";

@@ -42,9 +42,11 @@ public class InverterManager(SolisManagerConfig config,
     {
         try
         {
-            if (!executionHistory.Any() && File.Exists(executionHistoryFile))
+            var historyFilePath = Path.Combine(Program.ConfigFolder, executionHistoryFile);
+            
+            if (!executionHistory.Any() && File.Exists(historyFilePath))
             {
-                var lines = await File.ReadAllLinesAsync(executionHistoryFile);
+                var lines = await File.ReadAllLinesAsync(historyFilePath);
                 logger.LogInformation("Loaded {C} entries from execution history file {F}", lines.Length,
                     executionHistoryFile);
 
@@ -79,6 +81,10 @@ public class InverterManager(SolisManagerConfig config,
 
     private async Task RefreshData()
     {
+        // Don't even attempt this if there's no config
+        if (!config.IsValid())
+            return;
+        
         logger.LogTrace("Refreshing data...");
 
         var octRatesTask = octopusAPI.GetOctopusRates();
@@ -335,6 +341,9 @@ public class InverterManager(SolisManagerConfig config,
 
     public async Task RefreshBatteryState()
     {
+        if (!config.IsValid())
+            return;
+        
         // Get the battery charge state from the inverter
         var solisState = await solisApi.InverterState();
 
@@ -353,6 +362,9 @@ public class InverterManager(SolisManagerConfig config,
 
     public async Task RefreshSolcastData()
     {
+        if (!config.SolcastValid())
+            return;
+
         await EnrichSlotsFromSolcast(InverterState.Prices);
     }
 
@@ -368,8 +380,6 @@ public class InverterManager(SolisManagerConfig config,
 
     public Task<SolisManagerConfig> GetConfig()
     {
-        logger.LogTrace("Retrieving config from server...");
-
         return Task.FromResult(config);
     }
 
@@ -378,7 +388,14 @@ public class InverterManager(SolisManagerConfig config,
         logger.LogInformation("Saving config to server...");
 
         newConfig.CopyPropertiesTo(config);
-        await config.SaveToFile();
+        await config.SaveToFile(Program.ConfigFolder);
+    }
+
+    public async Task CancelSlotAction(OctopusPriceSlot slot)
+    {
+        var overrides = CreateOverrides(slot.valid_from, SlotAction.DoNothing, 1);
+        logger.LogInformation("Clearing slot action for {start}-{end}...", slot.valid_from, slot.valid_to);
+        await SetManualOverrides(overrides);
     }
 
     private int NearestHalfHour(int minute) => minute - (minute % 30);

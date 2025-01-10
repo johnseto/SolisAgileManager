@@ -42,6 +42,14 @@ public static class EndpointMapper
                 return TypedResults.Ok();
             });
 
+        group.MapPost("cancelslotaction",
+            async (OctopusPriceSlot slot, 
+                [FromServices] IInverterService service) =>
+            {
+                await service.CancelSlotAction(slot);
+                return TypedResults.Ok();
+            });
+
         return group;
     }
 

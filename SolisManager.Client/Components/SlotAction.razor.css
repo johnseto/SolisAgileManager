@@ -4,3 +4,10 @@
     column-gap: 10px;
     align-items: center;
 }
+
+.slot-icon {
+    color: rgba(145, 129, 47, 0.6);
+}
+.slot-action {
+    cursor: pointer;
+}

@@ -21,17 +21,20 @@ public record SolisManagerConfig
     public string SolcastSiteIdentifier { get; set; }
     public bool Simulate { get; set; } = true;
 
-    public async Task SaveToFile()
+    public async Task SaveToFile(string folder)
     {
+        var configPath = Path.Combine(folder, settingsFileName);
         var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(settingsFileName, json);
+        await File.WriteAllTextAsync(configPath, json);
     }
     
-    public bool ReadFromFile()
+    public bool ReadFromFile(string folder)
     {
-        if (File.Exists(settingsFileName))
+        var configPath = Path.Combine(folder, settingsFileName);
+
+        if (File.Exists(configPath))
         {
-            var content = File.ReadAllText(settingsFileName);
+            var content = File.ReadAllText(configPath);
             var settings = JsonSerializer.Deserialize<SolisManagerConfig>(content);
             
             settings.CopyPropertiesTo(this);
@@ -39,6 +42,13 @@ public record SolisManagerConfig
         }
 
         return false;
+    }
+
+    public bool SolcastValid()
+    {
+        if (string.IsNullOrEmpty(SolcastSiteIdentifier)) return false;
+        if (string.IsNullOrEmpty(SolcastAPIKey)) return false;
+        return true;
     }
 
     public bool IsValid()

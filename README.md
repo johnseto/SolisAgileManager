@@ -20,9 +20,32 @@ choice to run the app is entirely at your own risk.**
 SolisManager runs as a server-based app, and is designed to run 24/7, in the background, with minimal 
 interaction from the user. If it's working well, you shouldn't have to do anything once it's set up.
 
+### Running as a local app on Linux/Mac/Windows/Raspberry Pi
 To run it, download and unpack the binary package from Github releases, and then run the main executable.
 
-Once the server is running, navigate to the UI via your browser. It will be a `{ip/hostname of server}:5169`.
+Once the server is running, navigate to the UI via your browser. It will be at `{ip/hostname of server}:5169`.
+
+### Running via Docker 
+
+You will need to pull the `webreaper/solisagilemanager` container, and map the internal port `5169` to the port
+you want the web-UI exposed on from your host. You will also need to map a volume `/appdata` to a writeable
+local folder on your host, so that the config, and log files are written outside the container (otherwise
+when you pull a new version or recreate the container, you'll have to set up from scratch again).
+
+Here's a sample `docker-compose` entry:
+
+```
+   solismanager:
+        container_name: solismanager
+        image: webreaper/solisagilemanager:latest
+        ports:
+            - '5169:5169'
+        restart: unless-stopped
+        volumes:
+            - /volume1/dockerdata/solismanager:/appdata
+```
+
+Currently the only pre-built docker image is for `linux-x64` but I hope to add `linux-arm64` soon too.
 
 ## Settings
 
@@ -103,11 +126,11 @@ There are also _manual overrides_ which can be set vie the tools screen. For exa
 * Charge the Battery - this will override the next `n` slots, regardless of cost, to completely
   charge the battery
 * Discharge the Battery - this will override the next `n` slots to completely discharge the battery
+* By clicking the `x` next to any charge/discharge slot, you can apply an override which will cancel
+  the charge action and return that slot to `Do Nothing`.
 
 ### Coming Soon:
 
-* The intention is to provide pre-built docker images for ARM64 (RasPi) and other X64 Linus platforms. I run
-  this on my Synology NAS.
 * A future feature enhancement is to allow the app to determine if Octopus prices fall below zero for a certain
   period, and if so to automatically dump the battery charge to the grid, and then recharge the battery.
 * The app will read in Solcast forecast data if you provide an API key and Site ID. Currently this information
