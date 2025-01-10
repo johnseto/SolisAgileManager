@@ -22,7 +22,7 @@ docker push webreaper/solisagilemanager:$DOCKERTAG
 if [ -n "$1" ]
 then
     echo "*** Pushing docker image to webreaper/solisagilemanager:latest"
-    docker tag damselfly webreaper/solisagilemanager:latest
+    docker tag solisagilemanager webreaper/solisagilemanager:latest
     docker push webreaper/solisagilemanager:latest
 fi
 
