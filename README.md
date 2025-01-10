@@ -7,7 +7,7 @@ This app is designed to optimally manage the battery charging for your Solar/PV/
 used with the Octopus Agile tariff. The idea is that it will analyse upcoming Agile prices, and then
 pick a strategy to charge your battery based on the cheapest periods.
 
-<img width="1464" alt="SolisManagerScreenshot" src="https://github.com/user-attachments/assets/db2e3eb5-fc0e-418f-bc8d-8a8e9a5dcdca" />
+<img width="1133" alt="SolisManager" src="https://github.com/user-attachments/assets/907e1d92-bc77-487c-bc30-378b02d41a0f" />
 
 ### Warranty / Disclaimer 
 
