@@ -67,7 +67,23 @@ You'll also need to set some other config setting:
   price will always be set to charge, regardless of anything else.
 * Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
   any changes to the behaviour.
-  
+
+### Finding the right Tariff
+
+Solis Manager defaults to a standard Agile tariff, but you probably want to set it to your _exact_ tariff to 
+ensure it's accurate. To do this: 
+
+* [Click here](https://api.octopus.energy/v1/products/) to get the list of Octopus Agile Product codes (e.g.,
+  `AGILE-24-10-01`).
+* Then once you've found your tariff, click on the URL in the `links` section to find your region-specific
+  product code. For example: [https://api.octopus.energy/v1/products/AGILE-24-10-01/](https://api.octopus.energy/v1/products/AGILE-24-10-01/)
+* From that page, copy the product code (e.g., `E-1R-AGILE-24-10-01-A`) into the Solis Manager settings.
+
+Note that in the most common cases, selecting `AGILE-24-10-01` and `E-1R-AGILE-24-10-01-A`, and just altering 
+the last `A` to the correct [Region Code](https://mysmartenergy.uk/Electricity-Region) will do exactly what you
+need. Solis Manager doesn't do anything with the standing charge, so it doesn't matter if you're on an older
+tariff. 
+
 Once you've filled these in, the server will start running.
 
 As it runs, the last 30 days' worth of charging decisions will be logged to `SolisManagerExecutionHistory.csv` 
@@ -75,6 +91,10 @@ so you can monitor the decisions it's taking to ensure they're as you require. T
 allows you to convienently check what it did, and why it did it:
 
 <img width="1411" alt="HistoryView" src="https://github.com/user-attachments/assets/42078bb4-6f47-4adc-8f66-0f2f0c8e2eed" />
+  
+### Will the app work with non-Agile Tariffs?
+
+I haven't tried, but it might!
   
 ### How does it work?
 
