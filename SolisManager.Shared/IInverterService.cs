@@ -16,6 +16,7 @@ public interface IInverterService
     public Task DischargeBattery();
     public Task DumpAndChargeBattery();
     public Task ClearOverrides();
+    public Task AdvanceSimulation();
 }
 
 public interface IInverterRefreshService

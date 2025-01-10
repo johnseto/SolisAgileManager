@@ -43,49 +43,67 @@ public class SolisAPI
         return result.data.page.records;
     }
 
-    public async Task<Dictionary<string, object>?> AtRead()
+    private async Task<ChargeStateData?> ReadChargingState()
     {
-        var result = await Post<Dictionary<string, object>>(2,"atRead", new { inverterSn = config.SolisInverterSerial, cid = 4643 } );
-        return result;
-    }
+        var result = await Post<AtReadResponse>(2,"atRead", new { inverterSn = config.SolisInverterSerial, cid = 4643 } );
 
+        if (result != null && !string.IsNullOrEmpty(result.data.msg))
+            return ChargeStateData.FromChargeStateData(result.data.msg);
+
+        return null;
+    }
+    
     /// <summary>
     /// Set the inverter to charge or discharge for a particular period
     /// </summary>
-    /// <param name="inverterSn"></param>
-    /// <param name="slotStart">E.g., 08:30</param>
-    /// <param name="slotEnd">E.g., 09:00</param>
-    /// <param name="charge">True to charge, false to discharge</param>
-    /// <param name="simulateOnly">Goes through the motions but doesn't actually charge</param>
     /// <returns></returns>
-    public async Task<object?> SetCharge( DateTime slotStart, DateTime slotEnd, bool charge, bool simulateOnly )
+    public async Task<object?> SetCharge( DateTime? chargeStart, DateTime? chargeEnd, 
+                                          DateTime? dischargeStart, DateTime? dischargeEnd, 
+                                          bool simulateOnly )
     {
-            int chargePower = charge ? config.MaxChargeRateAmps : 0;
-            int dischargePower = charge ? 0 : config.MaxChargeRateAmps;
-            string chargeValues;
+        const string clearChargeSlot = "00:00-00:00";
+
+        
+        var currentChargeState = await ReadChargingState();
             
-            if( charge )
-                chargeValues = $"{chargePower},{dischargePower},{slotStart:HH:mm}-{slotEnd:HH:mm},00:00-00:00,0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
-            else
-                chargeValues = $"{chargePower},{dischargePower},00:00-00:00,{slotStart:HH:mm}-{slotEnd:HH:mm},0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
+        var chargeTimes = clearChargeSlot;
+        var dischargeTimes = clearChargeSlot;
+        int chargePower = 0;
+        int dischargePower = 0;
 
-            var requestBody = new
-            {
-                inverterSn = config.SolisInverterSerial,
-                cid = 103,
-                value = chargeValues
-            };
+        if (chargeStart != null && chargeEnd != null)
+        {
+            chargeTimes = $"{chargeStart:HH:mm}-{chargeEnd:HH:mm}";
+            chargePower = config.MaxChargeRateAmps;
+        }
 
-            if (simulateOnly)
-            {
-                logger.LogInformation("Simulate Charge request: {P}", JsonSerializer.Serialize(requestBody) );
-                return null;
-            }
-            else
-            {
-                // Actually submit it. 
-                return await Post<object>(2, "control", requestBody);
-            }
+        if (dischargeStart != null && dischargeEnd != null)
+        {
+            dischargeTimes = $"{dischargeStart:HH:mm}-{dischargeEnd:HH:mm}";
+            dischargePower = config.MaxChargeRateAmps;
+        }
+
+        string chargeValues = $"{chargePower},{dischargePower},{chargeTimes},{dischargeTimes},0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
+
+        var requestBody = new
+        {
+            inverterSn = config.SolisInverterSerial,
+            cid = 103,
+            value = chargeValues
+        };
+        
+        if (simulateOnly)
+        {
+            logger.LogInformation("Simulate Charge request: {P}", JsonSerializer.Serialize(requestBody) );
+            return null;
+        }
+        else
+        {
+            // Actually submit it. 
+            var result = await Post<object>(2, "control", requestBody);
+
+            return result;
+        }
     }
 
     private async Task<T?> Post<T>(int apiVersion, string resource, object body)
@@ -141,6 +159,27 @@ public record ListResponse<T>(Data<T> data);
 public record Data<T>(Page<T> page);
 
 public record Page<T>(int current, int pages, List<T> records);
+
+public record AtReadData(string msg);
+public record AtReadResponse(AtReadData data);
+
+public record ChargeStateData( int chargeAmps, int dischargeAmps, string chargeTimes, string dischargeTimes)
+{
+    public static ChargeStateData FromChargeStateData(string msg)
+    {
+        var parts = msg.Split(',', 5, StringSplitOptions.TrimEntries);
+        if (parts.Length == 5)
+        {
+            return new ChargeStateData(
+                int.Parse(parts[0]),
+                int.Parse(parts[1]),
+                parts[2],
+                parts[3]);
+        }
+
+        throw new AggregateException("Unable to parse atRead response");
+    }
+}
 
 public record InverterDetails(InverterData data);
 public record InverterData(IEnumerable<Battery> batteryList, decimal eToday, decimal pac, string stationId, decimal batteryPower, decimal psum);

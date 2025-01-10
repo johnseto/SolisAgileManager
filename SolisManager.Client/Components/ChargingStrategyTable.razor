@@ -10,6 +10,10 @@
         <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
             Simulation Mode
         </div>
+        <MudButton OnClick="@AdvanceSimulation" EndIcon="@Icons.Material.Filled.SkipNext"
+                   Variant="UIConstants.MudVariant" Size="Size.Small">
+            Advance Sim
+        </MudButton>
     }
     <div class="extra-info">
         @if (manualOverridesExist)
@@ -39,7 +43,8 @@
             <th>Period</th>
             <th>Agile Price (p/kWh)</th>
             <th>Price Type</th>
-            <th>Battery Action</th>
+            <th>Battery Plan</th>
+            <th>Slot Actions</th>
             <th>PV Forecast (kWh)</th>
         </tr>
         </thead>
@@ -51,7 +56,8 @@
                 <td>@slot.valid_from.ToString("HH:mm") - @slot.valid_to.ToString("HH:mm")</td>
                 <td>@Math.Round(slot.value_inc_vat, 2)</td>
                 <td><PriceType Type="@slot.PriceType"/></td>
-                <td><SlotAction Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
+                <td><SlotPlan Slot="@slot"/></td>
+                <td><SlotActions Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
                 <td>@ForecastEstimate(slot)</td>
             </tr>
         }
@@ -87,7 +93,13 @@
         await inverterService.ClearOverrides();
         await RefreshData();
     }
-    
+
+    private async Task AdvanceSimulation()
+    {
+        await inverterService.AdvanceSimulation();
+        await RefreshData();
+    }
+
     private async Task RunTimer()
     {
         while (await timer.WaitForNextTickAsync())
