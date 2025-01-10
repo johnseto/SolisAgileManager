@@ -56,7 +56,6 @@ jobs:
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
-      if: github.event.inputs.git-ref == ''
       with:
         files: ${{github.workspace}}/publish/SolisManager-${{matrix.target}}.zip
         name: Release 1.0.${{ github.run_number }}
@@ -93,5 +92,5 @@ jobs:
         run: sh makedocker.sh dev
 
       - name: Build Docker for Release (master only)
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         run: sh makedocker.sh  "1.0.${{ github.run_number }}"
