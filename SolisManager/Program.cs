@@ -104,12 +104,15 @@ public class Program
             .Schedule<BatteryScheduler>()
             .Cron("5,10,15,20,25,35,40,45,50,55 * * * *"));
 
-        // Get the solcast data every four hours
+        // Get the solcast data every six hours. Run it on the 
+        // 13th minute, because that reduces load (half of the world
+        // runs their solcast ingestion on the hour).
+        // Don't run at first startup. It means you won't get 
+        // data for a while, but that's probably okay.
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
-            .Cron("0 */4 * * *")
-            .RunOnceAtStart());
-
+            .Cron("13 */6 * * *"));
+        
         await app.RunAsync();
     }
     
