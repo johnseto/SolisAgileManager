@@ -59,4 +59,12 @@
     private string SolisURL => !string.IsNullOrEmpty(inverterService.InverterState?.StationId) ?
             $"https://www.soliscloud.com/#/station/stationDetails/generalSituation/{inverterService.InverterState?.StationId}" : 
             "https://www.soliscloud.com/#/station";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await inverterService.RefreshInverterState();
+
+        await base.OnInitializedAsync();
+    }
+
 }
