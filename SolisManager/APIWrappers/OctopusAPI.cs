@@ -29,6 +29,9 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
         {
             if (result.count != 0 && result.results != null)
             {
+                logger.LogInformation("Retrieved {C} rates from Octopus ({S:dd-MMM-yyyy HH:mm} - {E:dd-MMM-yyyy HH:mm})", result.count,
+                    result.results.FirstOrDefault()?.valid_from, result.results.FirstOrDefault()?.valid_to);
+                
                 return result.results;
             }
         }

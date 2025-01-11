@@ -126,7 +126,7 @@ public class InverterManager(SolisManagerConfig config,
 
             if (matchedSlots.Any())
             {
-                logger.LogInformation("Found {N} slots with matching action", matchedSlots.Count);
+                logger.LogDebug("Found {N} slots with matching action to conflate", matchedSlots.Count);
 
                 // The timespan is from the start of the first slot, to the end of the last slot.
                 var start = matchedSlots.First().valid_from;
@@ -374,6 +374,9 @@ public class InverterManager(SolisManagerConfig config,
             InverterState.TodayPVkWh = solisState.data.eToday;
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
+            
+            logger.LogInformation("Refreshed battery state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW", 
+                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW);
         }
     }
 
@@ -412,7 +415,7 @@ public class InverterManager(SolisManagerConfig config,
     public async Task CancelSlotAction(OctopusPriceSlot slot)
     {
         var overrides = CreateOverrides(slot.valid_from, SlotAction.DoNothing, 1);
-        logger.LogInformation("Clearing slot action for {start}-{end}...", slot.valid_from, slot.valid_to);
+        logger.LogInformation("Clearing slot action for {S}-{E}...", slot.valid_from, slot.valid_to);
         await SetManualOverrides(overrides);
     }
 

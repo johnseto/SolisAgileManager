@@ -26,7 +26,7 @@ public class SolisAPI
         client.BaseAddress = new Uri("https://www.soliscloud.com:13333");
     }
 
-    public async Task<InverterDetails> InverterState()
+    public async Task<InverterDetails?> InverterState()
     {
         var result = await Post<InverterDetails>(1,"inverterDetail", 
             new { sn = config.SolisInverterSerial
@@ -53,8 +53,7 @@ public class SolisAPI
             return ChargeStateData.FromChargeStateData(simulatedChargeState);
         }
 
-        var result = await Post<AtReadResponse>(2, "atRead",
-                new { inverterSn = config.SolisInverterSerial, cid = 4643 });
+        var result = await Post<AtReadResponse>(2, "atRead", new { inverterSn = config.SolisInverterSerial, cid = 4643 });
 
         if (result != null && !string.IsNullOrEmpty(result.data.msg))
         {
@@ -189,9 +188,12 @@ public class SolisAPI
                 value = chargeValues
             };
 
+            logger.LogInformation("Sending new charge instruction to {Inv}: {CA}, {DA}, {CT}, {DT}", 
+                            simulateOnly ? "mock inverter" : "Solis Inverter",
+                            chargePower, dischargePower, chargeTimes, dischargeTimes);
+
             if (simulateOnly)
             {
-                logger.LogInformation("Simulate Charge request: {P}", JsonSerializer.Serialize(requestBody));
                 simulatedChargeState = chargeValues;
             }
             else
@@ -202,7 +204,8 @@ public class SolisAPI
         }
         else
         {
-            logger.LogInformation("Inverter already in correct state - skipping control API call");
+            logger.LogInformation("Skipping charge request (Inverter state matches: {CA}, {DA}, {CT}, {DT})", 
+                                                chargePower, dischargePower, chargeTimes, dischargeTimes);
         }
     }
 
@@ -237,7 +240,7 @@ public class SolisAPI
 
             result.EnsureSuccessStatusCode();
 
-            logger.LogInformation("Posted request to SolisCloud: {U} {C}", url, content);
+            logger.LogDebug("Posted request to SolisCloud: {U} {C}", url, content);
 
             return await result.Content.ReadAsStringAsync();
         }

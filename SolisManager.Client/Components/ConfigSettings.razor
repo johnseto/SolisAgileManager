@@ -1,5 +1,7 @@
 @inject IInverterService inverterService
 @inject IDialogService dialogService
+@inject ISnackbar snackbar
+@inject NavigationManager navManager
 
 <div class="config-settings">
     <h2>Solis Manager Configuration</h2>
@@ -61,6 +63,8 @@
     {
         await inverterService.SaveConfig(config);
         await OnSettingsChanged.InvokeAsync();
+
+        snackbar.Add("Config Settings Updated", Severity.Info);
     }
 
     private async Task TestCharge()
@@ -75,6 +79,8 @@
         {
             await SaveConfig();
             await inverterService.TestCharge();
+            
+            snackbar.Add("Config Settings Updated and Test Charge Initiated", Severity.Warning);
         }
     }
 }
