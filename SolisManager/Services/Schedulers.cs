@@ -7,7 +7,7 @@ public class RatesScheduler( IInverterRefreshService service, ILogger<RatesSched
 {
     public async Task Invoke()
     {
-        logger.LogInformation("Executing Rates scheduler");
+        logger.LogDebug("Executing Rates scheduler");
         await service.RefreshAgileRates();
     }
 }
@@ -16,7 +16,7 @@ public class BatteryScheduler( IInverterRefreshService service, ILogger<BatteryS
 {
     public async Task Invoke()
     {
-        logger.LogInformation("Executing Battery scheduler");
+        logger.LogDebug("Executing Battery scheduler");
         await service.RefreshBatteryState();
     }
 }
@@ -31,7 +31,7 @@ public class SolcastScheduler( IInverterRefreshService service, ILogger<SolcastS
             return;
         }
         
-        logger.LogInformation("Executing Solcast scheduler");
+        logger.LogDebug("Executing Solcast scheduler");
         await service.RefreshSolcastData();
     }
 }

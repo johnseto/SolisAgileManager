@@ -9,6 +9,20 @@
     {
         <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
             Simulation Mode
+            @if (inverterService.InverterState.Prices.Any())
+            {
+                <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext"
+                           Variant="UIConstants.MudVariant" Size="Size.Small">
+                    Advance
+                </MudIcon>
+            }
+            else
+            {
+                <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh"
+                           Variant="UIConstants.MudVariant" Size="Size.Small">
+                    Reset
+                </MudIcon>
+            }
         </div>
     }
     <div class="extra-info">
@@ -32,37 +46,58 @@
     </div>
 </div>
 
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Date</th>
-            <th>Period</th>
-            <th>Agile Price (p/kWh)</th>
-            <th>Price Type</th>
-            <th>Battery Action</th>
-            <th>PV Forecast (kWh)</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var slot in inverterService.InverterState.Prices)
+<table class="table">
+    <colgroup>
+        <col style="width:100px;"/>
+        <col style="width:150px;"/>
+        <col style="width:150px;"/>
+        <col style="width:150px;"/>
+        <col style="width:150px;"/>
+        @if (hasSolcastData)
         {
-            <tr>
-                <td>@slot.valid_from.ToString("dd-MMM")</td>
-                <td>@slot.valid_from.ToString("HH:mm") - @slot.valid_to.ToString("HH:mm")</td>
-                <td>@Math.Round(slot.value_inc_vat, 2)</td>
-                <td><PriceType Type="@slot.PriceType"/></td>
-                <td><SlotAction Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
-                <td>@ForecastEstimate(slot)</td>
-            </tr>
+            <col style="width:100px;"/>
         }
-        </tbody>
-    </table>
+        <col/>
+    </colgroup>
+    <thead>
+    <tr>
+        <th>Date</th>
+        <th>Period</th>
+        <th>Price (p/kWh)</th>
+        <th>Price Type</th>
+        <th>Battery Plan</th>
+        <th>Slot Actions</th>
+        @if (hasSolcastData)
+        {
+            <th>PV Forecast (kWh)</th>
+        }
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var slot in inverterService.InverterState.Prices)
+    {
+        <tr>
+            <td>@slot.valid_from.ToString("dd-MMM")</td>
+            <td>@slot.valid_from.ToString("HH:mm") - @slot.valid_to.ToString("HH:mm")</td>
+            <td style="text-align: center;">@Math.Round(slot.value_inc_vat, 2)</td>
+            <td><PriceType Type="@slot.PriceType"/></td>
+            <td><SlotPlan Slot="@slot"/></td>
+            <td><SlotActions Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
+            @if (hasSolcastData)
+            {
+                <td>@ForecastEstimate(slot)</td>
+            }
+        </tr>
+    }
+    </tbody>
+</table>
     <p>Last update: @inverterService.InverterState.TimeStamp, last battery update: @inverterService.InverterState.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
 
 @code {
-    private readonly PeriodicTimer timer = new (TimeSpan.FromMinutes(1));
+    private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
     private string SolcastUpdate => inverterService.InverterState?.SolcastTimeStamp?.ToString() ?? "never";
+    private bool hasSolcastData = false;
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
 
@@ -71,14 +106,15 @@
         await inverterService.CancelSlotAction(slot);
         await RefreshData();
     }
-    
+
     private async Task RefreshData()
     {
         // Get the latest data
         await inverterService.RefreshInverterState();
 
+        hasSolcastData = inverterService.InverterState.Prices.Any(x => x.pv_est_kwh != null);
         manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.IsManualOverride);
-        
+
         StateHasChanged();
     }
 
@@ -87,7 +123,19 @@
         await inverterService.ClearOverrides();
         await RefreshData();
     }
-    
+
+    private async Task AdvanceSimulation()
+    {
+        await inverterService.AdvanceSimulation();
+        await RefreshData();
+    }
+
+    private async Task ResetSimulation()
+    {
+        await inverterService.ResetSimulation();
+        await RefreshData();
+    }
+
     private async Task RunTimer()
     {
         while (await timer.WaitForNextTickAsync())
@@ -98,7 +146,7 @@
     {
         var config = await inverterService.GetConfig();
         isSimulateMode = config.Simulate;
-        
+
         await RefreshData();
         _ = RunTimer();
 

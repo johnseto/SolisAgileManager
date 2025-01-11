@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using MudBlazor;
 using MudBlazor.Services;
+using SolisManager.Client.Constants;
 using SolisManager.Client.Services;
 using SolisManager.Shared;
 
@@ -19,6 +21,12 @@ class Program
         builder.Services.AddScoped<IInverterService, ClientInverterService>();
         builder.Services.AddMudServices();
         
+        builder.Services.AddMudServices(config =>
+        {
+            config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+            config.SnackbarConfiguration.SnackbarVariant = UIConstants.MudVariant;
+        });
+
         await builder.Build().RunAsync();
     }
 }

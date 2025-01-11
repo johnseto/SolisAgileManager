@@ -1,0 +1,25 @@
+@if (Slot != null)
+{
+    <div class="action-icon" title="@Slot.ActionReason">
+        @if (Slot.Action == Shared.Models.SlotAction.Charge ||
+             Slot.Action == Shared.Models.SlotAction.Discharge)
+        {
+            <div class="slot-icon slot-action" title="Click here to cancel the current action">
+                <MudIcon Icon="@Icons.Material.Filled.Cancel" @onclick=CancelSlotAction />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public OctopusPriceSlot? Slot { get; set; }
+
+    [Parameter]
+    public EventCallback<OctopusPriceSlot> OnCancelSlotAction { get; set; }
+    
+    private async Task CancelSlotAction()
+    {
+        await OnCancelSlotAction.InvokeAsync(Slot);
+    }
+}

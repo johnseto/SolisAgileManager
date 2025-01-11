@@ -1,7 +1,5 @@
 @using Humanizer
 
-@inject IInverterService inverterService 
-
 @if (Slot != null)
 {
     <div class="action-icon" title="@Slot.ActionReason">
@@ -13,13 +11,6 @@
                 <MudIcon Icon="@Icons.Material.Filled.Person" Title="Manual override"/>
             </div>
         }
-        @if (Slot.Action == Shared.Models.SlotAction.Charge ||
-             Slot.Action == Shared.Models.SlotAction.Discharge)
-        {
-            <div class="slot-icon slot-action" title="Click here to cancel the current action">
-                <MudIcon Icon="@Icons.Material.Filled.Cancel" @onclick=CancelSlotAction />
-            </div>
-        }
     </div>
 }
 
@@ -27,9 +18,6 @@
     [Parameter]
     public OctopusPriceSlot? Slot { get; set; }
 
-    [Parameter]
-    public EventCallback<OctopusPriceSlot> OnCancelSlotAction { get; set; }
-    
     private string Icon => Slot?.Action switch
     {
         Shared.Models.SlotAction.Charge => Icons.Material.Filled.Bolt,
@@ -37,9 +25,4 @@
         Shared.Models.SlotAction.ChargeIfLowBattery => Icons.Material.Filled.BatteryUnknown,
         _ => Icons.Material.Filled.PauseCircle
     };
-
-    private async Task CancelSlotAction()
-    {
-        await OnCancelSlotAction.InvokeAsync(Slot);
-    }
 }

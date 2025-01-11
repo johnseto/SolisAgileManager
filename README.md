@@ -21,9 +21,14 @@ SolisManager runs as a server-based app, and is designed to run 24/7, in the bac
 interaction from the user. If it's working well, you shouldn't have to do anything once it's set up.
 
 ### Running as a local app on Linux/Mac/Windows/Raspberry Pi
-To run it, download and unpack the binary package from Github releases, and then run the main executable.
 
-Once the server is running, navigate to the UI via your browser. It will be at `{ip/hostname of server}:5169`.
+To run it, go to the [latest release on GitHub](https://github.com/Webreaper/SolisAgileManager/releases/latest), 
+and download the appropriate package for the operating systtem you're going to use (Mac/Linux/Windows/RPi).
+Extract the zip into a folder and then run the main executable. Note that the config file and logs etc 
+will be written to a folder called `Config` in the current working directory. If you'd rather they were
+written somewhere else, pass your chosen folder as the first command-line parameter. 
+
+Once the server is running, navigate to the UI via your browser. It will be at `http://localhost:5169`.
 
 ### Running via Docker 
 
@@ -149,6 +154,45 @@ There are also _manual overrides_ which can be set vie the tools screen. For exa
 * By clicking the `x` next to any charge/discharge slot, you can apply an override which will cancel
   the charge action and return that slot to `Do Nothing`.
 
+### More on Simulation Mode
+
+To test the app and ensure it functions correctly, simulation mode shows what would have happened,
+without actually writing changes to the inverter. This allows you to see how the charging plan changes
+with the strategy as different information comes in. 
+
+Simulation mode is interactive; the first time the app loads it initialises the simulation using the
+current inverter state, and the loaded Agile prices. As you advance through the simulation, it shows
+what will happen (and the logs will show the commands that would have been sent to the inverter).
+
+Once you run out of slots at the end of the simulation, click reset to start again.
+
+### Technical Considerations
+
+A couple of people have raised concerns about the number of writes a half-hourly process will make to the
+SolisCloud API, and consequently the Inverter EEPROM. Excessive writes could result in a reduced longevity
+of the EEPROM (which generally have a limit on the total number of writes they can manage).
+
+To avoid this, the app applies Charging, Discharging and 'no charge' instructions in batches. So for
+example, if the charging plan is as follows:
+
+* 06:00-06:30 Do Nothing
+* 06:30-07:00 Do Nothing
+* 07:00-07:30 Charge
+* 07:30-08:00 Charge
+* 08:00-08:30 Charge
+* 08:30-09:00 Charge
+* 09:00-09:30 Do Nothing
+* 09:30-10:00 Do Nothing
+
+Then the actual calls are conflated to the following:
+
+* 06:00 - Set inverter charge slot to 00:00-00:00 to turn off charging
+* 07:00 - Set inverter charge slot to 07:00-09:00 to charge for 2 hours
+* 09:00 - Set inverter charge slot to 00:00-00:00 to turn off charging
+
+This optimisation means that the absolute minimum number of `control` API calls are made (from about 17,000 per
+year down to around 2,000), and hence the minimum number of Inverter EEPROM writes are carried out.
+
 ### Coming Soon:
 
 * A future feature enhancement is to allow the app to determine if Octopus prices fall below zero for a certain
@@ -156,6 +200,20 @@ There are also _manual overrides_ which can be set vie the tools screen. For exa
 * The app will read in Solcast forecast data if you provide an API key and Site ID. Currently this information
   is only used for display purposes, but will eventually be used to optimise the algorithm (e.g., by skipping
   overnight charging if the forecast is for a decent PV yield.
+
+### Other Things I've Written
+
+If you like this app, please check out some of my other applications, including a Photo Management system 
+    called <strong><a href="https://github.com/webreaper/damselfly" target="_blank">Damselfly</a></strong>
+
+  Solis Agile Manager is free, open-source software. But if you find it useful, and fancy buying me a coffee or a 
+  slice of pizza, that would be appreciated! You can do this via my Damselfly BuyMeACoffee link.
+
+  <div>
+      <a href="https://www.buymeacoffee.com/damselfly" target="_blank">
+          <img src="https://cdn.buymeacoffee.com/buttons/arial-yellow.png" alt="Buy Me A Coffee" height="41" width="174">
+      </a>
+  </div>
 
 ### Thanks/Credits
 

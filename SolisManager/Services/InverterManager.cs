@@ -12,8 +12,10 @@ public class InverterManager(SolisManagerConfig config,
                             ILogger<InverterManager> logger) : IInverterService, IInverterRefreshService
 {
     public SolisManagerState InverterState { get; } = new();
+
     private readonly List<OctopusPriceSlot> manualOverrides = new();
     private readonly List<HistoryEntry> executionHistory = new();
+    private int simulationOffSet = 0;
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
 
     private async Task EnrichSlotsFromSolcast(IEnumerable<OctopusPriceSlot> slots)
@@ -84,54 +86,70 @@ public class InverterManager(SolisManagerConfig config,
         // Don't even attempt this if there's no config
         if (!config.IsValid())
             return;
+
+        IEnumerable<OctopusPriceSlot> slots;
         
-        logger.LogTrace("Refreshing data...");
+        if (config.Simulate && simulationOffSet > 0)
+        {
+            logger.LogTrace("Advancing Simulation...");
+            slots = InverterState.Prices.Skip(1);
+        }
+        else
+        {
+            logger.LogTrace("Refreshing data...");
 
-        var octRatesTask = octopusAPI.GetOctopusRates();
+            var octRatesTask = octopusAPI.GetOctopusRates();
 
-        await Task.WhenAll(RefreshBatteryState(), octRatesTask);
+            await Task.WhenAll(RefreshBatteryState(), octRatesTask);
 
-        // Stamp the last time we did an update
-        InverterState.TimeStamp = DateTime.UtcNow;
+            // Stamp the last time we did an update
+            InverterState.TimeStamp = DateTime.UtcNow;
 
-        // Now, process the octopus rates
-        var slots = await octRatesTask;
+            // Now, process the octopus rates
+            slots = await octRatesTask;
+        }
 
         InverterState.Prices = EvaluateSlotActions(slots.OrderBy(x => x.valid_from).ToArray());
 
+        await ExecuteSlotChanges();
+    }
+    
+    private async Task ExecuteSlotChanges()
+    {
         var firstSlot = InverterState.Prices.FirstOrDefault();
         if (firstSlot != null)
         {
-            var now = DateTime.UtcNow;
-
-            // Do we care if we run this multiple times?!
-            // if ( firstSlot.valid_from <= now && firstSlot.valid_to >= now )
-            {
-                logger.LogInformation("Execute action for slot: {E} (Simulate: {S}", firstSlot, config.Simulate);
-
+            if( ! config.Simulate )
                 await AddToExecutionHistory(firstSlot);
 
+            var matchedSlots = InverterState.Prices.TakeWhile(x => x.Action == firstSlot.Action).ToList();
+
+            if (matchedSlots.Any())
+            {
+                logger.LogDebug("Found {N} slots with matching action to conflate", matchedSlots.Count);
+
+                // The timespan is from the start of the first slot, to the end of the last slot.
+                var start = matchedSlots.First().valid_from;
+                var end = matchedSlots.Last().valid_to;
+                
                 if (firstSlot.Action == SlotAction.Charge)
                 {
-                    await solisApi.SetCharge(firstSlot.valid_from, firstSlot.valid_to, true, config.Simulate);
+                    await solisApi.SetCharge(start, end, null, null, config.Simulate);
                 }
                 else if (firstSlot.Action == SlotAction.Discharge)
                 {
-                    await solisApi.SetCharge(firstSlot.valid_from, firstSlot.valid_to, false, config.Simulate);
+                    await solisApi.SetCharge(null, null, start, end, config.Simulate);
                 }
                 else
                 {
-                    var midnight = DateTime.UtcNow.Date;
-                    // And the discharge slot.
-                    await solisApi.SetCharge(midnight, midnight, false, config.Simulate);
-                    // Clear the charging slot
-                    await solisApi.SetCharge(midnight, midnight, true, config.Simulate);
+                    // Clear the charge
+                    await solisApi.SetCharge(null, null, null, null, config.Simulate);
                 }
             }
         }
     }
 
-    private IEnumerable<OctopusPriceSlot> EvaluateSlotActions(OctopusPriceSlot[]? slots)
+    private List<OctopusPriceSlot> EvaluateSlotActions(OctopusPriceSlot[]? slots)
     {
         if (slots == null)
             return [];
@@ -328,8 +346,7 @@ public class InverterManager(SolisManagerConfig config,
             logger.LogError(ex, "Unexpected exception during slot action evaluation:");
         }
 
-        return slots;
-        
+        return slots.ToList();
     }
 
     
@@ -357,6 +374,9 @@ public class InverterManager(SolisManagerConfig config,
             InverterState.TodayPVkWh = solisState.data.eToday;
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
+            
+            logger.LogInformation("Refreshed battery state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW", 
+                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW);
         }
     }
 
@@ -389,12 +409,13 @@ public class InverterManager(SolisManagerConfig config,
 
         newConfig.CopyPropertiesTo(config);
         await config.SaveToFile(Program.ConfigFolder);
+        await RefreshData();
     }
 
     public async Task CancelSlotAction(OctopusPriceSlot slot)
     {
         var overrides = CreateOverrides(slot.valid_from, SlotAction.DoNothing, 1);
-        logger.LogInformation("Clearing slot action for {start}-{end}...", slot.valid_from, slot.valid_to);
+        logger.LogInformation("Clearing slot action for {S}-{E}...", slot.valid_from, slot.valid_to);
         await SetManualOverrides(overrides);
     }
 
@@ -422,7 +443,7 @@ public class InverterManager(SolisManagerConfig config,
         logger.LogInformation("Starting test charge for 5 minutes");
         var start = DateTime.UtcNow;
         var end = start.AddMinutes(5);
-        await solisApi.SetCharge(start, end, true, false);
+        await solisApi.SetCharge(start, end, null, null, false);
     }
     
     public async Task ChargeBattery()
@@ -469,5 +490,23 @@ public class InverterManager(SolisManagerConfig config,
     {
         manualOverrides.Clear();
         await RefreshData();
+    }
+
+    public async Task AdvanceSimulation()
+    {
+        if (config.Simulate)
+        {
+            simulationOffSet++;
+            await RefreshData();
+        }
+    }
+
+    public async Task ResetSimulation()
+    {
+        if (config.Simulate)
+        {
+            simulationOffSet = 0;
+            await RefreshData();
+        }
     }
 }

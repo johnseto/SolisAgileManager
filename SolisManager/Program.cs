@@ -34,9 +34,15 @@ public class Program
                     Console.WriteLine($"Config folder set to {folder}.");
                     configFolder = folder;
                 }
+                else if (SafeCreateFolder(ConfigFolder))
+                {
+                    configFolder = folder;
+                    Console.WriteLine($"Created config folder: {ConfigFolder}.");
+                }
                 else
                 {
-                    Console.WriteLine($"ERR: Invalid config folder specified - {folder} did not exist. Using default {ConfigFolder}.");
+                    Console.WriteLine($"Config folder {folder} did not exist and unable to create it. Exiting...");
+                    return;
                 }
             }
 
@@ -149,6 +155,19 @@ public class Program
     
     private const string template = "[{Timestamp:HH:mm:ss.fff}-{ThreadID}-{Level:u3}] {Message:lj}{NewLine}{Exception}";
     private static readonly LoggingLevelSwitch logLevel = new();
+
+    private static bool SafeCreateFolder(string folder)
+    {
+        try
+        {
+            Directory.CreateDirectory(folder);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     /// <summary>
     ///     Initialise logging and add the thread enricher.
