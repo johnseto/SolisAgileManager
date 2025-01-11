@@ -31,6 +31,14 @@ PredBat, as it's a far superior product. At that point, I'll likely archive this
 your electricity bill, inverter, battery, or any other system, as a result of using this application. **Your
 choice to run the app is entirely at your own risk.**
 
+### Security Warning
+
+ **Warning**: This application should **never** be exposed to the internet via port-forwarding or other public access.
+ Solis Agile Manager does not have any authentication, which means that a malicious hacker could easily control your 
+ Inverter.
+
+If you want to be able to access the application remotely, please ensure you only do so via a VPN or a reverse proxy.
+
 ## Installation
 
 SolisManager runs as a server-based app, and is designed to run 24/7, in the background, with minimal 

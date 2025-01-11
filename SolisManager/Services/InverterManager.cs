@@ -40,7 +40,31 @@ public class InverterManager(SolisManagerConfig config,
         }
     }
 
-    private async Task AddToExecutionHistory( OctopusPriceSlot slot )
+    private async Task AddToExecutionHistory(OctopusPriceSlot slot)
+    {
+        try
+        {
+            var historyFilePath = Path.Combine(Program.ConfigFolder, executionHistoryFile);
+            
+            var newEntry = new HistoryEntry(slot, InverterState.BatterySOC);
+            var lastEntry = executionHistory.LastOrDefault();
+
+            if (lastEntry == null || lastEntry.Start != newEntry.Start)
+            {
+                // Add the item
+                executionHistory.Add(newEntry);
+
+                // And write
+                await File.WriteAllLinesAsync(historyFilePath, executionHistory.Select(x => x.GetAsCSV()));
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to add entry to execution history");
+        }
+    }
+    
+    private async Task LoadExecutionHistory()
     {
         try
         {
@@ -61,23 +85,10 @@ public class InverterManager(SolisManagerConfig config,
 
                 executionHistory.AddRange(entries);
             }
-            
-            var newEntry = new HistoryEntry(slot, InverterState.BatterySOC);
-            
-            var lastEntry = executionHistory.LastOrDefault();
-
-            if (lastEntry == null || lastEntry.Start != newEntry.Start)
-            {
-                // Add the item
-                executionHistory.Add(newEntry);
-
-                // And write
-                await File.WriteAllLinesAsync(executionHistoryFile, executionHistory.Select(x => x.GetAsCSV()));
-            }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to add entry to execution history");
+            logger.LogError(ex, "Failed to load execution history");
         }
     }
 
@@ -100,7 +111,7 @@ public class InverterManager(SolisManagerConfig config,
 
             var octRatesTask = octopusAPI.GetOctopusRates();
 
-            await Task.WhenAll(RefreshBatteryState(), octRatesTask);
+            await Task.WhenAll(RefreshBatteryState(), octRatesTask, LoadExecutionHistory());
 
             // Stamp the last time we did an update
             InverterState.TimeStamp = DateTime.UtcNow;
