@@ -9,14 +9,21 @@
     {
         <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
             Simulation Mode
-        </div>
         @if (inverterService.InverterState.Prices.Any())
         {
-            <MudButton OnClick="@AdvanceSimulation" EndIcon="@Icons.Material.Filled.SkipNext"
+            <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext"
                        Variant="UIConstants.MudVariant" Size="Size.Small">
-                Advance Sim
-            </MudButton>
+                Advance
+            </MudIcon>
         }
+        else
+        {
+            <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh"
+                       Variant="UIConstants.MudVariant" Size="Size.Small">
+                Reset
+            </MudIcon>
+        }
+        </div>
     }
     <div class="extra-info">
         @if (manualOverridesExist)
@@ -100,6 +107,12 @@
     private async Task AdvanceSimulation()
     {
         await inverterService.AdvanceSimulation();
+        await RefreshData();
+    }
+
+    private async Task ResetSimulation()
+    {
+        await inverterService.ResetSimulation();
         await RefreshData();
     }
 

@@ -101,6 +101,13 @@ public static class EndpointMapper
                 await service.AdvanceSimulation();
                 return TypedResults.Ok();
             });
+
+        group.MapGet("resetsimulation",
+            async  ([FromServices] IInverterService service) =>
+            {
+                await service.ResetSimulation();
+                return TypedResults.Ok();
+            });
         return group;
     }
 

@@ -498,4 +498,12 @@ public class InverterManager(SolisManagerConfig config,
         }
     }
 
+    public async Task ResetSimulation()
+    {
+        if (config.Simulate)
+        {
+            simulationOffSet = 0;
+            await RefreshData();
+        }
+    }
 }

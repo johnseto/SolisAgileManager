@@ -154,6 +154,18 @@ There are also _manual overrides_ which can be set vie the tools screen. For exa
 * By clicking the `x` next to any charge/discharge slot, you can apply an override which will cancel
   the charge action and return that slot to `Do Nothing`.
 
+### More on Simulation Mode
+
+To test the app and ensure it functions correctly, simulation mode shows what would have happened,
+without actually writing changes to the inverter. This allows you to see how the charging plan changes
+with the strategy as different information comes in. 
+
+Simulation mode is interactive; the first time the app loads it initialises the simulation using the
+current inverter state, and the loaded Agile prices. As you advance through the simulation, it shows
+what will happen (and the logs will show the commands that would have been sent to the inverter).
+
+Once you run out of slots at the end of the simulation, click reset to start again.
+
 ### Technical Considerations
 
 A couple of people have raised concerns about the number of writes a half-hourly process will make to the
