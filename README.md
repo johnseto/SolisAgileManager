@@ -9,6 +9,22 @@ pick a strategy to charge your battery based on the cheapest periods.
 
 <img width="1133" alt="SolisManager" src="https://github.com/user-attachments/assets/907e1d92-bc77-487c-bc30-378b02d41a0f" />
 
+### But why not just use the excellent [PredBat](https://springfall2008.github.io/batpred/) plugin for Home Assistant?
+
+I spent quite a lot of time researching PredBat. It looks awesome, and I would love to run it. However, Solis support
+for Predbat is quite limited, which makes it unsuitable for my needs. Specifically, there is no current way to run 
+PredBat with a Solis Inverter, solely using the Solis API. This means that there are only two alternatives:
+
+* Run the Solis Inverter and PredBat / Home Assistant using Modbus. The problem with that is that the Solis Wifi dongle
+  cannot support Modbus _and_ the Solis API, at the same time. So running Predbat with Modbus means losing the SolisCloud
+  application which is excellent for monitoring the inverter state.
+* The only way to get ModBus working **and** continue to use SolisCloud, is to use custom hardware, and that's not a road
+  I'm interested in going down.
+
+As soon as somebody writes an add-in / configuration for Predbat that supports Solis via the SolisCloud API, and which also
+implements API control conflation to reduce EEPROM writes on the inverter (see below), then I will probably switch to using 
+PredBat, as it's a far superior product. At that point, I'll likely archive this project.
+
 ### Warranty / Disclaimer 
 
 **PLEASE NOTE:** This application is provided as-is, with no guarantees; I accept no liability for any issues that arise with 
