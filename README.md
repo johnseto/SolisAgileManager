@@ -172,7 +172,7 @@ A couple of people have raised concerns about the number of writes a half-hourly
 SolisCloud API, and consequently the Inverter EEPROM. Excessive writes could result in a reduced longevity
 of the EEPROM (which generally have a limit on the total number of writes they can manage).
 
-To work around this, the app applies Charging, Discharging and 'no charge' instructions in batches. So for
+To avoid this, the app applies Charging, Discharging and 'no charge' instructions in batches. So for
 example, if the stratgy is as follows:
 
 * 06:00-06:30 Do Nothing
@@ -186,9 +186,9 @@ example, if the stratgy is as follows:
 
 Then the actual calls are conflated to the following:
 
-* 06:00-07:00 Set inverter charge slot to 00:00-00:00 to turn off charging
-* 07:00-09:00 Set inverter charge slot to 07:00-09:00 to charge for 2 hours
-* 09:00-10:00 Set inverter charge slot to 00:00-00:00 to turn off charging
+* 06:00 - Set inverter charge slot to 00:00-00:00 to turn off charging
+* 07:00 - Set inverter charge slot to 07:00-09:00 to charge for 2 hours
+* 09:00 - Set inverter charge slot to 00:00-00:00 to turn off charging
 
 This optimisation means that the absolute minimum number of `control` API calls are made, and hence the 
 minimum number of Inverter EEPROM writes are carried out.
