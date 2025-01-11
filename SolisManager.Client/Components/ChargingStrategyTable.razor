@@ -9,20 +9,20 @@
     {
         <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
             Simulation Mode
-        @if (inverterService.InverterState.Prices.Any())
-        {
-            <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext"
-                       Variant="UIConstants.MudVariant" Size="Size.Small">
-                Advance
-            </MudIcon>
-        }
-        else
-        {
-            <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh"
-                       Variant="UIConstants.MudVariant" Size="Size.Small">
-                Reset
-            </MudIcon>
-        }
+            @if (inverterService.InverterState.Prices.Any())
+            {
+                <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext"
+                           Variant="UIConstants.MudVariant" Size="Size.Small">
+                    Advance
+                </MudIcon>
+            }
+            else
+            {
+                <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh"
+                           Variant="UIConstants.MudVariant" Size="Size.Small">
+                    Reset
+                </MudIcon>
+            }
         </div>
     }
     <div class="extra-info">
@@ -76,7 +76,7 @@
     <p>Last update: @inverterService.InverterState.TimeStamp, last battery update: @inverterService.InverterState.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
 
 @code {
-    private readonly PeriodicTimer timer = new (TimeSpan.FromMinutes(1));
+    private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
     private string SolcastUpdate => inverterService.InverterState?.SolcastTimeStamp?.ToString() ?? "never";
     private bool isSimulateMode = false;
@@ -87,14 +87,14 @@
         await inverterService.CancelSlotAction(slot);
         await RefreshData();
     }
-    
+
     private async Task RefreshData()
     {
         // Get the latest data
         await inverterService.RefreshInverterState();
 
         manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.IsManualOverride);
-        
+
         StateHasChanged();
     }
 
@@ -126,7 +126,7 @@
     {
         var config = await inverterService.GetConfig();
         isSimulateMode = config.Simulate;
-        
+
         await RefreshData();
         _ = RunTimer();
 
