@@ -13,7 +13,7 @@ public class InverterManager(SolisManagerConfig config,
 {
     public SolisManagerState InverterState { get; } = new();
 
-    private readonly List<OctopusPriceSlot> manualOverrides = new();
+    private readonly Dictionary<DateTime, OctopusPriceSlot> manualOverrides = new();
     private readonly List<HistoryEntry> executionHistory = new();
     private int simulationOffSet = 0;
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
@@ -339,13 +339,11 @@ public class InverterManager(SolisManagerConfig config,
 
             if (manualOverrides.Any())
             {
-                var lookup = slots.ToDictionary(x => x.valid_from);
-
-                foreach (var over_ride in manualOverrides)
+                foreach (var slot in slots)
                 {
-                    if (lookup.TryGetValue(over_ride.valid_from, out var slot))
+                    if (manualOverrides.TryGetValue(slot.valid_from, out var manualOverride))
                     {
-                        slot.Action = over_ride.Action;
+                        slot.Action = manualOverride.Action;
                         slot.ActionReason = "Manual override applied.";
                         slot.IsManualOverride = true;
                     }
@@ -488,12 +486,12 @@ public class InverterManager(SolisManagerConfig config,
 
     private async Task SetManualOverrides(List<OctopusPriceSlot> overrides)
     {
-        manualOverrides.Clear();
-        manualOverrides.AddRange(overrides);
+        foreach (var overRide in overrides)
+        {
+            manualOverrides[overRide.valid_from] = overRide;
+            logger.LogInformation("Added override: {S}", overRide);
+        }
 
-        foreach( var slot in overrides)
-            logger.LogInformation("Created override: {S}", slot);
-        
         await RefreshData();
     }
 
