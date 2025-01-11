@@ -154,6 +154,33 @@ There are also _manual overrides_ which can be set vie the tools screen. For exa
 * By clicking the `x` next to any charge/discharge slot, you can apply an override which will cancel
   the charge action and return that slot to `Do Nothing`.
 
+### Technical Considerations
+
+A couple of people have raised concerns about the number of writes a half-hourly process will make to the
+SolisCloud API, and consequently the Inverter EEPROM. Excessive writes could result in a reduced longevity
+of the EEPROM (which generally have a limit on the total number of writes they can manage).
+
+To work around this, the app applies Charging, Discharging and 'no charge' instructions in batches. So for
+example, if the stratgy is as follows:
+
+* 06:00-06:30 Do Nothing
+* 06:30-07:00 Do Nothing
+* 07:00-07:30 Charge
+* 07:30-08:00 Charge
+* 08:00-08:30 Charge
+* 08:30-09:00 Charge
+* 09:00-09:30 Do Nothing
+* 09:30-10:00 Do Nothing
+
+Then the actual calls are conflated to the following:
+
+* 06:00-07:00 Set inverter charge slot to 00:00-00:00 to turn off charging
+* 07:00-09:00 Set inverter charge slot to 07:00-09:00 to charge for 2 hours
+* 09:00-10:00 Set inverter charge slot to 00:00-00:00 to turn off charging
+
+This optimisation means that the absolute minimum number of `control` API calls are made, and hence the 
+minimum number of Inverter EEPROM writes are carried out.
+
 ### Coming Soon:
 
 * A future feature enhancement is to allow the app to determine if Octopus prices fall below zero for a certain
