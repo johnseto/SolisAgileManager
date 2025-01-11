@@ -10,10 +10,13 @@
         <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
             Simulation Mode
         </div>
-        <MudButton OnClick="@AdvanceSimulation" EndIcon="@Icons.Material.Filled.SkipNext"
-                   Variant="UIConstants.MudVariant" Size="Size.Small">
-            Advance Sim
-        </MudButton>
+        @if (inverterService.InverterState.Prices.Any())
+        {
+            <MudButton OnClick="@AdvanceSimulation" EndIcon="@Icons.Material.Filled.SkipNext"
+                       Variant="UIConstants.MudVariant" Size="Size.Small">
+                Advance Sim
+            </MudButton>
+        }
     }
     <div class="extra-info">
         @if (manualOverridesExist)

@@ -21,9 +21,14 @@ SolisManager runs as a server-based app, and is designed to run 24/7, in the bac
 interaction from the user. If it's working well, you shouldn't have to do anything once it's set up.
 
 ### Running as a local app on Linux/Mac/Windows/Raspberry Pi
-To run it, download and unpack the binary package from Github releases, and then run the main executable.
 
-Once the server is running, navigate to the UI via your browser. It will be at `{ip/hostname of server}:5169`.
+To run it, go to the [latest release on GitHub](https://github.com/Webreaper/SolisAgileManager/releases/latest), 
+and download the appropriate package for the operating systtem you're going to use (Mac/Linux/Windows/RPi).
+Extract the zip into a folder and then run the main executable. Note that the config file and logs etc 
+will be written to a folder called `Config` in the current working directory. If you'd rather they were
+written somewhere else, pass your chosen folder as the first command-line parameter. 
+
+Once the server is running, navigate to the UI via your browser. It will be at `http://localhost:5169`.
 
 ### Running via Docker 
 

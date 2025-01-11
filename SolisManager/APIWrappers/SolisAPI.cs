@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.APIWrappers;
@@ -16,6 +17,8 @@ public class SolisAPI
     private readonly ILogger<SolisAPI> logger;
     private readonly SolisManagerConfig config;
 
+    private string simulatedChargeState = string.Empty;
+    
     public SolisAPI(SolisManagerConfig _config, ILogger<SolisAPI> _logger)
     {
         config = _config;
@@ -45,27 +48,116 @@ public class SolisAPI
 
     private async Task<ChargeStateData?> ReadChargingState()
     {
-        var result = await Post<AtReadResponse>(2,"atRead", new { inverterSn = config.SolisInverterSerial, cid = 4643 } );
+        if (config.Simulate && !string.IsNullOrEmpty(simulatedChargeState))
+        { 
+            return ChargeStateData.FromChargeStateData(simulatedChargeState);
+        }
+
+        var result = await Post<AtReadResponse>(2, "atRead",
+                new { inverterSn = config.SolisInverterSerial, cid = 4643 });
 
         if (result != null && !string.IsNullOrEmpty(result.data.msg))
+        {
+            simulatedChargeState = result.data.msg;
             return ChargeStateData.FromChargeStateData(result.data.msg);
+        }
 
         return null;
+    }
+
+    /// <summary>
+    /// Convert a time-slot string, e.g., "05:30-10:45" into an actual date time
+    /// so we can compare it.
+    /// </summary>
+    /// <param name="chargeTimePair"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentException"></exception>
+    private (DateTime start, DateTime end) ConvertToRealDates(string chargeTimePair)
+    {
+        var now = DateOnly.FromDateTime(DateTime.UtcNow);
+        var nowTime = TimeOnly.FromDateTime(DateTime.UtcNow);
+        
+        var parts = chargeTimePair.Split('-', 2, StringSplitOptions.TrimEntries);
+
+        if (parts.Length != 2)
+            throw new ArgumentException($"Invalid time pair {chargeTimePair}");
+
+        if (!TimeOnly.TryParse(parts[0], out var startTime))
+            throw new ArgumentException($"Invalid time pair {chargeTimePair}");
+
+        if (!TimeOnly.TryParse(parts[1], out var endTime))
+            throw new ArgumentException($"Invalid time pair {chargeTimePair}");
+
+        var start = new DateTime(now, startTime);
+        var end = new DateTime(now, endTime);
+
+        if (startTime < nowTime) 
+        {
+            start = start.AddDays(1);    
+            end = end.AddDays(1);    
+        }
+
+        if (endTime < startTime)
+            end = end.AddDays(1);
+        
+        return (start, end);
+    }
+    
+    /// <summary>
+    /// Complicated logic to determine if the new charge and discharge settings are materially different
+    /// to what's in the inverter at the moment. So we check the current/amps for charge and discharge,
+    /// and also check whether or not the charging time for the new settings starts within the existing
+    /// settings, and has the same end-time. If so, then there's no point submitting a change to the
+    /// inverter, as it won't make any difference to the behaviour.
+    /// </summary>
+    /// <param name="chargePower"></param>
+    /// <param name="dischargePower"></param>
+    /// <param name="chargeTimes"></param>
+    /// <param name="dischargeTimes"></param>
+    /// <returns></returns>
+    private async Task<bool> InverterNeedsUpdating(int chargePower, int dischargePower, string chargeTimes, string dischargeTimes)
+    {
+        // Get the current state of the inverter
+        var currentChargeState = await ReadChargingState();
+
+        // If for some reason we didn't get the current state, we'll *have* to write
+        if (currentChargeState == null)
+            return true;
+        
+        var newchargeTime = ConvertToRealDates(chargeTimes);
+        var newdischargeTime = ConvertToRealDates(dischargeTimes);
+        var currchargeTime = ConvertToRealDates(currentChargeState.chargeTimes);
+        var currdischargeTime = ConvertToRealDates(currentChargeState.dischargeTimes);
+        
+        bool chargeIsEquivalent = newchargeTime.start >= currchargeTime.start &&
+                                  newchargeTime.start <= currchargeTime.end &&
+                                  newchargeTime.end == currchargeTime.end &&
+                                  chargePower == currentChargeState.chargeAmps;
+
+        bool dischargeIsEquivalent = newdischargeTime.start >= currdischargeTime.start &&
+                                  newdischargeTime.start <= currdischargeTime.end &&
+                                  newdischargeTime.end == currdischargeTime.end &&
+                                  dischargePower == currentChargeState.dischargeAmps;
+
+        if (!chargeIsEquivalent)
+            return true;
+
+        if (!dischargeIsEquivalent)
+            return true;
+        
+        return false;
     }
     
     /// <summary>
     /// Set the inverter to charge or discharge for a particular period
     /// </summary>
     /// <returns></returns>
-    public async Task<object?> SetCharge( DateTime? chargeStart, DateTime? chargeEnd, 
+    public async Task SetCharge( DateTime? chargeStart, DateTime? chargeEnd, 
                                           DateTime? dischargeStart, DateTime? dischargeEnd, 
                                           bool simulateOnly )
     {
         const string clearChargeSlot = "00:00-00:00";
 
-        
-        var currentChargeState = await ReadChargingState();
-            
         var chargeTimes = clearChargeSlot;
         var dischargeTimes = clearChargeSlot;
         int chargePower = 0;
@@ -83,26 +175,34 @@ public class SolisAPI
             dischargePower = config.MaxChargeRateAmps;
         }
 
-        string chargeValues = $"{chargePower},{dischargePower},{chargeTimes},{dischargeTimes},0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
+        // Now check if we actually need to do anything. No point making a write call to the 
+        // inverter if it's already in the correct state. It's an EEPROM, so the fewer writes
+        // we can do for longevity, the better.
+        if (await InverterNeedsUpdating(chargePower, dischargePower, chargeTimes, dischargeTimes))
+        {
+            string chargeValues = $"{chargePower},{dischargePower},{chargeTimes},{dischargeTimes},0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
 
-        var requestBody = new
-        {
-            inverterSn = config.SolisInverterSerial,
-            cid = 103,
-            value = chargeValues
-        };
-        
-        if (simulateOnly)
-        {
-            logger.LogInformation("Simulate Charge request: {P}", JsonSerializer.Serialize(requestBody) );
-            return null;
+            var requestBody = new
+            {
+                inverterSn = config.SolisInverterSerial,
+                cid = 103,
+                value = chargeValues
+            };
+
+            if (simulateOnly)
+            {
+                logger.LogInformation("Simulate Charge request: {P}", JsonSerializer.Serialize(requestBody));
+                simulatedChargeState = chargeValues;
+            }
+            else
+            {
+                // Actually submit it. 
+                var result = await Post<object>(2, "control", requestBody);
+            }
         }
         else
         {
-            // Actually submit it. 
-            var result = await Post<object>(2, "control", requestBody);
-
-            return result;
+            logger.LogInformation("Inverter already in correct state - skipping control API call");
         }
     }
 
