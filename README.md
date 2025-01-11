@@ -201,6 +201,20 @@ minimum number of Inverter EEPROM writes are carried out.
   is only used for display purposes, but will eventually be used to optimise the algorithm (e.g., by skipping
   overnight charging if the forecast is for a decent PV yield.
 
+### Other Things I've Written
+
+If you like this app, please check out some of my other applications, including a Photo Management system 
+    called <strong><a href="https://github.com/webreaper/damselfly" target="_blank">Damselfly</a></strong>
+
+  Solis Agile Manager is free, open-source software. But if you find it useful, and fancy buying me a coffee or a 
+  slice of pizza, that would be appreciated! You can do this via my Damselfly BuyMeACoffee link.
+
+  <div>
+      <a href="https://www.buymeacoffee.com/damselfly" target="_blank">
+          <img src="https://cdn.buymeacoffee.com/buttons/arial-yellow.png" alt="Buy Me A Coffee" height="41" width="174">
+      </a>
+  </div>
+
 ### Thanks/Credits
 
 * Thanks to [Steve Gal](https://github.com/stevegal/solis_control) for his Solis-Control script that gave me the 
