@@ -1,0 +1,19 @@
+@inject IInverterService invService
+
+@if (@ChildContent != null && appVersion != null && appVersion.UpgradeAvailable())
+{
+    @ChildContent(appVersion)
+}
+
+@code {
+    [Parameter]
+    public RenderFragment<NewVersionResponse>? ChildContent { get; set; }
+    private NewVersionResponse? appVersion;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        appVersion = await invService.GetVersionInfo();
+        
+        await base.OnInitializedAsync();
+    }
+}

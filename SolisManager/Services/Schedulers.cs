@@ -35,3 +35,12 @@ public class SolcastScheduler( IInverterRefreshService service, ILogger<SolcastS
         await service.RefreshSolcastData();
     }
 }
+
+public class VersionCheckScheduler( InverterManager service, ILogger<BatteryScheduler> logger) : IInvocable
+{
+    public async Task Invoke()
+    {
+        logger.LogDebug("Executing version check scheduler");
+        await service.CheckForNewVersion();
+    }
+}

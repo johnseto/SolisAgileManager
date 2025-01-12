@@ -1,25 +1,29 @@
+using System.Reflection;
 using Coravel.Invocable;
 using Humanizer.DateTimeHumanizeStrategy;
+using Octokit;
 using SolisManager.APIWrappers;
 using SolisManager.Shared;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.Services;
 
-public class InverterManager(SolisManagerConfig config, 
-                            OctopusAPI octopusAPI,
-                            SolisAPI solisApi,
-                            SolcastAPI solcastApi,
-                            ILogger<InverterManager> logger) : IInverterService, IInverterRefreshService
+public class InverterManager(
+    SolisManagerConfig config,
+    OctopusAPI octopusAPI,
+    SolisAPI solisApi,
+    SolcastAPI solcastApi,
+    ILogger<InverterManager> logger) : IInverterService, IInverterRefreshService
 {
     public SolisManagerState InverterState { get; } = new();
 
     private readonly Dictionary<DateTime, OctopusPriceSlot> manualOverrides = new();
     private readonly List<HistoryEntry> executionHistory = new();
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
+    private NewVersionResponse? appVersion;
 
     private List<OctopusPriceSlot>? simulationData;
-        
+
     private async Task EnrichSlotsFromSolcast(IEnumerable<OctopusPriceSlot> slots)
     {
         var forecast = await solcastApi.GetSolcastForecast();
@@ -47,7 +51,7 @@ public class InverterManager(SolisManagerConfig config,
         try
         {
             var historyFilePath = Path.Combine(Program.ConfigFolder, executionHistoryFile);
-            
+
             var newEntry = new HistoryEntry(slot, InverterState.BatterySOC);
             var lastEntry = executionHistory.LastOrDefault();
 
@@ -65,13 +69,13 @@ public class InverterManager(SolisManagerConfig config,
             logger.LogError(ex, "Failed to add entry to execution history");
         }
     }
-    
+
     private async Task LoadExecutionHistory()
     {
         try
         {
             var historyFilePath = Path.Combine(Program.ConfigFolder, executionHistoryFile);
-            
+
             if (!executionHistory.Any() && File.Exists(historyFilePath))
             {
                 var lines = await File.ReadAllLinesAsync(historyFilePath);
@@ -128,18 +132,18 @@ public class InverterManager(SolisManagerConfig config,
 
         // Update the state
         InverterState.Prices = processedSlots;
-        
+
         await ExecuteSlotChanges(processedSlots);
 
         CleanupOldOverrides();
     }
-    
+
     private async Task ExecuteSlotChanges(IEnumerable<OctopusPriceSlot> slots)
     {
         var firstSlot = slots.FirstOrDefault();
         if (firstSlot != null)
         {
-            if( ! config.Simulate )
+            if (!config.Simulate)
                 await AddToExecutionHistory(firstSlot);
 
             var matchedSlots = slots.TakeWhile(x => x.Action == firstSlot.Action).ToList();
@@ -151,7 +155,7 @@ public class InverterManager(SolisManagerConfig config,
                 // The timespan is from the start of the first slot, to the end of the last slot.
                 var start = matchedSlots.First().valid_from;
                 var end = matchedSlots.Last().valid_to;
-                
+
                 if (firstSlot.Action == SlotAction.Charge)
                 {
                     await solisApi.SetCharge(start, end, null, null, config.Simulate);
@@ -369,7 +373,7 @@ public class InverterManager(SolisManagerConfig config,
         return slots.ToList();
     }
 
-    
+
     public Task RefreshInverterState()
     {
         // Nothing to do on the server side, the refresh is triggered by the scheduler
@@ -380,7 +384,7 @@ public class InverterManager(SolisManagerConfig config,
     {
         if (!config.IsValid())
             return;
-        
+
         // Get the battery charge state from the inverter
         var solisState = await solisApi.InverterState();
 
@@ -394,8 +398,8 @@ public class InverterManager(SolisManagerConfig config,
             InverterState.TodayPVkWh = solisState.data.eToday;
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
-            
-            logger.LogInformation("Refreshed battery state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW", 
+
+            logger.LogInformation("Refreshed battery state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW",
                 InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW);
         }
     }
@@ -440,13 +444,15 @@ public class InverterManager(SolisManagerConfig config,
     }
 
     private int NearestHalfHour(int minute) => minute - (minute % 30);
+
     private List<OctopusPriceSlot> CreateOverrides(DateTime start, SlotAction action, int slotCount)
     {
         var overrides = Enumerable.Range(0, slotCount)
             .Select(x => new OctopusPriceSlot())
             .ToList();
 
-        var currentSlot = new DateTime(start.Year, start.Month, start.Day, start.Hour, NearestHalfHour(start.Minute), 0);
+        var currentSlot =
+            new DateTime(start.Year, start.Month, start.Day, start.Hour, NearestHalfHour(start.Minute), 0);
         foreach (var slot in overrides)
         {
             slot.valid_from = currentSlot;
@@ -454,10 +460,10 @@ public class InverterManager(SolisManagerConfig config,
             slot.valid_to = currentSlot;
             slot.Action = action;
         }
-        
+
         return overrides;
     }
-    
+
     public async Task TestCharge()
     {
         logger.LogInformation("Starting test charge for 5 minutes");
@@ -465,13 +471,14 @@ public class InverterManager(SolisManagerConfig config,
         var end = start.AddMinutes(5);
         await solisApi.SetCharge(start, end, null, null, false);
     }
-    
+
     public async Task ChargeBattery()
     {
         // Work out the percentage charge, and then calculate how many slots it'll take to achieve that
         double percentageToCharge = (100 - InverterState.BatterySOC) / 100.0;
-        var slotsRequired = (int)Math.Round(config.SlotsForFullBatteryCharge * percentageToCharge, MidpointRounding.ToPositiveInfinity);
-        
+        var slotsRequired = (int)Math.Round(config.SlotsForFullBatteryCharge * percentageToCharge,
+            MidpointRounding.ToPositiveInfinity);
+
         var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Charge, slotsRequired);
         await SetManualOverrides(overrides);
     }
@@ -487,7 +494,7 @@ public class InverterManager(SolisManagerConfig config,
         double slotsRequired = config.SlotsForFullBatteryCharge * (InverterState.BatterySOC / 100.0);
         return (int)Math.Round(slotsRequired, MidpointRounding.ToPositiveInfinity);
     }
-    
+
     public async Task DumpAndChargeBattery()
     {
         var discharge = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, CalculateDischargeSlots());
@@ -509,12 +516,13 @@ public class InverterManager(SolisManagerConfig config,
     private void CleanupOldOverrides()
     {
         var lookup = InverterState.Prices.ToDictionary(x => x.valid_from);
- 
-        foreach( var overRide in manualOverrides)
-            if( ! lookup.ContainsKey(overRide.Value.valid_from))
+
+        foreach (var overRide in manualOverrides)
+            if (!lookup.ContainsKey(overRide.Value.valid_from))
                 manualOverrides.Remove(overRide.Value.valid_from);
-            
+
     }
+
     public async Task ClearOverrides()
     {
         manualOverrides.Clear();
@@ -536,6 +544,43 @@ public class InverterManager(SolisManagerConfig config,
         {
             simulationData = null;
             await RefreshData();
+        }
+    }
+
+    public Task<NewVersionResponse?> GetVersionInfo()
+    {
+        return Task.FromResult(appVersion);
+    }
+
+    public async Task CheckForNewVersion()
+    {
+        if (appVersion == null)
+        {
+            var newVersionState = new NewVersionResponse
+            {
+                CurrentVersion = Assembly.GetExecutingAssembly().GetName().Version
+            };
+
+            try
+            {
+                var client = new GitHubClient(new ProductHeaderValue("SolisAgileManager"));
+
+                var newRelease = await client.Repository.Release.GetLatest("webreaper", "SolisAgileManager");
+                if (newRelease != null && Version.TryParse(newRelease.TagName, out var newVersion))
+                {
+                    newVersionState.NewVersion = newVersion;
+                    newVersionState.NewReleaseName = newRelease.Name;
+                    newVersionState.ReleaseUrl = newRelease.HtmlUrl;
+
+                    appVersion = newVersionState;
+
+                    logger.LogInformation($"A new version of Damselfly is available: ({newRelease.Name})");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Unable to check GitHub for latest version: {ex}", ex);
+            }
         }
     }
 }

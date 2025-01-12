@@ -6,20 +6,20 @@
 <MudSnackbarProvider/>
 
 <div class="page">
-        @if (showSidebar)
-        {
-            <div class="sidebar">
-                <NavMenu/>
-            </div>
-        }
+    @if (showSidebar)
+    {
+        <div class="sidebar">
+            <NavMenu/>
+        </div>
+    }
 
-        <main>
-            <article class="content px-4">
-                <ConfigValidator @bind-ConfigIsValid="@showSidebar">
-                    @Body
-                </ConfigValidator>
-            </article>
-        </main>
+    <main>
+        <article class="content px-4">
+            <ConfigValidator @bind-ConfigIsValid="@showSidebar">
+                @Body
+            </ConfigValidator>
+        </article>
+    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
