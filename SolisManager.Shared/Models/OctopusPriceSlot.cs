@@ -39,19 +39,3 @@ public record OctopusPriceSlot
     }
 }
 
-public class OctopusPriceSlotComparer : IEqualityComparer<OctopusPriceSlot>
-{
-    public bool Equals(OctopusPriceSlot? x, OctopusPriceSlot? y)
-    {
-        if (ReferenceEquals(x, y)) return true;
-        if (x is null) return false;
-        if (y is null) return false;
-        if (x.GetType() != y.GetType()) return false;
-        return x.valid_from.Equals(y.valid_from);
-    }
-
-    public int GetHashCode(OctopusPriceSlot obj)
-    {
-        return obj.valid_from.GetHashCode();
-    }
-}
