@@ -2,7 +2,7 @@
 
 @inject IInverterService inverterService
 
-@if (inverterService.InverterState?.Prices != null)
+@if (options != null && inverterService.InverterState?.Prices != null)
 {
     <ApexChart TItem="OctopusPriceSlot" XAxisType="XAxisType.Datetime"
                Title="Charging Strategy"
@@ -28,7 +28,7 @@
 }
 
 @code {
-    private ApexChartOptions<OctopusPriceSlot> options;
+    private ApexChartOptions<OctopusPriceSlot>? options;
     private string FormatYAxisLabel(decimal val) => $"{val}p/kWh";
 
     private string GetColor(OctopusPriceSlot slot) => GetActionColour(slot.Action);
@@ -57,7 +57,7 @@
         
         options = new ApexChartOptions<OctopusPriceSlot>
         {
-            Chart = new Chart()
+            Chart = new Chart
             {
                 Toolbar = new Toolbar { Show = false }
             },
