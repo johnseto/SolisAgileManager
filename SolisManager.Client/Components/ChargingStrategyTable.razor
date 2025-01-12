@@ -1,11 +1,13 @@
 @using System.Globalization
 @inject IInverterService inverterService
+@inject IDialogService dialogService
 
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
     <div class="title-and-simulation">
         <h3>Prices &amp; Charging Plan</h3>
+        <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Large" @onclick=ShowChart Style="cursor:pointer;"/>
         @if (isSimulateMode)
         {
             <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
@@ -106,6 +108,7 @@
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
     private DateOnly? lastDate = null;
+    private bool showGraph;
 
     private RenderFragment? DateHeader(OctopusPriceSlot slot)
     {
@@ -125,6 +128,15 @@
         return null;
     }
 
+    private async Task ShowChart()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, 
+            MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true
+        };
+
+        await dialogService.ShowAsync<ChartDialog>("Strategy Chart", options);
+    }
+    
     private async Task CancelSlotAction(OctopusPriceSlot slot)
     {
         await inverterService.CancelSlotAction(slot);

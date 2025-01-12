@@ -223,6 +223,7 @@ public class InverterManager(
                     priciestSlots = peakPeriod;
             }
 
+            // First, mark the priciest slots as 'peak'. That way we'll avoid them at all cost.
             if (priciestSlots != null)
             {
                 foreach (var slot in priciestSlots)

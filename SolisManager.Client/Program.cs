@@ -1,3 +1,4 @@
+using ApexCharts;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor;
 using MudBlazor.Services;
@@ -20,7 +21,8 @@ class Program
 
         builder.Services.AddScoped<IInverterService, ClientInverterService>();
         builder.Services.AddMudServices();
-        
+        builder.Services.AddApexCharts();
+
         builder.Services.AddMudServices(config =>
         {
             config.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
