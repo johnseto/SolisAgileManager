@@ -1,11 +1,13 @@
 @using System.Globalization
 @inject IInverterService inverterService
+@inject IDialogService dialogService
 
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
     <div class="title-and-simulation">
         <h3>Prices &amp; Charging Plan</h3>
+        <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Large" @onclick=ShowChart Style="cursor:pointer;"/>
         @if (isSimulateMode)
         {
             <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
@@ -63,12 +65,11 @@
     </colgroup>
     <thead>
     <tr>
-        <th>Date</th>
         <th>Period</th>
         <th>Price (p/kWh)</th>
-        <th>Price Type</th>
-        <th>Battery Plan</th>
-        <th>Slot Actions</th>
+        <th>Slot Type</th>
+        <th>Plan</th>
+        <th>Actions</th>
         @if (hasSolcastData)
         {
             <th>PV Forecast (kWh)</th>
@@ -76,11 +77,15 @@
     </tr>
     </thead>
     <tbody>
+    @(lastDate = null)
     @foreach (var slot in inverterService.InverterState.Prices)
     {
+        @DateHeader(slot)
         <tr>
-            <td>@slot.valid_from.ToString("dd-MMM")</td>
-            <td>@slot.valid_from.ToString("HH:mm") - @slot.valid_to.ToString("HH:mm")</td>
+            <td>
+                @slot.valid_from.ToString("HH:mm")
+                <div class="valid-to">- @slot.valid_to.ToString("HH:mm")</div>
+            </td>
             <td style="text-align: center;">@Math.Round(slot.value_inc_vat, 2)</td>
             <td><PriceType Type="@slot.PriceType"/></td>
             <td><SlotPlan Slot="@slot"/></td>
@@ -102,7 +107,36 @@
     private bool hasSolcastData = false;
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
+    private DateOnly? lastDate = null;
+    private bool showGraph;
 
+    private RenderFragment? DateHeader(OctopusPriceSlot slot)
+    {
+        var date = DateOnly.FromDateTime(slot.valid_from.Date);
+        
+        @if (lastDate == null || lastDate.Value != date)
+        {
+            lastDate = date;
+            return @<tr>
+                       <td colspan="5" class="date-row">
+                           <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small" />
+                           @slot.valid_from.ToString("dd-MMM-yyyy")
+                       </td>
+            </tr>;
+        }
+
+        return null;
+    }
+
+    private async Task ShowChart()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, 
+            MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true
+        };
+
+        await dialogService.ShowAsync<ChartDialog>("Strategy Chart", options);
+    }
+    
     private async Task CancelSlotAction(OctopusPriceSlot slot)
     {
         await inverterService.CancelSlotAction(slot);
@@ -113,7 +147,7 @@
     {
         // Get the latest data
         await inverterService.RefreshInverterState();
-
+        lastDate = null;
         hasSolcastData = inverterService.InverterState.Prices.Any(x => x.pv_est_kwh != null);
         manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.IsManualOverride);
 

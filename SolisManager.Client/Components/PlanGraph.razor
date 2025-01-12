@@ -1,0 +1,68 @@
+@using ApexCharts
+
+@inject IInverterService inverterService
+
+@if (inverterService.InverterState?.Prices != null)
+{
+    <ApexChart TItem="OctopusPriceSlot" XAxisType="XAxisType.Datetime"
+               Title="Charging Strategy"
+               Options="@options"
+               FormatYAxisLabel="@FormatYAxisLabel">
+
+        <ApexPointSeries TItem="OctopusPriceSlot"
+                         Items="inverterService.InverterState.Prices"
+                         Name="Price (p/kWh)"
+                         XValue="@(e => e.valid_from)"
+                         YAggregate="@(e => e.Average(e => e.value_inc_vat))"
+                         SeriesType="SeriesType.Bar"
+                         Color="#005ba3"
+                         PointColor="e => GetColor(e)"/>
+        
+    </ApexChart>
+    <div class="legend">
+        @ActionLegend(SlotAction.Charge)
+        @ActionLegend(SlotAction.Discharge)
+        @ActionLegend(SlotAction.DoNothing)
+        @ActionLegend(SlotAction.ChargeIfLowBattery)
+    </div>
+}
+
+@code {
+    private ApexChartOptions<OctopusPriceSlot> options;
+    private string FormatYAxisLabel(decimal val) => $"{val}p/kWh";
+
+    private string GetColor(OctopusPriceSlot slot) => GetActionColour(slot.Action);
+
+    private string GetActionColour(SlotAction action) =>
+            action switch
+        {
+            SlotAction.Charge => "royalblue",
+            SlotAction.Discharge => "forestgreen",
+            SlotAction.ChargeIfLowBattery => "darkorange",
+            _ => "rgba(200,200,200, 0.8)"
+        };
+    
+    private RenderFragment ActionLegend( SlotAction a )
+    {
+        var style = $"color:{GetActionColour(a)}";
+        return @<div>
+                   <MudIcon style="@style" Icon="@Icons.Material.Filled.Circle" Size="@MudBlazor.Size.Small"/>
+                   @a.Description()
+               </div>;
+    }        
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await inverterService.RefreshInverterState();
+        
+        options = new ApexChartOptions<OctopusPriceSlot>
+        {
+            Chart = new Chart()
+            {
+                Toolbar = new Toolbar { Show = false }
+            },
+        };
+        
+        await base.OnInitializedAsync();
+    }
+}

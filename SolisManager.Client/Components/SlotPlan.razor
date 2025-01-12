@@ -3,8 +3,8 @@
 @if (Slot != null)
 {
     <div class="action-icon" title="@Slot.ActionReason">
-        <MudIcon Icon="@Icon"/>
-        @Slot.Action.Humanize()
+        <MudIcon Class="@SlotIconClass" Icon="@Icon"/>
+        @Slot.Action.Description()
         @if (Slot.IsManualOverride)
         {
             <div class="slot-icon" title="The slot action has been manually overriden">
@@ -18,11 +18,20 @@
     [Parameter]
     public OctopusPriceSlot? Slot { get; set; }
 
+    private string SlotIconClass => Slot?.Action switch
+    {
+        SlotAction.Charge => "icon-charge",
+        SlotAction.Discharge => "icon-discharge",
+        SlotAction.DoNothing => "icon-noaction",
+        SlotAction.ChargeIfLowBattery => "icon-boost",
+        _ => string.Empty
+    };
+    
     private string Icon => Slot?.Action switch
     {
-        Shared.Models.SlotAction.Charge => Icons.Material.Filled.Bolt,
-        Shared.Models.SlotAction.Discharge => Icons.Material.Filled.Battery0Bar,
-        Shared.Models.SlotAction.ChargeIfLowBattery => Icons.Material.Filled.BatteryUnknown,
+        SlotAction.Charge => Icons.Material.Filled.Bolt,
+        SlotAction.Discharge => Icons.Material.Filled.Battery0Bar,
+        SlotAction.ChargeIfLowBattery => Icons.Material.Filled.BatteryUnknown,
         _ => Icons.Material.Filled.PauseCircle
     };
 }

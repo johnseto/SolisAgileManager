@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Reflection;
 using Coravel.Invocable;
 using Humanizer.DateTimeHumanizeStrategy;
@@ -173,6 +174,19 @@ public class InverterManager(
         }
     }
 
+    private T[] GetPreviousNItems<T>(T[] source, int count, Func<T, bool> predicate)
+    {
+        var rootItem = Array.FindIndex(source, x => predicate(x));
+
+        // If it's not found, or it's the first item, we can't find items before it.
+        if (rootItem <= 0)
+            return [];
+
+        int lastItemIndex = rootItem - 1;
+        int firstItemIndex = Math.Max(lastItemIndex - count, 0);
+        return source[firstItemIndex .. lastItemIndex];
+    }
+
     private List<OctopusPriceSlot> EvaluateSlotActions(OctopusPriceSlot[]? slots)
     {
         if (slots == null)
@@ -209,22 +223,27 @@ public class InverterManager(
                     priciestSlots = peakPeriod;
             }
 
-            if (cheapestSlots != null)
-            {
-                foreach (var slot in cheapestSlots)
-                {
-                    slot.PriceType = PriceType.Cheapest;
-                    slot.Action = SlotAction.Charge;
-                    slot.ActionReason = "This is the cheapest set of slots, to fully charge the battery";
-                }
-            }
-
+            // First, mark the priciest slots as 'peak'. That way we'll avoid them at all cost.
             if (priciestSlots != null)
             {
                 foreach (var slot in priciestSlots)
                 {
                     slot.PriceType = PriceType.MostExpensive;
-                    slot.ActionReason = "Avoiding charging due to peak prices.";
+                    slot.ActionReason = "Peak price slot - avoid charging";
+                }
+            }
+
+            if (cheapestSlots != null)
+            {
+                // Now mark the cheapest slots - unless they happen to coincide with the most expensive
+                // which can happen in scenarios where there's only 5-10 slots before the new tariff 
+                // data comes in. This is really a display issue, as by the time we get to these slots
+                // we'll have more data and a better cheaper slot will have been found
+                foreach (var slot in cheapestSlots.Where(x => x.PriceType != PriceType.MostExpensive))
+                {
+                    slot.PriceType = PriceType.Cheapest;
+                    slot.Action = SlotAction.Charge;
+                    slot.ActionReason = "This is the cheapest set of slots, to fully charge the battery";
                 }
             }
 
@@ -262,6 +281,7 @@ public class InverterManager(
 
                 bool beforeCheapest = false;
                 int dipSlots = config.SlotsForFullBatteryCharge;
+                
                 foreach (var slot in slots.Reverse())
                 {
                     if (slot.Id == firstCheapest.Id)
@@ -284,50 +304,28 @@ public class InverterManager(
 
             if (priciestSlots != null)
             {
-                // If we have a set of priciest slots, we want to charge before them. So 
-                // work backwards from the first, applying a charge instruction on each
-                // slot before the priciest, until we've got enough slots to fully charge
-                // the battery. Note that we skip an extra one, because the slot before
-                // the priciest ones is always a bit more expensive too.
-                // Just in case it's REALLY expensive, allow ourselves a couple of steps
-                // back to look for slightly cheaper rates. Can't go back too far though
-                // otherwise the battery might not last through the peak period.
-                var prePeakSlot = Array.IndexOf(slots, priciestSlots.First()) - 1;
-                var extraStepsBack = 3;
-                var chargeSlotsNeeeded = config.SlotsForFullBatteryCharge;
+                // If we have a set of priciest slots, we want to charge before them. Now, it doesn't 
+                // matter if the charging slots aren't all contiguous - so we can have a bit of 
+                // flexibility. We also only need to charge the battery enough to get us to the 
+                // PeakPeriodBatteryUse percentage (e.g., 50%). 
+                // So, find 
+                int chargeSlotsNeeeded = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
 
-                while (prePeakSlot >= 0)
+                var chargeSlotChoices = GetPreviousNItems(slots, chargeSlotsNeeeded + 2, x => x.valid_from == priciestSlots.First().valid_from);
+
+                if (chargeSlotChoices.Any())
                 {
-                    var slotTocheck = slots[prePeakSlot];
-                    // TODO: Make this less of an arbitrary threshold - https://github.com/Webreaper/SolisAgileManager/issues/7
-                    if (slotTocheck.value_inc_vat > 50)
-                    {
-                        // It's a bit pricey. See if we're allowed to look 
-                        // back a bit further for charging slots.
-                        if (extraStepsBack == 0)
-                        {
-                            // Nope, so just bite the bullet and charge
-                            slotTocheck.Action = SlotAction.Charge;
-                            slotTocheck.ActionReason =
-                                "Cheaper slot to ensure battery is charged before the peak period (earlier slot was cheaper)";
-                            chargeSlotsNeeeded--;
-                            if (chargeSlotsNeeeded == 0)
-                                break;
-                        }
-                        else
-                            extraStepsBack--;
-                    }
-                    else
+                    // Get the pre-peak slot choices, sorted by price
+                    var prePeakSlots = chargeSlotChoices.OrderBy(x => x.value_inc_vat)
+                        .Take(chargeSlotsNeeeded)
+                        .ToList();
+
+                    foreach (var prePeakSlot in prePeakSlots)
                     {
                         // It's expensive, but not terrible. Suck it up and charge
-                        slotTocheck.Action = SlotAction.Charge;
-                        slotTocheck.ActionReason = "Cheaper slot to ensure battery is charged before the peak period";
-                        chargeSlotsNeeeded--;
-                        if (chargeSlotsNeeeded == 0)
-                            break;
+                        prePeakSlot.Action = SlotAction.Charge;
+                        prePeakSlot.ActionReason = $"Cheaper slot to ensure battery is charged to {config.PeakPeriodBatteryUse:P0} before the peak period";
                     }
-
-                    prePeakSlot--;
                 }
             }
 
