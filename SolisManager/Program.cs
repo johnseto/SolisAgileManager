@@ -4,10 +4,12 @@ using SolisManager.APIWrappers;
 using SolisManager.Components;
 using Coravel;
 using Coravel.Invocable;
+using MudBlazor;
 using MudBlazor.Services;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using SolisManager.Client.Constants;
 using SolisManager.Services;
 using SolisManager.Shared;
 using SolisManager.Shared.Models;
@@ -127,7 +129,7 @@ public class Program
             .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 
         app.ConfigureAPIEndpoints();
-
+        
         // Refresh and apply the octopus rates every 30 mins
         app.Services.UseScheduler(s => s
             .Schedule<RatesScheduler>()

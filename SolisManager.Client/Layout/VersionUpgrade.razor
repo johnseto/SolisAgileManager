@@ -13,7 +13,7 @@
     protected override async Task OnInitializedAsync()
     {
         appVersion = await invService.GetVersionInfo();
-        
+
         await base.OnInitializedAsync();
     }
 }
