@@ -261,7 +261,8 @@ public class InverterManager(
                 var firstCheapest = cheapestSlots.First();
 
                 bool beforeCheapest = false;
-                int dipSlots = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
+                int dipSlots = config.SlotsForFullBatteryCharge;
+                
                 foreach (var slot in slots.Reverse())
                 {
                     if (slot.Id == firstCheapest.Id)
@@ -294,7 +295,10 @@ public class InverterManager(
                 // otherwise the battery might not last through the peak period.
                 var prePeakSlot = Array.IndexOf(slots, priciestSlots.First()) - 1;
                 var extraStepsBack = 3;
-                var chargeSlotsNeeeded = config.SlotsForFullBatteryCharge;
+                
+                // Note that we probably don't need 100% of the battery for the peak period,
+                // so adjust down the number of peak slots
+                int chargeSlotsNeeeded = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
 
                 while (prePeakSlot >= 0)
                 {
