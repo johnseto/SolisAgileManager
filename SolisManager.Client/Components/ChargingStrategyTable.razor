@@ -83,8 +83,10 @@
         @DateHeader(slot)
         <tr>
             <td>
-                @slot.valid_from.ToString("HH:mm")
-                <div class="valid-to">- @slot.valid_to.ToString("HH:mm")</div>
+                <div class="valid-from">
+                    @slot.valid_from.ToString("HH:mm")
+                    <div class="valid-to">&nbsp;- @slot.valid_to.ToString("HH:mm")</div>
+                </div>
             </td>
             <td style="text-align: center;">@Math.Round(slot.value_inc_vat, 2)</td>
             <td><PriceType Type="@slot.PriceType"/></td>

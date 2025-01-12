@@ -7,6 +7,14 @@ td.date-row {
     font-weight: bold;
 }
 
+.valid-from {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    column-gap: 0px;
+    align-items: baseline;
+}
 @media screen and (max-width: 900px) and (orientation: portrait) {
     .valid-to {
         display: none;
