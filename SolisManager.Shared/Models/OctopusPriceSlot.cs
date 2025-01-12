@@ -38,3 +38,20 @@ public record OctopusPriceSlot
         return $"{valid_from:dd-MMM-yyyy HH:mm}-{valid_to:HH:mm}: {Action.Humanize()} (price: {value_inc_vat}p/kWh, Reason: {ActionReason})";
     }
 }
+
+public class OctopusPriceSlotComparer : IEqualityComparer<OctopusPriceSlot>
+{
+    public bool Equals(OctopusPriceSlot? x, OctopusPriceSlot? y)
+    {
+        if (ReferenceEquals(x, y)) return true;
+        if (x is null) return false;
+        if (y is null) return false;
+        if (x.GetType() != y.GetType()) return false;
+        return x.valid_from.Equals(y.valid_from);
+    }
+
+    public int GetHashCode(OctopusPriceSlot obj)
+    {
+        return obj.valid_from.GetHashCode();
+    }
+}

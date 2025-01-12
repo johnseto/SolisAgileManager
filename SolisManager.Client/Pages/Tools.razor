@@ -1,6 +1,8 @@
 ﻿@page "/tools"
 
 @inject IInverterService clientInverterService
+@inject NavigationManager navManager
+@inject ISnackbar snackBar
 
 <PageTitle>Solis Manager Tools</PageTitle>
 
@@ -16,16 +18,22 @@
     private async Task ChargeBattery()
     {
         await clientInverterService.ChargeBattery();
+        snackBar.Add("Battery set to charge manually", Severity.Info);
+        navManager.NavigateTo("/");
     }
     
     private async Task DishargeBattery()
     {
         await clientInverterService.DischargeBattery();
+        snackBar.Add("Battery set to discharge manually", Severity.Info);
+        navManager.NavigateTo("/");
     }
 
     private async Task DumpAndChargeBattery()
     {
         await clientInverterService.DumpAndChargeBattery();
+        snackBar.Add("Battery set to dump to the grid and then recharge", Severity.Info);
+        navManager.NavigateTo("/");
     }
 
 }

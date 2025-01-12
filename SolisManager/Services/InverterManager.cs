@@ -1,4 +1,5 @@
 using Coravel.Invocable;
+using Humanizer.DateTimeHumanizeStrategy;
 using SolisManager.APIWrappers;
 using SolisManager.Shared;
 using SolisManager.Shared.Models;
@@ -15,9 +16,10 @@ public class InverterManager(SolisManagerConfig config,
 
     private readonly Dictionary<DateTime, OctopusPriceSlot> manualOverrides = new();
     private readonly List<HistoryEntry> executionHistory = new();
-    private int simulationOffSet = 0;
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
 
+    private List<OctopusPriceSlot>? simulationData;
+        
     private async Task EnrichSlotsFromSolcast(IEnumerable<OctopusPriceSlot> slots)
     {
         var forecast = await solcastApi.GetSolcastForecast();
@@ -99,11 +101,10 @@ public class InverterManager(SolisManagerConfig config,
             return;
 
         IEnumerable<OctopusPriceSlot> slots;
-        
-        if (config.Simulate && simulationOffSet > 0)
+
+        if (config.Simulate && simulationData != null)
         {
-            logger.LogTrace("Advancing Simulation...");
-            slots = InverterState.Prices.Skip(1);
+            slots = simulationData;
         }
         else
         {
@@ -117,23 +118,31 @@ public class InverterManager(SolisManagerConfig config,
             InverterState.TimeStamp = DateTime.UtcNow;
 
             // Now, process the octopus rates
-            slots = await octRatesTask;
+            slots = (await octRatesTask).OrderBy(x => x.valid_from).ToList();
+
+            if (config.Simulate)
+                simulationData = slots.ToList();
         }
 
-        InverterState.Prices = EvaluateSlotActions(slots.OrderBy(x => x.valid_from).ToArray());
+        var processedSlots = EvaluateSlotActions(slots.ToArray());
 
-        await ExecuteSlotChanges();
+        // Update the state
+        InverterState.Prices = processedSlots;
+        
+        await ExecuteSlotChanges(processedSlots);
+
+        CleanupOldOverrides();
     }
     
-    private async Task ExecuteSlotChanges()
+    private async Task ExecuteSlotChanges(IEnumerable<OctopusPriceSlot> slots)
     {
-        var firstSlot = InverterState.Prices.FirstOrDefault();
+        var firstSlot = slots.FirstOrDefault();
         if (firstSlot != null)
         {
             if( ! config.Simulate )
                 await AddToExecutionHistory(firstSlot);
 
-            var matchedSlots = InverterState.Prices.TakeWhile(x => x.Action == firstSlot.Action).ToList();
+            var matchedSlots = slots.TakeWhile(x => x.Action == firstSlot.Action).ToList();
 
             if (matchedSlots.Any())
             {
@@ -221,7 +230,7 @@ public class InverterManager(SolisManagerConfig config,
             // as BelowAverage. For those slots, if the battery is low, we'll take the opportunity to charge as 
             // they're a bit cheaper-than-average.
             var averagePriceSlots = slots.Where(x => x.PriceType == PriceType.Average).ToList();
-            
+
             if (averagePriceSlots.Any())
             {
                 var averagePrice = decimal.Round(averagePriceSlots.Average(x => x.value_inc_vat), 2);
@@ -287,7 +296,7 @@ public class InverterManager(SolisManagerConfig config,
                 {
                     var slotTocheck = slots[prePeakSlot];
                     // TODO: Make this less of an arbitrary threshold - https://github.com/Webreaper/SolisAgileManager/issues/7
-                    if( slotTocheck.value_inc_vat > 50)
+                    if (slotTocheck.value_inc_vat > 50)
                     {
                         // It's a bit pricey. See if we're allowed to look 
                         // back a bit further for charging slots.
@@ -295,7 +304,8 @@ public class InverterManager(SolisManagerConfig config,
                         {
                             // Nope, so just bite the bullet and charge
                             slotTocheck.Action = SlotAction.Charge;
-                            slotTocheck.ActionReason = "Cheaper slot to ensure battery is charged before the peak period (earlier slot was cheaper)";
+                            slotTocheck.ActionReason =
+                                "Cheaper slot to ensure battery is charged before the peak period (earlier slot was cheaper)";
                             chargeSlotsNeeeded--;
                             if (chargeSlotsNeeeded == 0)
                                 break;
@@ -312,7 +322,7 @@ public class InverterManager(SolisManagerConfig config,
                         if (chargeSlotsNeeeded == 0)
                             break;
                     }
-                    
+
                     prePeakSlot--;
                 }
             }
@@ -322,7 +332,8 @@ public class InverterManager(SolisManagerConfig config,
             {
                 slot.PriceType = PriceType.BelowThreshold;
                 slot.Action = SlotAction.Charge;
-                slot.ActionReason = $"Price is below the threshold of {config.AlwaysChargeBelowPrice}p/kWh, so always charge";
+                slot.ActionReason =
+                    $"Price is below the threshold of {config.AlwaysChargeBelowPrice}p/kWh, so always charge";
             }
 
             // For any slots that are set to "charge if low battery", update them to 'charge' if the 
@@ -330,24 +341,24 @@ public class InverterManager(SolisManagerConfig config,
             if (InverterState.BatterySOC < config.LowBatteryPercentage)
             {
                 foreach (var slot in slots.Where(x => x.Action == SlotAction.ChargeIfLowBattery)
-                                          .Take(config.SlotsForFullBatteryCharge))
+                             .Take(config.SlotsForFullBatteryCharge))
                 {
                     slot.Action = SlotAction.Charge;
-                    slot.ActionReason = $"Upcoming slot is set to charge if low battery; battery is currently at {InverterState.BatterySOC}%";
+                    slot.ActionReason =
+                        $"Upcoming slot is set to charge if low battery; battery is currently at {InverterState.BatterySOC}%";
                 }
             }
 
-            if (manualOverrides.Any())
+            foreach (var slot in slots)
             {
-                foreach (var slot in slots)
+                if (manualOverrides.TryGetValue(slot.valid_from, out var manualOverride))
                 {
-                    if (manualOverrides.TryGetValue(slot.valid_from, out var manualOverride))
-                    {
-                        slot.Action = manualOverride.Action;
-                        slot.ActionReason = "Manual override applied.";
-                        slot.IsManualOverride = true;
-                    }
+                    slot.Action = manualOverride.Action;
+                    slot.ActionReason = "Manual override applied.";
+                    slot.IsManualOverride = true;
                 }
+                else
+                    slot.IsManualOverride = false;
             }
         }
         catch (Exception ex)
@@ -495,6 +506,15 @@ public class InverterManager(SolisManagerConfig config,
         await RefreshData();
     }
 
+    private void CleanupOldOverrides()
+    {
+        var lookup = InverterState.Prices.ToDictionary(x => x.valid_from);
+ 
+        foreach( var overRide in manualOverrides)
+            if( ! lookup.ContainsKey(overRide.Value.valid_from))
+                manualOverrides.Remove(overRide.Value.valid_from);
+            
+    }
     public async Task ClearOverrides()
     {
         manualOverrides.Clear();
@@ -503,18 +523,18 @@ public class InverterManager(SolisManagerConfig config,
 
     public async Task AdvanceSimulation()
     {
-        if (config.Simulate)
+        if (config.Simulate && simulationData is { Count: > 0 })
         {
-            simulationOffSet++;
+            simulationData.RemoveAt(0);
             await RefreshData();
         }
     }
 
     public async Task ResetSimulation()
     {
-        if (config.Simulate)
+        if (config.Simulate && simulationData is { Count: 0 })
         {
-            simulationOffSet = 0;
+            simulationData = null;
             await RefreshData();
         }
     }
