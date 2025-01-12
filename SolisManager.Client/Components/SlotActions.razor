@@ -17,7 +17,7 @@
 
     [Parameter]
     public EventCallback<OctopusPriceSlot> OnCancelSlotAction { get; set; }
-    
+
     private async Task CancelSlotAction()
     {
         await OnCancelSlotAction.InvokeAsync(Slot);

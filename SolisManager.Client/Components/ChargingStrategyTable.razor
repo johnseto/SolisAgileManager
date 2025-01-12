@@ -65,9 +65,9 @@
     <tr>
         <th>Period</th>
         <th>Price (p/kWh)</th>
-        <th>Price Type</th>
-        <th>Battery Plan</th>
-        <th>Slot Actions</th>
+        <th>Slot Type</th>
+        <th>Plan</th>
+        <th>Actions</th>
         @if (hasSolcastData)
         {
             <th>PV Forecast (kWh)</th>
@@ -80,7 +80,10 @@
     {
         @DateHeader(slot)
         <tr>
-            <td>@slot.valid_from.ToString("HH:mm") - @slot.valid_to.ToString("HH:mm")</td>
+            <td>
+                @slot.valid_from.ToString("HH:mm")
+                <div class="valid-to">- @slot.valid_to.ToString("HH:mm")</div>
+            </td>
             <td style="text-align: center;">@Math.Round(slot.value_inc_vat, 2)</td>
             <td><PriceType Type="@slot.PriceType"/></td>
             <td><SlotPlan Slot="@slot"/></td>

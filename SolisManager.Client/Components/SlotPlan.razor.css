@@ -3,11 +3,28 @@
     flex-direction: row;
     column-gap: 10px;
     align-items: center;
+    white-space: nowrap;
 }
 
-.slot-icon {
+::deep .slot-icon {
     color: rgba(145, 129, 47, 0.6);
 }
-.slot-action {
+::deep .slot-action {
     cursor: pointer;
+}
+
+::deep .icon-charge {
+    color: royalblue;
+}
+
+::deep .icon-discharge {
+    color: forestgreen;
+}
+
+::deep .icon-noaction {
+    color: rgba(200,200,200, 0.8);
+}
+
+::deep .icon-boost {
+    color: darkorange;
 }
