@@ -9,6 +9,8 @@ apply an opinionated strategy to manage your battery based on the cheapest perio
 
 <img width="1133" alt="SolisManager" src="https://github.com/user-attachments/assets/907e1d92-bc77-487c-bc30-378b02d41a0f" />
 
+<img width="1081" alt="SolisManagerCharts" src="https://github.com/user-attachments/assets/8c0474d3-c8cd-47ce-9bf5-27531ad9e81a" />
+
 ### But why not just use the excellent [PredBat](https://springfall2008.github.io/batpred/) plugin for Home Assistant?
 
 I spent quite a lot of time researching PredBat. It looks awesome, and I would love to run it. However, Solis support
