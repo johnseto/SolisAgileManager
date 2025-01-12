@@ -98,7 +98,7 @@ public class Program
         if (!config.ReadFromFile(ConfigFolder))
         {
             config.OctopusProduct = "AGILE-24-10-01";
-            config.OctopusProductCode = "E-1R-AGILE-24-10-01-A";
+            config.OctopusProductCode = "E-1R-AGILE-24-10-01-J";
             config.SlotsForFullBatteryCharge = 6;
             config.AlwaysChargeBelowPrice = 10;
         }
