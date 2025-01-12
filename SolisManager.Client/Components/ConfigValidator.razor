@@ -1,4 +1,5 @@
 @inject IInverterService inverterService
+@inject IDialogService dialogService 
 
 @if (ConfigIsValid)
 {
@@ -6,9 +7,25 @@
 }
 else
 {
-    <div class="config-validator">
-        <ConfigSettings OnSettingsChanged="CheckValidState"/>
-    </div>
+    @if (!securtyWarningDisplayed)
+    {
+        <div class="security-warning">
+            <h1><MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Large"/>Security Warning</h1>
+            <MudText>Warning: this application should <strong>never</strong> be exposed to the internet via
+                port-forwarding or other public access.</MudText>
+            <MudText>The app does not have any authentication, which means that a malicious hacker 
+                could easily control your Inverter.</MudText>
+            <MudText>If you want to be able to access the application remotely, please ensure you 
+                only do so via a VPN or a reverse proxy.</MudText> 
+            <MudButton OnClick="AcknowledgeSecurityWarning" Variant="UIConstants.MudVariant">OK, I understand</MudButton>
+        </div>
+    }
+    else
+    {
+        <div class="config-validator">
+            <ConfigSettings OnSettingsChanged="CheckValidState"/>
+        </div>
+    }
 }
 
 @code {
@@ -20,6 +37,13 @@ else
     
     [Parameter]
     public EventCallback<bool> ConfigIsValidChanged { get; set; }
+
+    private bool securtyWarningDisplayed = false;
+
+    private void AcknowledgeSecurityWarning()
+    {
+        securtyWarningDisplayed = true;
+    }
     
     private async Task CheckValidState()
     {

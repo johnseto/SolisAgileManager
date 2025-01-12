@@ -11,7 +11,7 @@ public static class EndpointMapper
     public static IEndpointRouteBuilder ConfigureAPIEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGroup("inverter")
-            .MapAgilePricesApi()
+            .MapInverterAPI()
             .MapGetConfigAPI()
             .MapToolsAPI()
             .MapSaveConfigAPI();
@@ -19,7 +19,7 @@ public static class EndpointMapper
         return app;
     }
 
-    private static RouteGroupBuilder MapAgilePricesApi(this RouteGroupBuilder group)
+    private static RouteGroupBuilder MapInverterAPI(this RouteGroupBuilder group)
     {
         group.MapGet("refreshinverterdata",
             async ([FromServices] IInverterService service) =>
@@ -27,7 +27,14 @@ public static class EndpointMapper
                 await service.RefreshInverterState();
                 return TypedResults.Ok(service.InverterState);
             });
-
+        
+        group.MapGet("versioninfo",
+            async ([FromServices] IInverterService service) =>
+            {
+                var info = await service.GetVersionInfo();
+                return TypedResults.Ok(info);
+            });
+        
         group.MapGet("history",
             async ([FromServices] IInverterService service) =>
             {

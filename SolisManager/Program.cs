@@ -4,10 +4,12 @@ using SolisManager.APIWrappers;
 using SolisManager.Components;
 using Coravel;
 using Coravel.Invocable;
+using MudBlazor;
 using MudBlazor.Services;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using SolisManager.Client.Constants;
 using SolisManager.Services;
 using SolisManager.Shared;
 using SolisManager.Shared.Models;
@@ -71,6 +73,7 @@ public class Program
         builder.Services.AddSingleton<BatteryScheduler>();
         builder.Services.AddSingleton<RatesScheduler>();
         builder.Services.AddSingleton<SolcastScheduler>();
+        builder.Services.AddSingleton<VersionCheckScheduler>();
 
         builder.Services.AddSingleton<SolisAPI>();
         builder.Services.AddSingleton<SolcastAPI>();
@@ -98,7 +101,7 @@ public class Program
         if (!config.ReadFromFile(ConfigFolder))
         {
             config.OctopusProduct = "AGILE-24-10-01";
-            config.OctopusProductCode = "E-1R-AGILE-24-10-01-A";
+            config.OctopusProductCode = "E-1R-AGILE-24-10-01-J";
             config.SlotsForFullBatteryCharge = 6;
             config.AlwaysChargeBelowPrice = 10;
         }
@@ -126,7 +129,7 @@ public class Program
             .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 
         app.ConfigureAPIEndpoints();
-
+        
         // Refresh and apply the octopus rates every 30 mins
         app.Services.UseScheduler(s => s
             .Schedule<RatesScheduler>()
@@ -141,15 +144,21 @@ public class Program
             .Schedule<BatteryScheduler>()
             .Cron("5,10,15,20,25,35,40,45,50,55 * * * *"));
 
-        // Get the solcast data every six hours. Run it on the 
+        // Get the solcast data at 2am, 6am and midday. Run it on the 
         // 13th minute, because that reduces load (half of the world
         // runs their solcast ingestion on the hour).
         // Don't run at first startup. It means you won't get 
         // data for a while, but that's probably okay.
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
-            .Cron("13 */6 * * *"));
+            .Cron("13 2,6,12 * * *"));
         
+        // Check for a new version periodically
+        app.Services.UseScheduler(s => s
+            .Schedule<VersionCheckScheduler>()
+            .Cron("15 6,12,18 * * *")
+            .RunOnceAtStart());
+
         await app.RunAsync();
     }
     

@@ -1,8 +1,9 @@
 @page "/about"
+@using System.Reflection
 
 <PageTitle>About Solis Manager</PageTitle>
 
-<h3>Solis Agile Manager</h3>
+<h3>Solis Agile Manager @Version</h3>
 
 <h5>&copy; 2019-@DateTime.Now.Year Mark Otway, All rights reserved.</h5>
 
@@ -29,3 +30,14 @@
         </a>
     </div>
 </p>
+
+@code {
+    private string? Version;
+    protected override void OnInitialized()
+    {
+        Version = "v" + Assembly.GetExecutingAssembly().GetName().Version;
+
+        base.OnInitialized();
+    }
+
+}

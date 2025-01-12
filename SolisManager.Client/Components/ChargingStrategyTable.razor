@@ -4,27 +4,29 @@
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
-    <h3>Prices &amp; Charging Plan</h3>
-    @if (isSimulateMode)
-    {
-        <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
-            Simulation Mode
-            @if (inverterService.InverterState.Prices.Any())
-            {
-                <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext"
-                           Variant="UIConstants.MudVariant" Size="Size.Small">
-                    Advance
-                </MudIcon>
-            }
-            else
-            {
-                <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh"
-                           Variant="UIConstants.MudVariant" Size="Size.Small">
-                    Reset
-                </MudIcon>
-            }
-        </div>
-    }
+    <div class="title-and-simulation">
+        <h3>Prices &amp; Charging Plan</h3>
+        @if (isSimulateMode)
+        {
+            <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
+                Simulation Mode
+                @if (inverterService.InverterState.Prices.Any())
+                {
+                    <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext"
+                             Variant="UIConstants.MudVariant" Size="Size.Small">
+                        Advance
+                    </MudIcon>
+                }
+                else
+                {
+                    <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh"
+                             Variant="UIConstants.MudVariant" Size="Size.Small">
+                        Reset
+                    </MudIcon>
+                }
+            </div>
+        }
+    </div>   
     <div class="extra-info">
         @if (manualOverridesExist)
         {
@@ -52,7 +54,7 @@
         <col style="width:150px;"/>
         <col style="width:150px;"/>
         <col style="width:150px;"/>
-        <col style="width:150px;"/>
+        <col style="width:250px;"/>
         @if (hasSolcastData)
         {
             <col style="width:100px;"/>

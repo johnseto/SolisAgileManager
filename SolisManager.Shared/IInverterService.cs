@@ -18,6 +18,7 @@ public interface IInverterService
     public Task ClearOverrides();
     public Task AdvanceSimulation();
     public Task ResetSimulation();
+    public Task<NewVersionResponse?> GetVersionInfo();
 }
 
 public interface IInverterRefreshService

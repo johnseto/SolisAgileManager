@@ -1,0 +1,17 @@
+namespace SolisManager.Shared.Models;
+
+public class NewVersionResponse
+{
+    public Version CurrentVersion { get; set; }
+    public Version? NewVersion { get; set; }
+    public string? NewReleaseName { get; set; }
+    public string? ReleaseUrl { get; set; }
+
+    public bool UpgradeAvailable()
+    {
+        if( NewVersion != null )
+            return NewVersion > CurrentVersion;
+
+        return false;
+    }
+}

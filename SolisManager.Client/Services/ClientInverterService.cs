@@ -77,4 +77,9 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
     {
         await httpClient.GetAsync("inverter/dumpandchargebattery");
     }
+    
+    public async Task<NewVersionResponse?> GetVersionInfo()
+    {
+        return await httpClient.GetFromJsonAsync<NewVersionResponse>("inverter/versioninfo");
+    }
 }
