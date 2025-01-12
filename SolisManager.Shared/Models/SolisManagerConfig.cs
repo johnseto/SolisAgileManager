@@ -19,6 +19,7 @@ public record SolisManagerConfig
     
     public string SolcastAPIKey { get; set; }
     public string SolcastSiteIdentifier { get; set; }
+    public decimal PeakPeriodBatteryUse { get; set; } = 0.5M;
     public bool Simulate { get; set; } = true;
 
     public async Task SaveToFile(string folder)

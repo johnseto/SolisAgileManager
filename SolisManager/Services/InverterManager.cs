@@ -261,7 +261,7 @@ public class InverterManager(
                 var firstCheapest = cheapestSlots.First();
 
                 bool beforeCheapest = false;
-                int dipSlots = config.SlotsForFullBatteryCharge;
+                int dipSlots = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
                 foreach (var slot in slots.Reverse())
                 {
                     if (slot.Id == firstCheapest.Id)
