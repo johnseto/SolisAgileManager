@@ -1,0 +1,104 @@
+@using ApexCharts
+
+@inject IInverterService inverterService
+
+@if (options != null && historyData != null)
+{
+    <ApexChart TItem="HistoryEntry"
+               XAxisType="XAxisType.Datetime"
+               Title="Charging Action History"
+               Options="@options"
+               FormatYAxisLabel="@FormatYAxisLabel">
+
+        <ApexPointSeries TItem="HistoryEntry"
+                         Items="historyData"
+                         Name="Price (p/kWh)"
+                         XValue="@(e => e.Start)"
+                         YValue="@(e => e.Price)"
+                         SeriesType="SeriesType.Bar"
+                         PointColor="e => GetColor(e)"
+                         Stroke="@(new SeriesStroke { Color = "lightgray", Width = 1 })"/>
+        
+        <ApexPointSeries TItem="HistoryEntry"
+                         Items="historyData"
+                         Name="SOC (%)"
+                         XValue="@(e => e.Start)"
+                         YValue="@(e => e.BatterySOC)"
+                         SeriesType="SeriesType.Line"
+                         Color="red"
+                         Stroke="@(new SeriesStroke { Color = "red", Width = 2 })"/>
+    </ApexChart>
+    <div class="legend">
+        @ActionLegend(SlotAction.Charge)
+        @ActionLegend(SlotAction.Discharge)
+        @ActionLegend(SlotAction.DoNothing)
+        @ActionLegend(SlotAction.ChargeIfLowBattery)
+    </div>
+}
+
+@code {
+    private ApexChartOptions<HistoryEntry>? options;
+    private List<HistoryEntry>? historyData = null;
+    private string FormatYAxisLabel(decimal val) => $"{val}p/kWh";
+
+    private string GetBatteryColor(HistoryEntry slot) => "darkred";
+    private string GetColor(HistoryEntry slot) => GetActionColour(slot.Action);
+
+    private string GetActionColour(SlotAction action) =>
+            action switch
+        {
+            SlotAction.Charge => "royalblue",
+            SlotAction.Discharge => "forestgreen",
+            SlotAction.ChargeIfLowBattery => "darkorange",
+            _ => "rgba(200,200,200, 0.8)"
+        };
+    
+    private RenderFragment ActionLegend( SlotAction a )
+    {
+        var style = $"color:{GetActionColour(a)}";
+        return @<div>
+                   <MudIcon style="@style" Icon="@Icons.Material.Filled.Circle" Size="@MudBlazor.Size.Small"/>
+                   @a.Description()
+               </div>;
+    }        
+    
+    protected override async Task OnInitializedAsync()
+    {
+        historyData = await inverterService.GetHistory();
+        
+        var yAxis = new List<YAxis>();
+
+        yAxis.Add(new YAxis
+        {
+            Title = new AxisTitle { Text = "Price" },
+            SeriesName = "Price (p/kWh)",
+            DecimalsInFloat = 2
+        });
+
+        yAxis.Add(new YAxis
+        {
+            Title = new AxisTitle { Text = "Battery SOC (%)" },
+            SeriesName = "SOC (%)",
+            DecimalsInFloat = 0,
+            Opposite = true
+        });
+        
+        options = new ApexChartOptions<HistoryEntry>
+        {
+            Yaxis = yAxis,
+            Chart = new Chart
+            { 
+                Toolbar = new Toolbar
+                {
+                    Show = true,
+                    Tools = new Tools
+                    {
+                        Download = false
+                    }
+                }
+            },
+        };
+
+        await base.OnInitializedAsync();
+    }
+}

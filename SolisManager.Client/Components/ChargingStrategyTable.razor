@@ -136,7 +136,7 @@
             MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true
         };
 
-        await dialogService.ShowAsync<ChartDialog>("Strategy Chart", options);
+        await dialogService.ShowAsync<PlanChartDialog>("Strategy Chart", options);
     }
     
     private async Task CancelSlotAction(OctopusPriceSlot slot)

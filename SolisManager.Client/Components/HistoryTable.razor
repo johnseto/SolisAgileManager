@@ -1,10 +1,12 @@
 @using Humanizer
 @inject IInverterService clientInverterService
+@inject IDialogService dialogService
 
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
     <h2>Historical Actions</h2>
+    <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Large" @onclick=ShowChart Style="cursor:pointer;"/>
 </div>
 
 @if (historyEntries == null)
@@ -48,6 +50,16 @@ else
     protected override async Task OnInitializedAsync()
     {
         historyEntries = await clientInverterService.GetHistory();
+        
         await base.OnInitializedAsync();
+    }
+    
+    private async Task ShowChart()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, 
+            MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true
+        };
+
+        await dialogService.ShowAsync<HistoryChartDialog>("History Chart", options);
     }
 }

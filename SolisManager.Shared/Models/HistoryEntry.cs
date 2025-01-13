@@ -26,7 +26,12 @@ public class HistoryEntry
         Action = slot.Action;
         Reason = slot.ActionReason;
     }
-    
+
+    public override string ToString()
+    {
+        return $"{Start:dd-MMM HH:mm]} - {Price}p/kWh, Battery: {BatterySOC:P}";
+    }
+
     public static HistoryEntry? TryParse(string logLine)
     {
         var entry = new HistoryEntry();
