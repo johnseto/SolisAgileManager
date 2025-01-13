@@ -1,6 +1,6 @@
 @inject IInverterService invService
 
-@if (@ChildContent != null && appVersion != null && appVersion.UpgradeAvailable())
+@if (@ChildContent != null && appVersion != null && appVersion.UpgradeAvailable)
 {
     @ChildContent(appVersion)
 }

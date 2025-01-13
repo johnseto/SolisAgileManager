@@ -21,7 +21,7 @@ public class InverterManager(
     private readonly Dictionary<DateTime, OctopusPriceSlot> manualOverrides = new();
     private readonly List<HistoryEntry> executionHistory = new();
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
-    private NewVersionResponse? appVersion;
+    private NewVersionResponse appVersion = new();
 
     private List<OctopusPriceSlot>? simulationData;
 
@@ -562,33 +562,24 @@ public class InverterManager(
 
     public async Task CheckForNewVersion()
     {
-        if (appVersion == null)
+        try
         {
-            var newVersionState = new NewVersionResponse
+            var client = new GitHubClient(new ProductHeaderValue("SolisAgileManager"));
+
+            var newRelease = await client.Repository.Release.GetLatest("webreaper", "SolisAgileManager");
+            if (newRelease != null && Version.TryParse(newRelease.TagName, out var newVersion))
             {
-                CurrentVersion = Assembly.GetExecutingAssembly().GetName().Version
-            };
+                appVersion.NewVersion = newVersion;
+                appVersion.NewReleaseName = newRelease.Name;
+                appVersion.ReleaseUrl = newRelease.HtmlUrl;
 
-            try
-            {
-                var client = new GitHubClient(new ProductHeaderValue("SolisAgileManager"));
-
-                var newRelease = await client.Repository.Release.GetLatest("webreaper", "SolisAgileManager");
-                if (newRelease != null && Version.TryParse(newRelease.TagName, out var newVersion))
-                {
-                    newVersionState.NewVersion = newVersion;
-                    newVersionState.NewReleaseName = newRelease.Name;
-                    newVersionState.ReleaseUrl = newRelease.HtmlUrl;
-
-                    appVersion = newVersionState;
-
-                    logger.LogInformation($"A new version of Damselfly is available: ({newRelease.Name})");
-                }
+                if( appVersion.UpgradeAvailable )
+                    logger.LogInformation("A new version of Damselfly is available: {N}", newRelease.Name);
             }
-            catch (Exception ex)
-            {
-                logger.LogWarning("Unable to check GitHub for latest version: {ex}", ex);
-            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Unable to check GitHub for latest version: {E}", ex);
         }
     }
 }
