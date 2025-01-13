@@ -199,6 +199,9 @@ public class InverterManager(
             OctopusPriceSlot[]? cheapestSlots = null;
             OctopusPriceSlot[]? priciestSlots = null;
 
+            // Calculate how many slots we'd need to charge from full starting *right now*
+            int chargeSlotsNeeededNow = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
+
             // First, find the cheapest period for charging the battery. This is the set of contiguous
             // slots, long enough when combined that they can charge the battery from empty to full, and
             // that has the cheapest average price for that period. This will typically be around 1am in 
@@ -210,6 +213,16 @@ public class InverterManager(
 
                 if (cheapestSlots == null || chargePeriodTotal < cheapestSlots.Sum(x => x.value_inc_vat))
                     cheapestSlots = chargePeriod;
+            }
+
+            if (cheapestSlots != null && cheapestSlots.First().valid_from == slots[0].valid_from)
+            {
+                // If the cheapest period starts *right now* then reduce the number of slots
+                // required down based on the battery SOC. E.g., if we've got 6 slots, but
+                // the battery is 50% full, we don't need all six. So take the n cheapest. 
+                cheapestSlots = cheapestSlots.OrderBy(x => x.value_inc_vat)
+                                             .Take(chargeSlotsNeeededNow)
+                                             .ToArray();
             }
 
             // Similar calculation for the peak period.
@@ -308,16 +321,13 @@ public class InverterManager(
                 // matter if the charging slots aren't all contiguous - so we can have a bit of 
                 // flexibility. We also only need to charge the battery enough to get us to the 
                 // PeakPeriodBatteryUse percentage (e.g., 50%). 
-                // So, find 
-                int chargeSlotsNeeeded = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
-
-                var chargeSlotChoices = GetPreviousNItems(slots, chargeSlotsNeeeded + 2, x => x.valid_from == priciestSlots.First().valid_from);
+                var chargeSlotChoices = GetPreviousNItems(slots, chargeSlotsNeeededNow + 2, x => x.valid_from == priciestSlots.First().valid_from);
 
                 if (chargeSlotChoices.Any())
                 {
                     // Get the pre-peak slot choices, sorted by price
                     var prePeakSlots = chargeSlotChoices.OrderBy(x => x.value_inc_vat)
-                        .Take(chargeSlotsNeeeded)
+                        .Take(chargeSlotsNeeededNow)
                         .ToList();
 
                     foreach (var prePeakSlot in prePeakSlots)
