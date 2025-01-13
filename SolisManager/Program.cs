@@ -11,6 +11,7 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using SolisManager.Client.Constants;
+using SolisManager.Extensions;
 using SolisManager.Services;
 using SolisManager.Shared;
 using SolisManager.Shared.Models;
@@ -158,7 +159,7 @@ public class Program
         app.Services.UseScheduler(s => s
             .Schedule<VersionCheckScheduler>()
             .Cron("15 6,12,18 * * *")
-            .RunOnceAtStart());
+            .RunAtStartupIfDebugging());
 
         await app.RunAsync();
     }
