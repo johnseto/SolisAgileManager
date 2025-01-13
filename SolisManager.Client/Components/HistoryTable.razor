@@ -1,12 +1,13 @@
 @using Humanizer
+@using SolisManager.Client.Layout
 @inject IInverterService clientInverterService
 @inject IDialogService dialogService
 
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
-    <h2>Historical Actions</h2>
-    <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Large" @onclick=ShowChart Style="cursor:pointer;"/>
+    <h5>Historical Actions</h5>
+    <ViewSelector @bind-SelectedView="selectedView" SettingName="history-view"/>
 </div>
 
 @if (historyEntries == null)
@@ -17,49 +18,48 @@
 }
 else
 {
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Date</th>
-            <th>Period</th>
-            <th>Price (p/kWh)</th>
-            <th>Battery SOC</th>
-            <th>Action Taken</th>
-            <th>Explanation</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var entry in historyEntries.OrderByDescending(x => x.Start))
-        {
+    @if (selectedView == ViewSelector.ViewType.Chart)
+    {
+        <HistoryGraph HistoryData="historyEntries"/>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
             <tr>
-                <td>@entry.Start.ToString("dd-MMM-yyyy")</td>
-                <td>@entry.Start.ToString("HH:mm") - @entry.End.ToString("HH:mm")</td>
-                <td>@Math.Round(entry.Price, 2)</td>
-                <td>@Math.Round((decimal)entry.BatterySOC, 2)%</td>
-                <td>@entry.Action.Humanize()</td>
-                <td>@entry.Reason</td>
+                <th>Date</th>
+                <th>Period</th>
+                <th>Price (p/kWh)</th>
+                <th>Battery SOC</th>
+                <th>Action Taken</th>
+                <th>Explanation</th>
             </tr>
-        }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+            @foreach (var entry in historyEntries.OrderByDescending(x => x.Start))
+            {
+                <tr>
+                    <td>@entry.Start.ToString("dd-MMM-yyyy")</td>
+                    <td>@entry.Start.ToString("HH:mm") - @entry.End.ToString("HH:mm")</td>
+                    <td>@Math.Round(entry.Price, 2)</td>
+                    <td>@Math.Round((decimal)entry.BatterySOC, 2)%</td>
+                    <td>@entry.Action.Humanize()</td>
+                    <td>@entry.Reason</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
 }
 
 @code {
     IEnumerable<HistoryEntry>? historyEntries = null;
+    ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
     
     protected override async Task OnInitializedAsync()
     {
         historyEntries = await clientInverterService.GetHistory();
         
         await base.OnInitializedAsync();
-    }
-    
-    private async Task ShowChart()
-    {
-        var options = new DialogOptions { CloseOnEscapeKey = true, 
-            MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true
-        };
-
-        await dialogService.ShowAsync<HistoryChartDialog>("History Chart", options);
     }
 }

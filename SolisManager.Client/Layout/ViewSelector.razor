@@ -1,0 +1,46 @@
+
+<div class="view-selections">
+    <div class="@SelectionClass(ViewType.Grid)" title="Select Grid View">
+        <MudIcon Icon="@Icons.Material.Filled.ViewList" Size="Size.Medium" @onclick="ShowGrid" />
+    </div>
+    <div class="@SelectionClass(ViewType.Chart)" title="Select Chart View">
+        <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Medium" @onclick="ShowChart" />
+    </div>
+</div>
+
+@code {
+
+    public enum ViewType
+    {
+        Grid,
+        Chart
+    };
+
+    [Parameter]
+    public string? SettingName { get; set; }
+    
+    [Parameter] public ViewType SelectedView { get; set; } = ViewType.Grid;
+    
+    [Parameter]
+    public EventCallback<ViewType> SelectedViewChanged { get; set; }
+    
+    private string SelectionClass(ViewType type) => SelectedView == type ? "selected-view" : "deselected-view";
+
+    private async Task SettingChanged()
+    {
+        // Save it here - but how!?
+        await SelectedViewChanged.InvokeAsync(SelectedView);
+    }
+    
+    private async Task ShowChart()
+    {
+        SelectedView = ViewType.Chart;
+        await SettingChanged();
+    }
+
+    private async Task ShowGrid()
+    {
+        SelectedView = ViewType.Grid;
+        await SettingChanged();
+    }
+}

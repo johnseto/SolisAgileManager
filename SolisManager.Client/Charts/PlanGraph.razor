@@ -1,26 +1,32 @@
 @using ApexCharts
 
-@inject IInverterService inverterService
-
-@if (options != null && inverterService.InverterState?.Prices != null)
+@if (options != null && ChartData != null)
 {
-    <GraphActionLegend ChartTitle="Charging Strategy"/>
-    <ApexChart TItem="OctopusPriceSlot" XAxisType="XAxisType.Datetime"
-               Options="@options"
-               FormatYAxisLabel="@FormatYAxisLabel">
+    <div class="chart-area">
+        <GraphActionLegend ChartTitle="Charging Strategy"/>
+        <ApexChart @ref="chart" TItem="OctopusPriceSlot" 
+                   XAxisType="XAxisType.Datetime"
+                   Options="@options"
+                   FormatYAxisLabel="@FormatYAxisLabel"
+                   Height="@("100%")">
 
-        <ApexPointSeries TItem="OctopusPriceSlot"
-                         Items="inverterService.InverterState.Prices"
-                         Name="Price"
-                         XValue="@(e => e.valid_from)"
-                         YAggregate="@(e => e.Average(e => e.value_inc_vat))"
-                         SeriesType="SeriesType.Bar"
-                         Color="#005ba3"
-                         PointColor="e => GetColor(e)"/>
-    </ApexChart>
+            <ApexPointSeries TItem="OctopusPriceSlot"
+                             Items="ChartData"
+                             Name="Price"
+                             XValue="@(e => e.valid_from)"
+                             YAggregate="@(e => e.Average(e => e.value_inc_vat))"
+                             SeriesType="SeriesType.Bar"
+                             Color="#005ba3"
+                             PointColor="e => GetColor(e)"/>
+        </ApexChart>
+    </div>
 }
 
 @code {
+    [Parameter]
+    public IEnumerable<OctopusPriceSlot>? ChartData { get; set; }
+    
+    private ApexChart<OctopusPriceSlot>? chart;
     private ApexChartOptions<OctopusPriceSlot>? options;
     private string FormatYAxisLabel(decimal val) => $"{val}p/kWh";
 
@@ -42,12 +48,18 @@
                    <MudIcon style="@style" Icon="@Icons.Material.Filled.Circle" Size="@MudBlazor.Size.Small"/>
                    @a.Description()
                </div>;
-    }        
-    
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if( chart != null )
+            await chart.UpdateSeriesAsync();
+        
+        await base.OnParametersSetAsync();
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        await inverterService.RefreshInverterState();
-        
         var yAxis = new List<YAxis>();
 
         yAxis.Add(new YAxis
@@ -65,7 +77,7 @@
                 Toolbar = new Toolbar { Show = false }
             },
         };
-        
+
         await base.OnInitializedAsync();
     }
 }

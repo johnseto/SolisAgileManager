@@ -1,47 +1,59 @@
 @using ApexCharts
 
-@inject IInverterService inverterService
-
-@if (options != null && historyData != null)
+@if (options != null && HistoryData != null)
 {
-    <GraphActionLegend ChartTitle="Charging History"/>
-    <ApexChart TItem="HistoryEntry"
-               XAxisType="XAxisType.Datetime"
-               Options="@options"
-               FormatYAxisLabel="@FormatYAxisLabel">
+    <div class="chart-area">
+        <GraphActionLegend ChartTitle="Charging History"/>
+        <ApexChart @ref="chart"
+                   TItem="HistoryEntry"
+                   XAxisType="XAxisType.Datetime"
+                   Options="@options"
+                   Height="@("100%")"
+                   FormatYAxisLabel="@FormatYAxisLabel">
 
-        <ApexPointSeries TItem="HistoryEntry"
-                         Items="historyData"
-                         Name="Price"
-                         XValue="@(e => e.Start)"
-                         YValue="@(e => e.Price)"
-                         SeriesType="SeriesType.Bar"
-                         PointColor="e => GetColor(e)"
-                         Stroke="@(new SeriesStroke { Color = "lightgray", Width = 1 })"/>
-        
-        <ApexPointSeries TItem="HistoryEntry"
-                         Items="historyData"
-                         Name="SOC (%)"
-                         XValue="@(e => e.Start)"
-                         YValue="@(e => e.BatterySOC)"
-                         SeriesType="SeriesType.Line"
-                         Color="red"
-                         Stroke="@(new SeriesStroke { Color = "red", Width = 2 })"/>
-    </ApexChart>
+            <ApexPointSeries TItem="HistoryEntry"
+                             Items="HistoryData"
+                             Name="Price"
+                             XValue="@(e => e.Start)"
+                             YValue="@(e => e.Price)"
+                             SeriesType="SeriesType.Bar"
+                             PointColor="e => GetColor(e)"
+                             Stroke="@(new SeriesStroke { Color = "lightgray", Width = 1 })"/>
+            
+            <ApexPointSeries TItem="HistoryEntry"
+                             Items="HistoryData"
+                             Name="SOC (%)"
+                             XValue="@(e => e.Start)"
+                             YValue="@(e => e.BatterySOC)"
+                             SeriesType="SeriesType.Line"
+                             Color="red"
+                             Stroke="@(new SeriesStroke { Color = "red", Width = 2 })"/>
+        </ApexChart>
+    </div>
 }
 
 @code {
+    [Parameter]
+    public IEnumerable<HistoryEntry>? HistoryData { get; set; }
+
+    private ApexChart<HistoryEntry>? chart;
     private ApexChartOptions<HistoryEntry>? options;
-    private List<HistoryEntry>? historyData = null;
     private string FormatYAxisLabel(decimal val) => $"{val}p/kWh";
 
     private string GetBatteryColor(HistoryEntry slot) => "darkred";
     private string GetColor(HistoryEntry slot) => slot.Action.GetActionColour();
     
+    protected override async Task OnParametersSetAsync()
+    {
+        if( chart != null )
+            await chart.UpdateSeriesAsync();
+        
+        await base.OnParametersSetAsync();
+    }
+
+    
     protected override async Task OnInitializedAsync()
     {
-        historyData = await inverterService.GetHistory();
-        
         var yAxis = new List<YAxis>();
 
         yAxis.Add(new YAxis
