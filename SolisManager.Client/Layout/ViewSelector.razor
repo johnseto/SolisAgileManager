@@ -1,3 +1,4 @@
+@inject ILocalStorageService localStorage
 
 <div class="view-selections">
     <div class="@SelectionClass(ViewType.Grid)" title="Select Grid View">
@@ -18,17 +19,33 @@
 
     [Parameter]
     public string? SettingName { get; set; }
+
+    [Parameter] public ViewType SelectedView { get; set; } = ViewType.Chart;
     
-    [Parameter] public ViewType SelectedView { get; set; } = ViewType.Grid;
-    
-    [Parameter]
-    public EventCallback<ViewType> SelectedViewChanged { get; set; }
+    [Parameter] public EventCallback<ViewType> SelectedViewChanged { get; set; }
     
     private string SelectionClass(ViewType type) => SelectedView == type ? "selected-view" : "deselected-view";
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && ! string.IsNullOrEmpty(SettingName))
+        {
+            var setting = await localStorage.GetItemAsync<string>(SettingName);
+
+            if (Enum.TryParse<ViewType>(setting, out var savedViewType))
+            {
+                SelectedView = savedViewType;
+                await SelectedViewChanged.InvokeAsync(SelectedView);
+            }
+        }
+        
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
     private async Task SettingChanged()
     {
-        // Save it here - but how!?
+        if( ! string.IsNullOrEmpty(SettingName))
+            await localStorage.SetItemAsync(SettingName, SelectedView.ToString());
         await SelectedViewChanged.InvokeAsync(SelectedView);
     }
     

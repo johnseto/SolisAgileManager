@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection.Metadata;
+using Blazored.LocalStorage;
 using SolisManager.APIWrappers;
 using SolisManager.Components;
 using Coravel;
@@ -83,7 +84,8 @@ public class Program
 
         builder.Services.AddScheduler();
         builder.Services.AddMudServices();
-        
+        builder.Services.AddBlazoredLocalStorage();
+            
         if (!Debugger.IsAttached)
         {
             // Use Kestrel options to set the port. Using .Urls.Add breaks WASM debugging.

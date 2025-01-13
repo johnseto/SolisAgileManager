@@ -1,4 +1,5 @@
 using ApexCharts;
+using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor;
 using MudBlazor.Services;
@@ -22,6 +23,7 @@ class Program
         builder.Services.AddScoped<IInverterService, ClientInverterService>();
         builder.Services.AddMudServices();
         builder.Services.AddApexCharts();
+        builder.Services.AddBlazoredLocalStorage();
 
         builder.Services.AddMudServices(config =>
         {
