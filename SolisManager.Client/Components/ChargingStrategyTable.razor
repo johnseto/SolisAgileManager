@@ -56,7 +56,7 @@
         <col style="width:150px;"/>
         <col style="width:150px;"/>
         <col style="width:150px;"/>
-        <col style="width:250px;"/>
+        <col style="width:75px;"/>
         @if (hasSolcastData)
         {
             <col style="width:100px;"/>
@@ -120,7 +120,7 @@
         {
             lastDate = date;
             return @<tr>
-                       <td colspan="5" class="date-row">
+                       <td colspan="6" class="date-row">
                            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small" />
                            @slot.valid_from.ToString("dd-MMM-yyyy")
                        </td>

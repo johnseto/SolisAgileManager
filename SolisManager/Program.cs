@@ -4,6 +4,7 @@ using SolisManager.APIWrappers;
 using SolisManager.Components;
 using Coravel;
 using Coravel.Invocable;
+using Coravel.Scheduling.Schedule.Interfaces;
 using MudBlazor;
 using MudBlazor.Services;
 using Serilog;
@@ -161,7 +162,7 @@ public class Program
 
         await app.RunAsync();
     }
-    
+
     private const string template = "[{Timestamp:HH:mm:ss.fff}-{ThreadID}-{Level:u3}] {Message:lj}{NewLine}{Exception}";
     private static readonly LoggingLevelSwitch logLevel = new();
 
