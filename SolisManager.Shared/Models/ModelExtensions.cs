@@ -24,7 +24,7 @@ public static class ModelExtensions
         {
             SlotAction.Charge => "Battery will be charged",
             SlotAction.Discharge => "Battery will be discharged",
-            SlotAction.ChargeIfLowBattery => $"Battery will be charged if the SOC is below the config threshold ({config?.LowBatteryPercentage}%)",
+            SlotAction.ChargeIfLowBattery => $"Battery will be charged if the SOC is below the {config?.LowBatteryPercentage}% threshold",
             _ => "No action will be taken on the inverter"
         };
 
