@@ -1,0 +1,34 @@
+@inject IInverterService inverterService
+
+<div class="title-row">
+    <h5>@ChartTitle</h5>
+    <div class="legend">
+        @ActionLegend(SlotAction.Charge)
+        @ActionLegend(SlotAction.Discharge)
+        @ActionLegend(SlotAction.DoNothing)
+        @ActionLegend(SlotAction.ChargeIfLowBattery)
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string ChartTitle { get; set; } = string.Empty;
+    
+    private SolisManagerConfig? config;
+
+    private RenderFragment ActionLegend( SlotAction a )
+    {
+        var style = $"color:{a.GetActionColour()}";
+        var tooltip = a.GetActionLegendTooltip(config);
+        return @<div title="@tooltip">
+            <MudIcon style="@style" Icon="@Icons.Material.Filled.Circle" Size="@MudBlazor.Size.Small"/>
+            @a.Description()
+        </div>;
+    }        
+
+    protected override async Task OnInitializedAsync()
+    {
+        config = await inverterService.GetConfig();
+
+        await base.OnInitializedAsync();
+    }
+}

@@ -4,26 +4,20 @@
 
 @if (options != null && inverterService.InverterState?.Prices != null)
 {
+    <GraphActionLegend ChartTitle="Charging Strategy"/>
     <ApexChart TItem="OctopusPriceSlot" XAxisType="XAxisType.Datetime"
-               Title="Charging Strategy"
                Options="@options"
                FormatYAxisLabel="@FormatYAxisLabel">
 
         <ApexPointSeries TItem="OctopusPriceSlot"
                          Items="inverterService.InverterState.Prices"
-                         Name="Price (p/kWh)"
+                         Name="Price"
                          XValue="@(e => e.valid_from)"
                          YAggregate="@(e => e.Average(e => e.value_inc_vat))"
                          SeriesType="SeriesType.Bar"
                          Color="#005ba3"
                          PointColor="e => GetColor(e)"/>
     </ApexChart>
-    <div class="legend">
-        @ActionLegend(SlotAction.Charge)
-        @ActionLegend(SlotAction.Discharge)
-        @ActionLegend(SlotAction.DoNothing)
-        @ActionLegend(SlotAction.ChargeIfLowBattery)
-    </div>
 }
 
 @code {
@@ -54,8 +48,18 @@
     {
         await inverterService.RefreshInverterState();
         
+        var yAxis = new List<YAxis>();
+
+        yAxis.Add(new YAxis
+        {
+            Title = new AxisTitle { Text = "Price (p/kWh)" },
+            SeriesName = "Price",
+            DecimalsInFloat = 2
+        });
+
         options = new ApexChartOptions<OctopusPriceSlot>
         {
+            Yaxis = yAxis,
             Chart = new Chart
             {
                 Toolbar = new Toolbar { Show = false }
