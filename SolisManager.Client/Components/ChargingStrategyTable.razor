@@ -8,6 +8,7 @@
 <div class="title-bar">
     <div class="title-and-simulation">
         <h5>Prices &amp; Charging Plan</h5>
+        <ViewSelector @bind-SelectedView="selectedView" SettingName="plan-view"/>
         @if (isSimulateMode)
         {
             <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
@@ -30,7 +31,6 @@
         }
     </div>
     <div class="extra-info">
-        <ViewSelector @bind-SelectedView="selectedView" SettingName="plan-view"/>
         @if (manualOverridesExist)
         {
             <div title="Clear any manual overrides that are currently in effect">
