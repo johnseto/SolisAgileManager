@@ -15,11 +15,6 @@ td.date-row {
     column-gap: 0px;
     align-items: baseline;
 }
-@media screen and (max-width: 900px) and (orientation: portrait) {
-    .valid-to {
-        display: none;
-    }
-}
 
 .title-bar {
     display: flex;
@@ -50,6 +45,15 @@ td.date-row {
     column-gap: 10px;
 }
 
+@media screen and (max-width: 900px) {
+    .valid-to {
+        display: none;
+    }
+    .extra-info {
+        column-gap: 5px;
+    }
+}
+
 .simulate-indicator { 
     color: white;
     background-color: darkred;
@@ -57,3 +61,8 @@ td.date-row {
     border-radius: 5px;
     font-weight: bold;
 }
+
+.update-text p {
+    font-size: 9pt;
+}
+

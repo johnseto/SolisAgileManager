@@ -1,0 +1,29 @@
+.view-selections {
+    display: flex;
+    flex-direction: row;
+    column-gap: 5px;
+    align-items: center;
+    margin: 3px;
+}
+
+.selected-view {
+    cursor: pointer;
+    color: black;
+    border: 2px solid black;
+    border-radius: 4px;
+}
+
+.selected-view:hover {
+    background-color: lightgray;
+}
+
+.deselected-view {
+    cursor: pointer;
+    color: darkgray;
+    border: 1px solid gray;
+    border-radius: 4px;
+}
+
+.deselected-view:hover {
+    background-color: lightgray;
+}

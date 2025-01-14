@@ -10,4 +10,23 @@ public static class ModelExtensions
         SlotAction.ChargeIfLowBattery => "Boost",
         _ => string.Empty
     };
+
+    public static string GetActionColour(this SlotAction action) =>
+        action switch
+        {
+            SlotAction.Charge => "royalblue",
+            SlotAction.Discharge => "forestgreen",
+            SlotAction.ChargeIfLowBattery => "darkorange",
+            _ => "rgba(200,200,200, 0.8)"
+        };
+    public static string GetActionLegendTooltip(this SlotAction action, SolisManagerConfig? config) =>
+        action switch
+        {
+            SlotAction.Charge => "Battery will be charged",
+            SlotAction.Discharge => "Battery will be discharged",
+            SlotAction.ChargeIfLowBattery => $"Battery will be charged if the SOC is below the {config?.LowBatteryPercentage}% threshold",
+            _ => "No action will be taken on the inverter"
+        };
+
+
 }

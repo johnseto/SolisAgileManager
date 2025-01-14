@@ -1,4 +1,5 @@
 @using System.Globalization
+@using SolisManager.Client.Layout
 @inject IInverterService inverterService
 @inject IDialogService dialogService
 
@@ -6,8 +7,8 @@
 
 <div class="title-bar">
     <div class="title-and-simulation">
-        <h3>Prices &amp; Charging Plan</h3>
-        <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Large" @onclick=ShowChart Style="cursor:pointer;"/>
+        <h5>Prices &amp; Charging Plan</h5>
+        <ViewSelector @bind-SelectedView="selectedView" SettingName="plan-view"/>
         @if (isSimulateMode)
         {
             <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
@@ -28,7 +29,7 @@
                 }
             </div>
         }
-    </div>   
+    </div>
     <div class="extra-info">
         @if (manualOverridesExist)
         {
@@ -40,67 +41,75 @@
             </div>
         }
 
-        <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(inverterService.InverterState.HouseLoadkW, 2))"
+        <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(inverterService.InverterState.HouseLoadkW, 1))"
                    Description="Current load being consumed by the house" Units="kW"/>
-        <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(inverterService.InverterState.CurrentPVkW, 2))"
+        <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(inverterService.InverterState.CurrentPVkW, 1))"
                    Description="Current Solar PV generation" Units="kW"/>
-        <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(inverterService.InverterState.TodayPVkWh, 2))"
+        <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(inverterService.InverterState.TodayPVkWh, 1))"
                    Description="Total Solar PV Generation today" Units="kWh"/>
         <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
     </div>
 </div>
 
-<table class="table">
-    <colgroup>
-        <col style="width:100px;"/>
-        <col style="width:150px;"/>
-        <col style="width:150px;"/>
-        <col style="width:150px;"/>
-        <col style="width:250px;"/>
-        @if (hasSolcastData)
-        {
+@if (selectedView == ViewSelector.ViewType.Chart)
+{
+    <PlanGraph ChartData="inverterService.InverterState.Prices"/>
+}
+else
+{
+    <table class="table">
+        <colgroup>
             <col style="width:100px;"/>
-        }
-        <col/>
-    </colgroup>
-    <thead>
-    <tr>
-        <th>Period</th>
-        <th>Price (p/kWh)</th>
-        <th>Slot Type</th>
-        <th>Plan</th>
-        <th>Actions</th>
-        @if (hasSolcastData)
-        {
-            <th>PV Forecast (kWh)</th>
-        }
-    </tr>
-    </thead>
-    <tbody>
-    @(lastDate = null)
-    @foreach (var slot in inverterService.InverterState.Prices)
-    {
-        @DateHeader(slot)
-        <tr>
-            <td>
-                <div class="valid-from">
-                    @slot.valid_from.ToString("HH:mm")
-                    <div class="valid-to">&nbsp;- @slot.valid_to.ToString("HH:mm")</div>
-                </div>
-            </td>
-            <td style="text-align: center;">@Math.Round(slot.value_inc_vat, 2)</td>
-            <td><PriceType Type="@slot.PriceType"/></td>
-            <td><SlotPlan Slot="@slot"/></td>
-            <td><SlotActions Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
+            <col style="width:150px;"/>
+            <col style="width:150px;"/>
+            <col style="width:150px;"/>
+            <col style="width:75px;"/>
             @if (hasSolcastData)
             {
-                <td>@ForecastEstimate(slot)</td>
+                <col style="width:100px;"/>
+            }
+            <col/>
+        </colgroup>
+        <thead>
+        <tr>
+            <th>Period</th>
+            <th>Price (p/kWh)</th>
+            <th>Slot Type</th>
+            <th>Plan</th>
+            <th>Actions</th>
+            @if (hasSolcastData)
+            {
+                <th>PV Forecast (kWh)</th>
             }
         </tr>
-    }
-    </tbody>
-</table>
-    <p>Last update: @inverterService.InverterState.TimeStamp, last battery update: @inverterService.InverterState.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
+        </thead>
+        <tbody>
+        @(lastDate = null)
+        @foreach (var slot in inverterService.InverterState.Prices)
+        {
+            @DateHeader(slot)
+            <tr>
+                <td>
+                    <div class="valid-from">
+                        @slot.valid_from.ToString("HH:mm")
+                        <div class="valid-to">&nbsp;- @slot.valid_to.ToString("HH:mm")</div>
+                    </div>
+                </td>
+                <td style="text-align: center;">@Math.Round(slot.value_inc_vat, 2)</td>
+                <td><PriceType Type="@slot.PriceType"/></td>
+                <td><SlotPlan Slot="@slot"/></td>
+                <td><SlotActions Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
+                @if (hasSolcastData)
+                {
+                    <td>@ForecastEstimate(slot)</td>
+                }
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+<p class="update-text">Last update: @inverterService.InverterState.TimeStamp, last battery update: @inverterService.InverterState.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
+
 
 @code {
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
@@ -110,35 +119,26 @@
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
     private DateOnly? lastDate = null;
-    private bool showGraph;
+    private ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
 
     private RenderFragment? DateHeader(OctopusPriceSlot slot)
     {
         var date = DateOnly.FromDateTime(slot.valid_from.Date);
-        
+
         @if (lastDate == null || lastDate.Value != date)
         {
             lastDate = date;
             return @<tr>
-                       <td colspan="5" class="date-row">
-                           <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small" />
+                       <td colspan="6" class="date-row">
+                           <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
                            @slot.valid_from.ToString("dd-MMM-yyyy")
                        </td>
-            </tr>;
+                   </tr>;
         }
 
         return null;
     }
 
-    private async Task ShowChart()
-    {
-        var options = new DialogOptions { CloseOnEscapeKey = true, 
-            MaxWidth = MaxWidth.Medium, FullWidth = true, NoHeader = true
-        };
-
-        await dialogService.ShowAsync<PlanChartDialog>("Strategy Chart", options);
-    }
-    
     private async Task CancelSlotAction(OctopusPriceSlot slot)
     {
         await inverterService.CancelSlotAction(slot);

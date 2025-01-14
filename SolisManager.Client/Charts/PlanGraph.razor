@@ -1,0 +1,83 @@
+@using ApexCharts
+
+@if (options != null && ChartData != null)
+{
+    <div class="chart-area">
+        <GraphActionLegend ChartTitle="Charging Strategy"/>
+        <ApexChart @ref="chart" TItem="OctopusPriceSlot" 
+                   XAxisType="XAxisType.Datetime"
+                   Options="@options"
+                   FormatYAxisLabel="@FormatYAxisLabel"
+                   Height="@("100%")">
+
+            <ApexPointSeries TItem="OctopusPriceSlot"
+                             Items="ChartData"
+                             Name="Price"
+                             XValue="@(e => e.valid_from)"
+                             YAggregate="@(e => e.Average(e => e.value_inc_vat))"
+                             SeriesType="SeriesType.Bar"
+                             Color="#005ba3"
+                             PointColor="e => GetColor(e)"/>
+        </ApexChart>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IEnumerable<OctopusPriceSlot>? ChartData { get; set; }
+    
+    private ApexChart<OctopusPriceSlot>? chart;
+    private ApexChartOptions<OctopusPriceSlot>? options;
+    private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
+
+    private string GetColor(OctopusPriceSlot slot) => GetActionColour(slot.Action);
+
+    private string GetActionColour(SlotAction action) =>
+            action switch
+        {
+            SlotAction.Charge => "royalblue",
+            SlotAction.Discharge => "forestgreen",
+            SlotAction.ChargeIfLowBattery => "darkorange",
+            _ => "rgba(200,200,200, 0.8)"
+        };
+    
+    private RenderFragment ActionLegend( SlotAction a )
+    {
+        var style = $"color:{GetActionColour(a)}";
+        return @<div>
+                   <MudIcon style="@style" Icon="@Icons.Material.Filled.Circle" Size="@MudBlazor.Size.Small"/>
+                   @a.Description()
+               </div>;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if( chart != null )
+            await chart.UpdateSeriesAsync();
+        
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var yAxis = new List<YAxis>();
+
+        yAxis.Add(new YAxis
+        {
+            Title = new AxisTitle { Text = "Price (p/kWh)" },
+            SeriesName = "Price",
+            DecimalsInFloat = 2
+        });
+
+        options = new ApexChartOptions<OctopusPriceSlot>
+        {
+            Yaxis = yAxis,
+            Chart = new Chart
+            {
+                Toolbar = new Toolbar { Show = false }
+            },
+        };
+
+        await base.OnInitializedAsync();
+    }
+}

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Text.Json;
 using Coravel.Invocable;
 using Humanizer.DateTimeHumanizeStrategy;
 using Octokit;
@@ -21,7 +22,7 @@ public class InverterManager(
     private readonly Dictionary<DateTime, OctopusPriceSlot> manualOverrides = new();
     private readonly List<HistoryEntry> executionHistory = new();
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
-    private NewVersionResponse? appVersion;
+    private NewVersionResponse appVersion = new();
 
     private List<OctopusPriceSlot>? simulationData;
 
@@ -31,6 +32,7 @@ public class InverterManager(
         var lookup = forecast.ToDictionary(x => x.period_end);
         InverterState.SolcastTimeStamp = null;
 
+        var matchedData = false;
         foreach (var slot in slots)
         {
             if (lookup.TryGetValue(slot.valid_to, out var solcastEstimate))
@@ -38,12 +40,19 @@ public class InverterManager(
                 // Estimate is in kW. Since slots are 30 mins, divide by 2 to get kWh.
                 slot.pv_est_kwh = (solcastEstimate.pv_estimate / 2.0M);
                 InverterState.SolcastTimeStamp = DateTime.UtcNow;
+                matchedData = true;
             }
             else
             {
                 // No data
                 slot.pv_est_kwh = null;
             }
+        }
+
+        if (slots.Any() && lookup.Any() && !matchedData)
+        {
+            logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
+            logger.LogError("   SolCast Data:\n{JSON}", JsonSerializer.Serialize(forecast));
         }
     }
 
@@ -199,6 +208,9 @@ public class InverterManager(
             OctopusPriceSlot[]? cheapestSlots = null;
             OctopusPriceSlot[]? priciestSlots = null;
 
+            // Calculate how many slots we'd need to charge from full starting *right now*
+            int chargeSlotsNeeededNow = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
+
             // First, find the cheapest period for charging the battery. This is the set of contiguous
             // slots, long enough when combined that they can charge the battery from empty to full, and
             // that has the cheapest average price for that period. This will typically be around 1am in 
@@ -210,6 +222,16 @@ public class InverterManager(
 
                 if (cheapestSlots == null || chargePeriodTotal < cheapestSlots.Sum(x => x.value_inc_vat))
                     cheapestSlots = chargePeriod;
+            }
+
+            if (cheapestSlots != null && cheapestSlots.First().valid_from == slots[0].valid_from)
+            {
+                // If the cheapest period starts *right now* then reduce the number of slots
+                // required down based on the battery SOC. E.g., if we've got 6 slots, but
+                // the battery is 50% full, we don't need all six. So take the n cheapest. 
+                cheapestSlots = cheapestSlots.OrderBy(x => x.value_inc_vat)
+                                             .Take(chargeSlotsNeeededNow)
+                                             .ToArray();
             }
 
             // Similar calculation for the peak period.
@@ -308,16 +330,13 @@ public class InverterManager(
                 // matter if the charging slots aren't all contiguous - so we can have a bit of 
                 // flexibility. We also only need to charge the battery enough to get us to the 
                 // PeakPeriodBatteryUse percentage (e.g., 50%). 
-                // So, find 
-                int chargeSlotsNeeeded = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
-
-                var chargeSlotChoices = GetPreviousNItems(slots, chargeSlotsNeeeded + 2, x => x.valid_from == priciestSlots.First().valid_from);
+                var chargeSlotChoices = GetPreviousNItems(slots, chargeSlotsNeeededNow + 2, x => x.valid_from == priciestSlots.First().valid_from);
 
                 if (chargeSlotChoices.Any())
                 {
                     // Get the pre-peak slot choices, sorted by price
                     var prePeakSlots = chargeSlotChoices.OrderBy(x => x.value_inc_vat)
-                        .Take(chargeSlotsNeeeded)
+                        .Take(chargeSlotsNeeededNow)
                         .ToList();
 
                     foreach (var prePeakSlot in prePeakSlots)
@@ -552,33 +571,24 @@ public class InverterManager(
 
     public async Task CheckForNewVersion()
     {
-        if (appVersion == null)
+        try
         {
-            var newVersionState = new NewVersionResponse
+            var client = new GitHubClient(new ProductHeaderValue("SolisAgileManager"));
+
+            var newRelease = await client.Repository.Release.GetLatest("webreaper", "SolisAgileManager");
+            if (newRelease != null && Version.TryParse(newRelease.TagName, out var newVersion))
             {
-                CurrentVersion = Assembly.GetExecutingAssembly().GetName().Version
-            };
+                appVersion.NewVersion = newVersion;
+                appVersion.NewReleaseName = newRelease.Name;
+                appVersion.ReleaseUrl = newRelease.HtmlUrl;
 
-            try
-            {
-                var client = new GitHubClient(new ProductHeaderValue("SolisAgileManager"));
-
-                var newRelease = await client.Repository.Release.GetLatest("webreaper", "SolisAgileManager");
-                if (newRelease != null && Version.TryParse(newRelease.TagName, out var newVersion))
-                {
-                    newVersionState.NewVersion = newVersion;
-                    newVersionState.NewReleaseName = newRelease.Name;
-                    newVersionState.ReleaseUrl = newRelease.HtmlUrl;
-
-                    appVersion = newVersionState;
-
-                    logger.LogInformation($"A new version of Damselfly is available: ({newRelease.Name})");
-                }
+                if( appVersion.UpgradeAvailable )
+                    logger.LogInformation("A new version of Damselfly is available: {N}", newRelease.Name);
             }
-            catch (Exception ex)
-            {
-                logger.LogWarning("Unable to check GitHub for latest version: {ex}", ex);
-            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Unable to check GitHub for latest version: {E}", ex);
         }
     }
 }

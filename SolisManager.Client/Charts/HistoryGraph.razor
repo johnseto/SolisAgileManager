@@ -1,0 +1,92 @@
+@using ApexCharts
+
+@if (options != null && HistoryData != null)
+{
+    <div class="chart-area">
+        <GraphActionLegend ChartTitle="Charging History"/>
+        <ApexChart @ref="chart"
+                   TItem="HistoryEntry"
+                   XAxisType="XAxisType.Datetime"
+                   Options="@options"
+                   Height="@("100%")"
+                   FormatYAxisLabel="@FormatYAxisLabel">
+
+            <ApexPointSeries TItem="HistoryEntry"
+                             Items="HistoryData"
+                             Name="Price"
+                             XValue="@(e => e.Start)"
+                             YValue="@(e => e.Price)"
+                             SeriesType="SeriesType.Bar"
+                             PointColor="e => GetColor(e)"
+                             Stroke="@(new SeriesStroke { Color = "lightgray", Width = 1 })"/>
+            
+            <ApexPointSeries TItem="HistoryEntry"
+                             Items="HistoryData"
+                             Name="SOC (%)"
+                             XValue="@(e => e.Start)"
+                             YValue="@(e => e.BatterySOC)"
+                             SeriesType="SeriesType.Line"
+                             Color="red"
+                             Stroke="@(new SeriesStroke { Color = "red", Width = 3 })"/>
+        </ApexChart>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IEnumerable<HistoryEntry>? HistoryData { get; set; }
+
+    private ApexChart<HistoryEntry>? chart;
+    private ApexChartOptions<HistoryEntry>? options;
+    private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
+
+    private string GetBatteryColor(HistoryEntry slot) => "darkred";
+    private string GetColor(HistoryEntry slot) => slot.Action.GetActionColour();
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if( chart != null )
+            await chart.UpdateSeriesAsync();
+        
+        await base.OnParametersSetAsync();
+    }
+
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var yAxis = new List<YAxis>();
+
+        yAxis.Add(new YAxis
+        {
+            Title = new AxisTitle { Text = "Price (p/kWh)" },
+            SeriesName = "Price",
+            DecimalsInFloat = 2
+        });
+
+        yAxis.Add(new YAxis
+        {
+            Title = new AxisTitle { Text = "Battery SOC (%)" },
+            SeriesName = "SOC (%)",
+            DecimalsInFloat = 0,
+            Opposite = true
+        });
+        
+        options = new ApexChartOptions<HistoryEntry>
+        {
+            Yaxis = yAxis,
+            Chart = new Chart
+            { 
+                Toolbar = new Toolbar
+                {
+                    Show = true,
+                    Tools = new Tools
+                    {
+                        Download = false
+                    }
+                }
+            },
+        };
+
+        await base.OnInitializedAsync();
+    }
+}

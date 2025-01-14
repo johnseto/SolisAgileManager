@@ -25,12 +25,6 @@ public class SolcastScheduler( IInverterRefreshService service, ILogger<SolcastS
 {
     public async Task Invoke()
     {
-        if (System.Diagnostics.Debugger.IsAttached)
-        {
-            logger.LogInformation("Debugging, so skipping Solcast execution");
-            return;
-        }
-        
         logger.LogDebug("Executing Solcast scheduler");
         await service.RefreshSolcastData();
     }

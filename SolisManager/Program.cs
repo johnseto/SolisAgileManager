@@ -1,15 +1,18 @@
 using System.Diagnostics;
 using System.Reflection.Metadata;
+using Blazored.LocalStorage;
 using SolisManager.APIWrappers;
 using SolisManager.Components;
 using Coravel;
 using Coravel.Invocable;
+using Coravel.Scheduling.Schedule.Interfaces;
 using MudBlazor;
 using MudBlazor.Services;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using SolisManager.Client.Constants;
+using SolisManager.Extensions;
 using SolisManager.Services;
 using SolisManager.Shared;
 using SolisManager.Shared.Models;
@@ -81,7 +84,8 @@ public class Program
 
         builder.Services.AddScheduler();
         builder.Services.AddMudServices();
-        
+        builder.Services.AddBlazoredLocalStorage();
+            
         if (!Debugger.IsAttached)
         {
             // Use Kestrel options to set the port. Using .Urls.Add breaks WASM debugging.
@@ -157,11 +161,11 @@ public class Program
         app.Services.UseScheduler(s => s
             .Schedule<VersionCheckScheduler>()
             .Cron("15 6,12,18 * * *")
-            .RunOnceAtStart());
+            .RunAtStartupIfDebugging());
 
         await app.RunAsync();
     }
-    
+
     private const string template = "[{Timestamp:HH:mm:ss.fff}-{ThreadID}-{Level:u3}] {Message:lj}{NewLine}{Exception}";
     private static readonly LoggingLevelSwitch logLevel = new();
 

@@ -1,0 +1,20 @@
+.chart-area {
+    height: calc(100vh - 200px);
+    width: 100%;
+    margin-bottom: 50px;
+}
+
+@media screen and (max-width: 900px) {
+    .chart-area {
+        height: calc(100vh - 400px);
+        margin-bottom: 100px;
+    }
+}
+
+.legend {
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+    align-items: center;
+    margin: 10px;
+}

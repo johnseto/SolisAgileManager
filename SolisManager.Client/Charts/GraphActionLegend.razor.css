@@ -1,0 +1,24 @@
+.title-row {
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.legend {
+    display: flex;
+    flex-direction: row;
+    column-gap: 20px;
+    align-items: baseline;
+    margin: 10px;
+    flex-wrap: wrap;
+}
+
+@media screen and (max-width: 900px) {
+    .legend{
+        font-size: 8pt;
+    }
+    
+}

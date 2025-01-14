@@ -7,9 +7,17 @@ This app is designed to optimally manage the battery charging for your Solar/PV/
 used with the Octopus Agile tariff. The idea is that it will analyse upcoming Agile prices, and then
 apply an opinionated strategy to manage your battery based on the cheapest periods.
 
-<img width="1133" alt="SolisManager" src="https://github.com/user-attachments/assets/907e1d92-bc77-487c-bc30-378b02d41a0f" />
+### Screenshots:
 
-<img width="1081" alt="SolisManagerCharts" src="https://github.com/user-attachments/assets/8c0474d3-c8cd-47ce-9bf5-27531ad9e81a" />
+<img width="1118" alt="SolisManagerView" src="https://github.com/user-attachments/assets/1f39bda4-35ff-4607-8437-1589e025d3ce" />
+
+<img width="1139" alt="ChartView" src="https://github.com/user-attachments/assets/41b313aa-0908-4ea8-9191-76946acdb54a" />
+
+### Mobile: 
+
+<img src="https://github.com/user-attachments/assets/4ab0001e-1fa9-42d9-a5b1-c94e4cddcf8a" width=400 height=auto/>
+&nbsp;
+<img src="https://github.com/user-attachments/assets/c6a36fe7-3f7d-451e-b339-8aed458f3e54" width=400 height=auto/>
 
 ### But why not just use the excellent [PredBat](https://springfall2008.github.io/batpred/) plugin for Home Assistant?
 
