@@ -15,11 +15,6 @@ td.date-row {
     column-gap: 0px;
     align-items: baseline;
 }
-@media screen and (max-width: 900px) {
-    .valid-to {
-        display: none;
-    }
-}
 
 .title-bar {
     display: flex;
@@ -48,6 +43,15 @@ td.date-row {
     flex-wrap: wrap;
     align-items: center;
     column-gap: 10px;
+}
+
+@media screen and (max-width: 900px) {
+    .valid-to {
+        display: none;
+    }
+    .extra-info {
+        column-gap: 5px;
+    }
 }
 
 .simulate-indicator { 

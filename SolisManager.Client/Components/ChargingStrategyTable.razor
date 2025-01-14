@@ -41,11 +41,11 @@
             </div>
         }
 
-        <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(inverterService.InverterState.HouseLoadkW, 2))"
+        <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(inverterService.InverterState.HouseLoadkW, 1))"
                    Description="Current load being consumed by the house" Units="kW"/>
-        <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(inverterService.InverterState.CurrentPVkW, 2))"
+        <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(inverterService.InverterState.CurrentPVkW, 1))"
                    Description="Current Solar PV generation" Units="kW"/>
-        <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(inverterService.InverterState.TodayPVkWh, 2))"
+        <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(inverterService.InverterState.TodayPVkWh, 1))"
                    Description="Total Solar PV Generation today" Units="kWh"/>
         <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
     </div>
