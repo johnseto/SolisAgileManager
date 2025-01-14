@@ -17,6 +17,8 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
     public async Task<IEnumerable<SolcastForecast>> GetSolcastForecast()
     {
+        logger.LogInformation("Attempting to pull forecast data from Solcast API...");
+        
         var url = "https://api.solcast.com.au"
             .AppendPathSegment("rooftop_sites")
             .AppendPathSegment(config.SolcastSiteIdentifier)
@@ -42,6 +44,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
             if (newForecast != null && newForecast.forecasts != null && newForecast.forecasts.Any())
             {
+                logger.LogInformation("Retrieved {N} new forecasts from Solcast", newForecast.forecasts.Count());
                 return newForecast.forecasts;
             }
         }
