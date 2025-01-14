@@ -9,7 +9,8 @@ public enum PriceType
     BelowThreshold,
     BelowAverage,
     Dropping,
-    MostExpensive
+    MostExpensive,
+    Negative
 }
 
 public enum SlotAction
@@ -22,11 +23,10 @@ public enum SlotAction
 
 public record OctopusPriceSlot
 {
-    public decimal value_exc_vat { get; set;  }
     public decimal value_inc_vat { get; set;  }
     public DateTime valid_from { get; set;  }
     public DateTime valid_to { get; set;  }
-    public PriceType PriceType { get; set; }
+    public PriceType PriceType { get; set; } = PriceType.Average;
     public SlotAction Action { get; set; } = SlotAction.DoNothing;
     public string ActionReason { get; set; } = string.Empty;
     public Guid Id { get; set; } = Guid.NewGuid();

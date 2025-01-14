@@ -95,7 +95,7 @@ else
                         <div class="valid-to">&nbsp;- @slot.valid_to.ToString("HH:mm")</div>
                     </div>
                 </td>
-                <td style="text-align: center;">@Math.Round(slot.value_inc_vat, 2)</td>
+                <td style="@PriceStyle(slot)">@Math.Round(slot.value_inc_vat, 2)</td>
                 <td><PriceType Type="@slot.PriceType"/></td>
                 <td><SlotPlan Slot="@slot"/></td>
                 <td><SlotActions Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
@@ -120,6 +120,7 @@ else
     private bool manualOverridesExist = false;
     private DateOnly? lastDate = null;
     private ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
+    private string PriceStyle(OctopusPriceSlot slot) => $"text-align:center; color: {(slot.value_inc_vat < 0 ? "darkred" : "black")};";
 
     private RenderFragment? DateHeader(OctopusPriceSlot slot)
     {

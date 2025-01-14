@@ -1,10 +1,12 @@
 using System.Collections;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Coravel.Invocable;
 using Humanizer.DateTimeHumanizeStrategy;
 using Octokit;
 using SolisManager.APIWrappers;
+using SolisManager.Extensions;
 using SolisManager.Shared;
 using SolisManager.Shared.Models;
 
@@ -135,7 +137,16 @@ public class InverterManager(
             slots = (await octRatesTask).OrderBy(x => x.valid_from).ToList();
 
             if (config.Simulate)
+            {
                 simulationData = slots.ToList();
+
+                if( Debugger.IsAttached)
+                {
+                    CreateSomeNegativeSlots(slots);
+                    CreateSomeNegativeSlots(slots);
+                }
+
+            }
         }
 
         var processedSlots = EvaluateSlotActions(slots.ToArray());
@@ -182,20 +193,7 @@ public class InverterManager(
             }
         }
     }
-
-    private T[] GetPreviousNItems<T>(T[] source, int count, Func<T, bool> predicate)
-    {
-        var rootItem = Array.FindIndex(source, x => predicate(x));
-
-        // If it's not found, or it's the first item, we can't find items before it.
-        if (rootItem <= 0)
-            return [];
-
-        int lastItemIndex = rootItem - 1;
-        int firstItemIndex = Math.Max(lastItemIndex - count, 0);
-        return source[firstItemIndex .. lastItemIndex];
-    }
-
+    
     private List<OctopusPriceSlot> EvaluateSlotActions(OctopusPriceSlot[]? slots)
     {
         if (slots == null)
@@ -330,7 +328,7 @@ public class InverterManager(
                 // matter if the charging slots aren't all contiguous - so we can have a bit of 
                 // flexibility. We also only need to charge the battery enough to get us to the 
                 // PeakPeriodBatteryUse percentage (e.g., 50%). 
-                var chargeSlotChoices = GetPreviousNItems(slots, chargeSlotsNeeededNow + 2, x => x.valid_from == priciestSlots.First().valid_from);
+                var chargeSlotChoices = slots.GetPreviousNItems(chargeSlotsNeeededNow + 2, x => x.valid_from == priciestSlots.First().valid_from);
 
                 if (chargeSlotChoices.Any())
                 {
@@ -357,6 +355,13 @@ public class InverterManager(
                     $"Price is below the threshold of {config.AlwaysChargeBelowPrice}p/kWh, so always charge";
             }
 
+            foreach (var slot in slots.Where(s => s.value_inc_vat < 0))
+            {
+                slot.PriceType = PriceType.Negative;
+                slot.Action = SlotAction.Charge;
+                slot.ActionReason = "Negative price - always charge";
+            }
+
             // For any slots that are set to "charge if low battery", update them to 'charge' if the 
             // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
             if (InverterState.BatterySOC < config.LowBatteryPercentage)
@@ -369,7 +374,30 @@ public class InverterManager(
                         $"Upcoming slot is set to charge if low battery; battery is currently at {InverterState.BatterySOC}%";
                 }
             }
+            
+            // Now it gets interesting. Find the groups of slots that have negative prices. So we
+            // might end up with 3 negative prices, and another group of 7 negative prices. For any
+            // groups that are long enough to charge the battery fully, discharge the battery for 
+            // all the slots that aren't needed to recharge the battery. 
+            // NOTE/TODO: We should check, and if any of the groups of negative slots are *now*
+            // then we should factor in the SOC.
+            var negativeSpans = slots.GetAdjacentGroups(x => x.PriceType == PriceType.Negative);
 
+            foreach (var negSpan in negativeSpans)
+            {
+                if (negSpan.Count() > config.SlotsForFullBatteryCharge)
+                {
+                    var dischargeSlots = negSpan.SkipLast(config.SlotsForFullBatteryCharge).ToList();
+
+                    dischargeSlots.ForEach(x =>
+                    {
+                        x.Action = SlotAction.Discharge;
+                        x.ActionReason =
+                            "Contiguous negative slots allow the battery to be discharged and charged again.";
+                    });
+                }
+            }
+            
             foreach (var slot in slots)
             {
                 if (manualOverrides.TryGetValue(slot.valid_from, out var manualOverride))
@@ -390,7 +418,31 @@ public class InverterManager(
         return slots.ToList();
     }
 
+    
+    private void CreateSomeNegativeSlots(IEnumerable<OctopusPriceSlot> slots)
+    {
+        if (Debugger.IsAttached && ! slots.Any(x => x.value_inc_vat < 0))
+        {
+            var averageSlots = slots
+                .OrderBy(x => x.valid_from)
+                .Where(x => x.PriceType == PriceType.Average)
+                .ToArray();
+            
+            var rand = new Random();
+            var index = rand.Next(averageSlots.Length);
+            List<OctopusPriceSlot> negs = [averageSlots[index]];
+            for (int n = 0; n < rand.Next(5, 9); n++)
+            {
+                if (--index > 0)
+                    negs.Add(averageSlots[index]);
+            }
 
+            foreach (var slot in negs)
+                slot.value_inc_vat = (rand.Next(10, 100) / 10M) * -1;
+        }
+        
+    }
+    
     public Task RefreshInverterState()
     {
         // Nothing to do on the server side, the refresh is triggered by the scheduler
