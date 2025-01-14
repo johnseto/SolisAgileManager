@@ -28,7 +28,7 @@
     
     private ApexChart<OctopusPriceSlot>? chart;
     private ApexChartOptions<OctopusPriceSlot>? options;
-    private string FormatYAxisLabel(decimal val) => $"{val}";
+    private string FormatYAxisLabel(decimal val) => $"{val:F1}";
 
     private string GetColor(OctopusPriceSlot slot) => GetActionColour(slot.Action);
 
