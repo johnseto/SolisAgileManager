@@ -27,7 +27,7 @@
                              YValue="@(e => e.BatterySOC)"
                              SeriesType="SeriesType.Line"
                              Color="red"
-                             Stroke="@(new SeriesStroke { Color = "red", Width = 2 })"/>
+                             Stroke="@(new SeriesStroke { Color = "red", Width = 3 })"/>
         </ApexChart>
     </div>
 }
@@ -38,7 +38,7 @@
 
     private ApexChart<HistoryEntry>? chart;
     private ApexChartOptions<HistoryEntry>? options;
-    private string FormatYAxisLabel(decimal val) => $"{val:F1}";
+    private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
 
     private string GetBatteryColor(HistoryEntry slot) => "darkred";
     private string GetColor(HistoryEntry slot) => slot.Action.GetActionColour();
