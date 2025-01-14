@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Text.Json;
 using Coravel.Invocable;
 using Humanizer.DateTimeHumanizeStrategy;
 using Octokit;
@@ -31,6 +32,7 @@ public class InverterManager(
         var lookup = forecast.ToDictionary(x => x.period_end);
         InverterState.SolcastTimeStamp = null;
 
+        var matchedData = false;
         foreach (var slot in slots)
         {
             if (lookup.TryGetValue(slot.valid_to, out var solcastEstimate))
@@ -38,12 +40,19 @@ public class InverterManager(
                 // Estimate is in kW. Since slots are 30 mins, divide by 2 to get kWh.
                 slot.pv_est_kwh = (solcastEstimate.pv_estimate / 2.0M);
                 InverterState.SolcastTimeStamp = DateTime.UtcNow;
+                matchedData = true;
             }
             else
             {
                 // No data
                 slot.pv_est_kwh = null;
             }
+        }
+
+        if (slots.Any() && lookup.Any() && !matchedData)
+        {
+            logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
+            logger.LogError("   SolCast Data:\n{JSON}", JsonSerializer.Serialize(forecast));
         }
     }
 
