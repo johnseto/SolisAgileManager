@@ -28,7 +28,7 @@
     
     private ApexChart<OctopusPriceSlot>? chart;
     private ApexChartOptions<OctopusPriceSlot>? options;
-    private string FormatYAxisLabel(decimal val) => $"{val}p/kWh";
+    private string FormatYAxisLabel(decimal val) => $"{val:1}";
 
     private string GetColor(OctopusPriceSlot slot) => GetActionColour(slot.Action);
 
