@@ -158,6 +158,7 @@ that Rob Tweed's [Agility](https://github.com/robtweed/agility) app is better su
 * Then perform a similar calculation to find the most expensive (peak) period.
 * Set the action for all cheapest slots to `Charge`
 * Set the action for the most expensive slots to `Do Nothing` - i.e., don't charge.
+* Set the action for any negative prices slots to `Charge`.
 * Now, we've calculated the cheapest and most expensive slots. From the remaining slots, calculate
   the average rate across them. We then use that average rate to determine if any other slots across
   the day are a bit cheaper. So look for anything that's 90% of the average or less, and mark it
@@ -179,6 +180,13 @@ that Rob Tweed's [Agility](https://github.com/robtweed/agility) app is better su
   we may elect to always charge if the price is negative, or if it's below our export rate.
 * For any slots that are set to `Charge If Low Battery`, update them to 'charge' if the battery SOC is,
   indeed, low. Only do this for enough slots to fully charge the battery.
+* Lastly, find runs of slots that have negative prices. For any groups that are more than long enough
+  to charge the battery fully, discharge the battery for all the slots that aren't needed to recharge
+  the battery. For example, we might end up with a run of 3 negative prices, and later another group of
+  8 negative prices. If our battery takes 3 hours to fully charge, the first two negative slots of that
+  group of 8 will be set to discharge the battery. See the chart below:
+
+  <img width="909" alt="DischargeStrategy" src="https://github.com/user-attachments/assets/a9f89ad7-b969-4e9d-bc38-569ef3ce8caa" />
 
 There are also _manual overrides_ which can be set vie the tools screen. For example:
 
