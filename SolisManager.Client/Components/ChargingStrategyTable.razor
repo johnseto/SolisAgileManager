@@ -3,6 +3,8 @@
 @inject IInverterService inverterService
 @inject IDialogService dialogService
 
+@implements IDisposable
+
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
@@ -41,13 +43,15 @@
             </div>
         }
 
-        <ValueChip Icon="@Icons.Material.Filled.House" Value="@(Math.Round(inverterService.InverterState.HouseLoadkW, 1))"
-                   Description="Current load being consumed by the house" Units="kW"/>
-        <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@(Math.Round(inverterService.InverterState.CurrentPVkW, 1))"
-                   Description="Current Solar PV generation" Units="kW"/>
-        <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@(Math.Round(inverterService.InverterState.TodayPVkWh, 1))"
-                   Description="Total Solar PV Generation today" Units="kWh"/>
         <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
+        <ValueChip Icon="@Icons.Material.Filled.House" Value="@inverterService.InverterState.HouseLoadkW"
+                   Description="Current load being consumed by the house" Units="kW"/>
+        <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@inverterService.InverterState.CurrentPVkW"
+                   Description="Current Solar PV generation" Units="kW"/>
+        <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@inverterService.InverterState.TodayPVkWh"
+                   Description="Total Solar PV Generation today" Units="kWh"/>
+        <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@inverterService.InverterState.ForecastPVkWh"
+                   Description="@($"Solar PV Forecast {inverterService.InverterState.ForecastDayLabel}")" Units="kWh"/>
     </div>
 </div>
 
@@ -113,6 +117,8 @@ else
 
 @code {
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
+    private CancellationTokenSource tokenSource = new();
+
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
     private string SolcastUpdate => inverterService.InverterState?.SolcastTimeStamp?.ToString() ?? "never";
     private bool hasSolcastData = false;
@@ -177,10 +183,15 @@ else
 
     private async Task RunTimer()
     {
-        while (await timer.WaitForNextTickAsync())
+        while (await timer.WaitForNextTickAsync(tokenSource.Token))
             await RefreshData();
     }
 
+    public void Dispose()
+    {
+        tokenSource.Cancel();
+    }
+    
     protected override async Task OnInitializedAsync()
     {
         var config = await inverterService.GetConfig();
