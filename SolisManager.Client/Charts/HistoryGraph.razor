@@ -5,7 +5,8 @@
 {
     <div class="chart-area">
         <GraphActionLegend ChartTitle="Charging History">
-           @ZoomButton("1 day", 1)
+            @ZoomButton("All")
+            @ZoomButton("1 day", 1)
             @ZoomButton("3 days", 3)
             @ZoomButton("1 week", 7)
             @ZoomButton("1 month", 30)
@@ -49,16 +50,20 @@
     private string GetBatteryColor(HistoryEntry slot) => "darkred";
     private string GetColor(HistoryEntry slot) => slot.Action.GetActionColour();
 
-    private RenderFragment? ZoomButton(string text, int days)
+    private RenderFragment? ZoomButton(string text, int? days = null)
     {
         if (HistoryData != null)
         {
             var start = HistoryData.Min(x => x.Start);
             var end = HistoryData.Max(x => x.End);
+            var rangeStart = start;
 
-            if ((end - start).TotalDays > days)
+            if (days != null)
+                rangeStart = end.AddDays(-1 * days.Value);
+
+            if (days == null || (end - rangeStart).TotalDays < (end - start).TotalDays)
             {
-                return @<MudButton OnClick="@(() => ZoomDays(days))" Variant="UIConstants.MudVariant" Size="Size.Small">@text</MudButton>;
+                return @<MudButton OnClick="@(() => ZoomDays(rangeStart, end))" Variant="UIConstants.MudVariant" Size="Size.Small">@text</MudButton>;
             }
         }
 
@@ -73,12 +78,10 @@
         await base.OnParametersSetAsync();
     }
 
-    protected async Task ZoomDays(int days)
+    protected async Task ZoomDays(DateTime start, DateTime end)
     {
         if (chart != null && HistoryData != null)
         {
-            var end = HistoryData.Max(x => x.End);
-            var start = end.AddDays(-1 * days);
             await chart.ZoomXAsync(start.ToUnixTimeMilliseconds(), end.ToUnixTimeMilliseconds());
         }
     }
