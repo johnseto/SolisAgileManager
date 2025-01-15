@@ -257,7 +257,7 @@ If you like this app, please check out some of my other applications, including 
       </a>
   </div>
 
-### Thanks/Credits
+### Thanks
 
 * Thanks to [Steve Gal](https://github.com/stevegal/solis_control) for his Solis-Control script that gave me the 
   info needed to build the API wrapper to set the charging slots on the inverter.
@@ -269,6 +269,17 @@ If you like this app, please check out some of my other applications, including 
 
 ### Technical Details
 
-For those who are interested, the application is built using Blazor WebAssembly, with an ASP.Net back-end, with
-[MudBlazor](https://github.com/mudblazor/mudblazor) used for the UI controls. The app is written entirely in C#, 
-using .Net 9. It was written over the course of about 5 days. 
+For those who are interested, the application is built using Blazor WebAssembly, with an ASP.Net back-end. The app 
+is written entirely in C# on a Mac, using .Net 9. The core functionality was written over the course of about 
+a week. 
+
+### Credits
+
+* Thanks as always to the folks in the [MudBlazor](https://github.com/mudblazor/mudblazor) team, whose excellent
+  suite of UI components makes developing Blazor UIs a dream.
+* Thanks to James Hickey for the [Coravel](https://github.com/jamesmh/coravel) project, which made the job 
+  scheduling in Solis Agile Manager trivial.
+* Thanks to the [Blazor Apex Charts](https://github.com/apexcharts/Blazor-ApexCharts) developers - adding some 
+  beautiful visualisations to the app was super-trivial with this library.
+* Thanks to the folks at JetBrains for providing [Rider](https://www.jetbrains.com/rider/) for free to OSS 
+  developers like me.
