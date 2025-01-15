@@ -89,9 +89,7 @@ Currently the only pre-built docker image is for `linux-x64` but I hope to add `
 ## Settings
 
 The first time you load the UI, you'll be prompted to input basic information, such as your Solis API key and 
-secret, your inverter serial number, and the Octopus Product details of the current tariff you're on. Note 
-that for this to work, you'll need to have raised a ticket with Solis to get access to control the inverter
-via the SolisCloud app. 
+secret, your inverter serial number, and the Octopus Product details of the current tariff you're on. 
 
 <img width="600" alt="SettingsScreenshot" src="https://github.com/user-attachments/assets/2346f008-10e4-408b-a0ac-97b1af6c0a1c" />
 
@@ -106,6 +104,14 @@ You'll also need to set some other config setting:
   price will always be set to charge, regardless of anything else.
 * Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
   any changes to the behaviour.
+
+**Note**: For this to work, you'll need to have raised a ticket with Solis to get access to control the 
+inverter via the SolisCloud app. To do this:
+
+* Go to the [Solis Support Portal](https://solis-service.solisinverters.com/en/support/solutions)
+* Click 'Submit a ticket'
+* Submit a request to control your inverter from the SolisCloud App, filling in the details and selecting
+  ticket type `API Request - Owner`. In the notes, ask for API access too.
 
 ### Finding the right Tariff
 
