@@ -155,13 +155,14 @@ public class Program
         // data for a while, but that's probably okay.
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
-            .Cron("13 2,6,12 * * *"));
+            .Cron("13 2,6,12 * * *")
+            .RunAtStartupIfDebugging());
         
         // Check for a new version periodically
         app.Services.UseScheduler(s => s
             .Schedule<VersionCheckScheduler>()
             .Cron("15 6,12,18 * * *")
-            .RunAtStartupIfDebugging());
+            .RunOnceAtStart());
 
         await app.RunAsync();
     }

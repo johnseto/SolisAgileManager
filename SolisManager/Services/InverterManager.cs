@@ -25,13 +25,26 @@ public class InverterManager(
     private readonly List<HistoryEntry> executionHistory = new();
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
     private NewVersionResponse appVersion = new();
+    private IEnumerable<SolcastAPI.SolcastForecast>? solcastForecasts;
 
     private List<OctopusPriceSlot>? simulationData;
 
-    private async Task EnrichSlotsFromSolcast(IEnumerable<OctopusPriceSlot> slots)
+    public async Task UpdateSolcastForecast()
     {
         var forecast = await solcastApi.GetSolcastForecast();
-        var lookup = forecast.ToDictionary(x => x.period_end);
+        if (forecast != null && forecast.Any())
+        {
+            solcastForecasts = forecast;
+            EnrichSlotsFromSolcast();
+        }
+    }
+    
+    private void EnrichSlotsFromSolcast()
+    {
+        if (solcastForecasts == null || !solcastForecasts.Any())
+            return;
+        var lookup = solcastForecasts.ToDictionary(x => x.period_end);
+        var slots = InverterState.Prices;
         InverterState.SolcastTimeStamp = null;
 
         var matchedData = false;
@@ -54,7 +67,6 @@ public class InverterManager(
         if (slots.Any() && lookup.Any() && !matchedData)
         {
             logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
-            logger.LogError("   SolCast Data:\n{JSON}", JsonSerializer.Serialize(forecast));
         }
     }
 
@@ -149,6 +161,8 @@ public class InverterManager(
             }
         }
 
+        EnrichSlotsFromSolcast();
+        
         var processedSlots = EvaluateSlotActions(slots.ToArray());
 
         // Update the state
@@ -478,7 +492,7 @@ public class InverterManager(
         if (!config.SolcastValid())
             return;
 
-        await EnrichSlotsFromSolcast(InverterState.Prices);
+        await UpdateSolcastForecast();
     }
 
     public async Task RefreshAgileRates()

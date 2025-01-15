@@ -78,5 +78,10 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         public decimal pv_estimate90 { get; set;  }
         public DateTime period_end { get; set; }
         public string period { get; set; }
+
+        public override string ToString()
+        {
+            return $"{period_end} - {pv_estimate}kWh";
+        }
     }
 }
