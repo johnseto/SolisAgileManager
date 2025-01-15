@@ -1,9 +1,15 @@
 @using ApexCharts
+@using Size = MudBlazor.Size
 
 @if (options != null && HistoryData != null)
 {
     <div class="chart-area">
-        <GraphActionLegend ChartTitle="Charging History"/>
+        <GraphActionLegend ChartTitle="Charging History">
+           @ZoomButton("1 day", 1)
+            @ZoomButton("3 days", 3)
+            @ZoomButton("1 week", 7)
+            @ZoomButton("1 month", 30)
+        </GraphActionLegend>
         <ApexChart @ref="chart"
                    TItem="HistoryEntry"
                    XAxisType="XAxisType.Datetime"
@@ -42,16 +48,41 @@
 
     private string GetBatteryColor(HistoryEntry slot) => "darkred";
     private string GetColor(HistoryEntry slot) => slot.Action.GetActionColour();
+
+    private RenderFragment? ZoomButton(string text, int days)
+    {
+        if (HistoryData != null)
+        {
+            var start = HistoryData.Min(x => x.Start);
+            var end = HistoryData.Max(x => x.End);
+
+            if ((end - start).TotalDays > days)
+            {
+                return @<MudButton OnClick="@(() => ZoomDays(days))" Variant="UIConstants.MudVariant" Size="Size.Small">@text</MudButton>;
+            }
+        }
+
+        return null;
+    }
     
     protected override async Task OnParametersSetAsync()
     {
-        if( chart != null )
+        if (chart != null)
             await chart.UpdateSeriesAsync();
         
         await base.OnParametersSetAsync();
     }
 
-    
+    protected async Task ZoomDays(int days)
+    {
+        if (chart != null && HistoryData != null)
+        {
+            var end = HistoryData.Max(x => x.End);
+            var start = end.AddDays(-1 * days);
+            await chart.ZoomXAsync(start.ToUnixTimeMilliseconds(), end.ToUnixTimeMilliseconds());
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         var yAxis = new List<YAxis>();
@@ -86,7 +117,7 @@
                 }
             },
         };
-
+        
         await base.OnInitializedAsync();
     }
 }

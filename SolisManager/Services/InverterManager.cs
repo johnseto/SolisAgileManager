@@ -94,8 +94,8 @@ public class InverterManager(
                 logger.LogInformation("Loaded {C} entries from execution history file {F}", lines.Length,
                     executionHistoryFile);
 
-                // Limit to 1440 items. At 48 slots per day, that gives us 30 days of history. 
-                var entries = lines.TakeLast(1440)
+                // At 48 slots per day, we store 180 days or 6 months of data
+                var entries = lines.TakeLast(180 * 48)
                     .Select(x => HistoryEntry.TryParse(x))
                     .Where(x => x != null)
                     .Select(x => x!)

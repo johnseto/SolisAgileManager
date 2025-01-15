@@ -2,6 +2,12 @@
 
 <div class="title-row">
     <h5>@ChartTitle</h5>
+    @if(ChildContent != null )
+    {
+        <div>
+            @ChildContent
+        </div>
+    }
     <div class="legend">
         @ActionLegend(SlotAction.Charge)
         @ActionLegend(SlotAction.Discharge)
@@ -11,6 +17,9 @@
 </div>
 
 @code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+    
     [Parameter, EditorRequired] public string ChartTitle { get; set; } = string.Empty;
     
     private SolisManagerConfig? config;
