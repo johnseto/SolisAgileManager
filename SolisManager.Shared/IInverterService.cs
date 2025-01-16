@@ -24,6 +24,5 @@ public interface IInverterService
 public interface IInverterRefreshService
 {
     public Task RefreshBatteryState();
-    public Task RefreshSolcastData();
     public Task RefreshAgileRates();
 }

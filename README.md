@@ -89,9 +89,7 @@ Currently the only pre-built docker image is for `linux-x64` but I hope to add `
 ## Settings
 
 The first time you load the UI, you'll be prompted to input basic information, such as your Solis API key and 
-secret, your inverter serial number, and the Octopus Product details of the current tariff you're on. Note 
-that for this to work, you'll need to have raised a ticket with Solis to get access to control the inverter
-via the SolisCloud app. 
+secret, your inverter serial number, and the Octopus Product details of the current tariff you're on. 
 
 <img width="600" alt="SettingsScreenshot" src="https://github.com/user-attachments/assets/2346f008-10e4-408b-a0ac-97b1af6c0a1c" />
 
@@ -106,6 +104,14 @@ You'll also need to set some other config setting:
   price will always be set to charge, regardless of anything else.
 * Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
   any changes to the behaviour.
+
+**Note**: For this to work, you'll need to have raised a ticket with Solis to get access to control the 
+inverter via the SolisCloud app. To do this:
+
+* Go to the [Solis Support Portal](https://solis-service.solisinverters.com/en/support/solutions)
+* Click 'Submit a ticket'
+* Submit a request to control your inverter from the SolisCloud App, filling in the details and selecting
+  ticket type `API Request - Owner`. In the notes, ask for API access too.
 
 ### Finding the right Tariff
 
@@ -158,6 +164,7 @@ that Rob Tweed's [Agility](https://github.com/robtweed/agility) app is better su
 * Then perform a similar calculation to find the most expensive (peak) period.
 * Set the action for all cheapest slots to `Charge`
 * Set the action for the most expensive slots to `Do Nothing` - i.e., don't charge.
+* Set the action for any negative prices slots to `Charge`.
 * Now, we've calculated the cheapest and most expensive slots. From the remaining slots, calculate
   the average rate across them. We then use that average rate to determine if any other slots across
   the day are a bit cheaper. So look for anything that's 90% of the average or less, and mark it
@@ -179,6 +186,13 @@ that Rob Tweed's [Agility](https://github.com/robtweed/agility) app is better su
   we may elect to always charge if the price is negative, or if it's below our export rate.
 * For any slots that are set to `Charge If Low Battery`, update them to 'charge' if the battery SOC is,
   indeed, low. Only do this for enough slots to fully charge the battery.
+* Lastly, find runs of slots that have negative prices. For any groups that are more than long enough
+  to charge the battery fully, discharge the battery for all the slots that aren't needed to recharge
+  the battery. For example, we might end up with a run of 3 negative prices, and later another group of
+  8 negative prices. If our battery takes 3 hours to fully charge, the first two negative slots of that
+  group of 8 will be set to discharge the battery. See the chart below:
+
+  <img width="909" alt="DischargeStrategy" src="https://github.com/user-attachments/assets/a9f89ad7-b969-4e9d-bc38-569ef3ce8caa" />
 
 There are also _manual overrides_ which can be set vie the tools screen. For example:
 
@@ -249,7 +263,7 @@ If you like this app, please check out some of my other applications, including 
       </a>
   </div>
 
-### Thanks/Credits
+### Thanks
 
 * Thanks to [Steve Gal](https://github.com/stevegal/solis_control) for his Solis-Control script that gave me the 
   info needed to build the API wrapper to set the charging slots on the inverter.
@@ -261,6 +275,17 @@ If you like this app, please check out some of my other applications, including 
 
 ### Technical Details
 
-For those who are interested, the application is built using Blazor WebAssembly, with an ASP.Net back-end, with
-[MudBlazor](https://github.com/mudblazor/mudblazor) used for the UI controls. The app is written entirely in C#, 
-using .Net 9. It was written over the course of about 5 days. 
+For those who are interested, the application is built using Blazor WebAssembly, with an ASP.Net back-end. The app 
+is written entirely in C# on a Mac, using .Net 9. The core functionality was written over the course of about 
+a week. 
+
+### Credits
+
+* Thanks as always to the folks in the [MudBlazor](https://github.com/mudblazor/mudblazor) team, whose excellent
+  suite of UI components makes developing Blazor UIs a dream.
+* Thanks to James Hickey for the [Coravel](https://github.com/jamesmh/coravel) project, which made the job 
+  scheduling in Solis Agile Manager trivial.
+* Thanks to the [Blazor Apex Charts](https://github.com/apexcharts/Blazor-ApexCharts) developers - adding some 
+  beautiful visualisations to the app was super-trivial with this library.
+* Thanks to the folks at JetBrains for providing [Rider](https://www.jetbrains.com/rider/) for free to OSS 
+  developers like me.

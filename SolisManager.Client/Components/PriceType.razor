@@ -17,16 +17,18 @@
         Shared.Models.PriceType.BelowAverage => "Lower",
         Shared.Models.PriceType.Dropping => "Reducing",
         Shared.Models.PriceType.BelowThreshold => "Cheap",
+        Shared.Models.PriceType.Negative => "Negative",
         _ => "Average"
     };
 
     private string Style => "background-color: " + Type switch
     {
-        Shared.Models.PriceType.Cheapest => "darkgreen",
         Shared.Models.PriceType.MostExpensive => "red",
-        Shared.Models.PriceType.BelowAverage => "green",
-        Shared.Models.PriceType.Dropping => "gold",
-        Shared.Models.PriceType.BelowThreshold => "lightgreen",
+        Shared.Models.PriceType.Dropping => "darkorange",
+        Shared.Models.PriceType.BelowAverage => "gold",
+        Shared.Models.PriceType.Cheapest => "darkgreen",
+        Shared.Models.PriceType.BelowThreshold => "green",
+        Shared.Models.PriceType.Negative => "lightgree",
         _ => "gray"
     } + ";";
 

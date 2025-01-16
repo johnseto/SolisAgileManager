@@ -5,7 +5,7 @@
         {
             <MudIcon Icon="@Icon"/>
         }
-        <strong>@Value</strong>
+        <strong>@Math.Round(Value.Value, Decimals)</strong>
         @if (!string.IsNullOrEmpty(Units))
         {
             @Units
@@ -19,6 +19,8 @@
     [Parameter] public string Icon { get; set; } = string.Empty;
 
     [Parameter] public string Units { get; set; } = string.Empty;
+
+    [Parameter] public int Decimals { get; set; } = 1;
     
     [Parameter] public string? Description { get; set; }
 }

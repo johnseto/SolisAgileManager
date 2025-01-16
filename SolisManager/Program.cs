@@ -68,6 +68,8 @@ public class Program
         builder.Services.AddRazorComponents()
             .AddInteractiveWebAssemblyComponents();
 
+        builder.Services.AddDataProtection();
+        
         builder.Services.AddSingleton<SolisManagerConfig>();
         builder.Services.AddSingleton<InverterManager>();
         builder.Services.AddSingleton<IInverterService>(x => x.GetRequiredService<InverterManager>());
@@ -98,6 +100,7 @@ public class Program
 
         var logger = app.Services.GetRequiredService<ILogger<Program>>();
         
+        logger.LogInformation("===========================================================");
         logger.LogInformation("Application started. Logs being written to {C}", ConfigFolder);
         
         // First, load the config
@@ -134,6 +137,16 @@ public class Program
 
         app.ConfigureAPIEndpoints();
         
+        // Get the solcast data at 2am, 6am and midday. Run it on the 
+        // 13th minute, because that reduces load (half of the world
+        // runs their solcast ingestion on the hour).
+        // Don't run at first startup. It means you won't get 
+        // data for a while, but that's probably okay.
+        app.Services.UseScheduler(s => s
+            .Schedule<SolcastScheduler>()
+            .Cron("13 2,6,12 * * *")
+            .RunAtStartupIfDebugging());
+
         // Refresh and apply the octopus rates every 30 mins
         app.Services.UseScheduler(s => s
             .Schedule<RatesScheduler>()
@@ -147,15 +160,6 @@ public class Program
         app.Services.UseScheduler(s => s
             .Schedule<BatteryScheduler>()
             .Cron("5,10,15,20,25,35,40,45,50,55 * * * *"));
-
-        // Get the solcast data at 2am, 6am and midday. Run it on the 
-        // 13th minute, because that reduces load (half of the world
-        // runs their solcast ingestion on the hour).
-        // Don't run at first startup. It means you won't get 
-        // data for a while, but that's probably okay.
-        app.Services.UseScheduler(s => s
-            .Schedule<SolcastScheduler>()
-            .Cron("13 2,6,12 * * *"));
         
         // Check for a new version periodically
         app.Services.UseScheduler(s => s

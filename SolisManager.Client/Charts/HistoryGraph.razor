@@ -1,9 +1,16 @@
 @using ApexCharts
+@using Size = MudBlazor.Size
 
 @if (options != null && HistoryData != null)
 {
     <div class="chart-area">
-        <GraphActionLegend ChartTitle="Charging History"/>
+        <GraphActionLegend ChartTitle="Charging History">
+            @ZoomButton("All")
+            @ZoomButton("1 day", 1)
+            @ZoomButton("3 days", 3)
+            @ZoomButton("1 week", 7)
+            @ZoomButton("1 month", 30)
+        </GraphActionLegend>
         <ApexChart @ref="chart"
                    TItem="HistoryEntry"
                    XAxisType="XAxisType.Datetime"
@@ -42,16 +49,43 @@
 
     private string GetBatteryColor(HistoryEntry slot) => "darkred";
     private string GetColor(HistoryEntry slot) => slot.Action.GetActionColour();
+
+    private RenderFragment? ZoomButton(string text, int? days = null)
+    {
+        if (HistoryData != null)
+        {
+            var start = HistoryData.Min(x => x.Start);
+            var end = HistoryData.Max(x => x.End);
+            var rangeStart = start;
+
+            if (days != null)
+                rangeStart = end.AddDays(-1 * days.Value);
+
+            if (days == null || (end - rangeStart).TotalDays < (end - start).TotalDays)
+            {
+                return @<MudButton OnClick="@(() => ZoomDays(rangeStart, end))" Variant="UIConstants.MudVariant" Size="Size.Small">@text</MudButton>;
+            }
+        }
+
+        return null;
+    }
     
     protected override async Task OnParametersSetAsync()
     {
-        if( chart != null )
+        if (chart != null)
             await chart.UpdateSeriesAsync();
         
         await base.OnParametersSetAsync();
     }
 
-    
+    protected async Task ZoomDays(DateTime start, DateTime end)
+    {
+        if (chart != null && HistoryData != null)
+        {
+            await chart.ZoomXAsync(start.ToUnixTimeMilliseconds(), end.ToUnixTimeMilliseconds());
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         var yAxis = new List<YAxis>();
@@ -86,7 +120,7 @@
                 }
             },
         };
-
+        
         await base.OnInitializedAsync();
     }
 }
