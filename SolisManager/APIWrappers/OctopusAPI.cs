@@ -27,10 +27,15 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
         
         if (result != null)
         {
+            // Ensure they're in date order. Sometimes they come back in random order!!!
+            result.results = result.results?.OrderBy(x => x.valid_from).ToList();
+            
             if (result.count != 0 && result.results != null)
             {
-                logger.LogInformation("Retrieved {C} rates from Octopus ({S:dd-MMM-yyyy HH:mm} - {E:dd-MMM-yyyy HH:mm})", result.count,
-                    result.results.FirstOrDefault()?.valid_from, result.results.LastOrDefault()?.valid_to);
+                var first = result.results.FirstOrDefault()?.valid_from;
+                var last = result.results.LastOrDefault()?.valid_to;
+                logger.LogInformation("Retrieved {C} rates from Octopus ({S:dd-MMM-yyyy HH:mm} - {E:dd-MMM-yyyy HH:mm})", 
+                    result.count, first, last);
                 
                 return result.results;
             }

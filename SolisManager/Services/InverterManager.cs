@@ -141,7 +141,7 @@ public class InverterManager(
             InverterState.TimeStamp = DateTime.UtcNow;
 
             // Now, process the octopus rates
-            slots = (await octRatesTask).OrderBy(x => x.valid_from).ToList();
+            slots = (await octRatesTask).ToList();
 
             if (config.Simulate)
             {
@@ -149,8 +149,8 @@ public class InverterManager(
 
                 if( Debugger.IsAttached)
                 {
-                    CreateSomeNegativeSlots(slots);
-                    CreateSomeNegativeSlots(slots);
+                    //CreateSomeNegativeSlots(slots);
+                    //CreateSomeNegativeSlots(slots);
                 }
 
             }
