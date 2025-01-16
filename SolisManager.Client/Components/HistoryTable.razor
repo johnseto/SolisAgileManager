@@ -31,6 +31,7 @@ else
                 <th>Period</th>
                 <th>Price (p/kWh)</th>
                 <th>Battery SOC</th>
+                <th>Forecast (kWh)</th>
                 <th>Action Taken</th>
                 <th>Explanation</th>
             </tr>
@@ -43,6 +44,7 @@ else
                     <td>@entry.Start.ToString("HH:mm") - @entry.End.ToString("HH:mm")</td>
                     <td>@Math.Round(entry.Price, 2)</td>
                     <td>@Math.Round((decimal)entry.BatterySOC, 2)%</td>
+                    <td>@Math.Round(entry.ForecastKWH, 2)%</td>
                     <td>@entry.Action.Humanize()</td>
                     <td>@entry.Reason</td>
                 </tr>

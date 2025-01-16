@@ -20,11 +20,9 @@ public class InverterManager(
     private readonly List<HistoryEntry> executionHistory = new();
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
     private NewVersionResponse appVersion = new();
-    
     private IEnumerable<SolarForecast>? forecasts;
-
     private List<OctopusPriceSlot>? simulationData;
-
+    
     public async Task UpdateSolcastForecast()
     {
         var forecast = await solcastApi.GetSolcastForecast();
@@ -131,6 +129,8 @@ public class InverterManager(
         }
         else
         {
+            var lastSlot = InverterState.Prices?.MaxBy(x => x.valid_from);
+            
             logger.LogTrace("Refreshing data...");
 
             var octRatesTask = octopusAPI.GetOctopusRates();
@@ -142,6 +142,24 @@ public class InverterManager(
 
             // Now, process the octopus rates
             slots = (await octRatesTask).ToList();
+
+            if(slots.Any())
+            {
+                var newlatestSlot = slots.MaxBy(x => x.valid_from);
+
+                if (newlatestSlot != null && (lastSlot == null || lastSlot.valid_from > newlatestSlot.valid_from))
+                {
+                    var newslots = (lastSlot == null ? slots : 
+                            slots.Where(x => x.valid_from > lastSlot.valid_from)).ToList();
+
+                    var newSlotCount = newslots.Count;
+                    var cheapest = newslots.Min(x => x.value_inc_vat);
+                    var peak = newslots.Max(x => x.value_inc_vat);
+
+                    logger.LogInformation("{N} new Octopus rates available to {L} (cheapest: {C}p/kWh, peak: {P}p/kWh ",
+                        newSlotCount, newlatestSlot.valid_to, cheapest, peak);
+                }
+            }
 
             if (config.Simulate)
             {

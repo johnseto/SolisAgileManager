@@ -36,38 +36,43 @@ public class HistoryEntry
         return $"{Start:dd-MMM HH:mm]} - {Price}p/kWh, Battery: {BatterySOC:P}";
     }
 
+    private static void ReadCoreValues(HistoryEntry entry, string[] parts)
+    {
+        entry.Start = DateTime.ParseExact(parts[0], dateFormat, CultureInfo.InvariantCulture);
+        entry.End = DateTime.ParseExact(parts[1], dateFormat, CultureInfo.InvariantCulture);
+        entry.Price = decimal.Parse(parts[2], CultureInfo.InvariantCulture);
+        entry.Action = Enum.Parse<SlotAction>(parts[3], true);
+        entry.Type = Enum.Parse<PriceType>(parts[4], true);
+        entry.BatterySOC = int.Parse(parts[5].Replace("%", ""));
+    }
+    
     public static HistoryEntry? TryParse(string logLine)
     {
         var entry = new HistoryEntry();
 
-        try
-        {
-            var parts = logLine.Split(",", 9, StringSplitOptions.TrimEntries);
+        var parts = logLine.Split(",", 7, StringSplitOptions.TrimEntries);
 
-            entry.Start = DateTime.ParseExact(parts[0], dateFormat, CultureInfo.InvariantCulture);
-            entry.End = DateTime.ParseExact(parts[1], dateFormat, CultureInfo.InvariantCulture);
-            entry.Price = decimal.Parse(parts[2], CultureInfo.InvariantCulture);
-            entry.Action = Enum.Parse<SlotAction>(parts[3], true);
-            entry.Type = Enum.Parse<PriceType>(parts[4], true);
-            entry.BatterySOC = int.Parse(parts[5].Replace("%", ""));
+        ReadCoreValues(entry, parts);
+        
+        if (parts.Last().StartsWith("\""))
+        {
+            // Version 1 just had the reason
+            entry.Reason = parts[6].Trim('\"');
+            return entry;
+        }
+        
+        parts = logLine.Split(",", 9, StringSplitOptions.TrimEntries);
+
+        if (parts.Last().StartsWith("\""))
+        {
+            // Version 2 had the Actual/Forecast parts.
             entry.ActualKWH = decimal.Parse(parts[6], CultureInfo.InvariantCulture);
             entry.ForecastKWH = decimal.Parse(parts[7], CultureInfo.InvariantCulture);
-            entry.Reason = parts[9].Trim('\"');
-        }
-        catch
-        {
-            var parts = logLine.Split(",", 7, StringSplitOptions.TrimEntries);
-
-            entry.Start = DateTime.ParseExact(parts[0], dateFormat, CultureInfo.InvariantCulture);
-            entry.End = DateTime.ParseExact(parts[1], dateFormat, CultureInfo.InvariantCulture);
-            entry.Price = decimal.Parse(parts[2], CultureInfo.InvariantCulture);
-            entry.Action = Enum.Parse<SlotAction>(parts[3], true);
-            entry.Type = Enum.Parse<PriceType>(parts[4], true);
-            entry.BatterySOC = int.Parse(parts[5].Replace("%", ""));
-            entry.Reason = parts[6].Trim('\"');
+            entry.Reason = parts[8].Trim('\"');
+            return entry;
         }
 
-        return entry;
+        return null;
     }
     
     public string GetAsCSV()
