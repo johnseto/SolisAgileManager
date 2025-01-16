@@ -1,4 +1,5 @@
 using Coravel.Invocable;
+using SolisManager.APIWrappers;
 using SolisManager.Shared;
 
 namespace SolisManager.Services;
@@ -21,12 +22,12 @@ public class BatteryScheduler( IInverterRefreshService service, ILogger<BatteryS
     }
 }
 
-public class SolcastScheduler( IInverterRefreshService service, ILogger<SolcastScheduler> logger ) : IInvocable
+public class SolcastScheduler( SolcastAPI solcastService, ILogger<SolcastScheduler> logger ) : IInvocable
 {
     public async Task Invoke()
     {
         logger.LogDebug("Executing Solcast scheduler");
-        await service.RefreshSolcastData();
+        await solcastService.UpdateSolcastDataFromAPI();
     }
 }
 

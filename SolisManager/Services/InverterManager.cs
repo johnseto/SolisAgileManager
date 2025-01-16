@@ -20,46 +20,51 @@ public class InverterManager(
     private readonly List<HistoryEntry> executionHistory = new();
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
     private NewVersionResponse appVersion = new();
-    private IEnumerable<SolarForecast>? forecasts;
     private List<OctopusPriceSlot>? simulationData;
     
-    public async Task UpdateSolcastForecast()
-    {
-        var forecast = await solcastApi.GetSolcastForecast();
-        if (forecast.Any())
-        {
-            forecasts = forecast;
-            EnrichSlotsFromSolcast();
-        }
-    }
     
-    private void EnrichSlotsFromSolcast()
+    private async Task EnrichWithSolcastData(IEnumerable<OctopusPriceSlot>? slots)
     {
+        var forecasts = await solcastApi.GetSolcastForecast();
+        
         if (forecasts == null || !forecasts.Any())
             return;
-        var lookup = forecasts.ToDictionary(x => x.PeriodStart);
-        var slots = InverterState.Prices;
-        InverterState.SolcastTimeStamp = null;
-
-        var matchedData = false;
-        foreach (var slot in slots)
-        {
-            if (lookup.TryGetValue(slot.valid_from, out var solcastEstimate))
-            {
-                slot.pv_est_kwh = solcastEstimate.ForecastkWh;
-                InverterState.SolcastTimeStamp = DateTime.UtcNow;
-                matchedData = true;
-            }
-            else
-            {
-                // No data
-                slot.pv_est_kwh = null;
-            }
+        
+        InverterState.ForecastDayLabel = "today";
+        var forecast = forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
+            .Sum(x => x.ForecastkWh!);
+        if (forecast == null || forecast.Value == 0)
+        { 
+            InverterState.ForecastDayLabel = "tomorrow";
+            forecast = forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today.AddDays(1))
+                .Sum(x => x.ForecastkWh!);
         }
 
-        if (slots.Any() && lookup.Any() && !matchedData)
+        InverterState.ForecastPVkWh = forecast;
+        InverterState.SolcastTimeStamp = null;
+
+        if (slots != null && slots.Any())
         {
-            logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
+            var lookup = forecasts.ToDictionary(x => x.PeriodStart);
+
+            var matchedData = false;
+            foreach (var slot in slots)
+            {
+                if (lookup.TryGetValue(slot.valid_from, out var solcastEstimate))
+                {
+                    slot.pv_est_kwh = solcastEstimate.ForecastkWh;
+                    InverterState.SolcastTimeStamp = DateTime.UtcNow;
+                    matchedData = true;
+                }
+                else
+                {
+                    // No data
+                    slot.pv_est_kwh = null;
+                }
+            }
+            
+            if( ! matchedData )
+                logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
         }
     }
 
@@ -156,7 +161,7 @@ public class InverterManager(
                     var cheapest = newslots.Min(x => x.value_inc_vat);
                     var peak = newslots.Max(x => x.value_inc_vat);
 
-                    logger.LogInformation("{N} new Octopus rates available to {L} (cheapest: {C}p/kWh, peak: {P}p/kWh ",
+                    logger.LogInformation("{N} new Octopus rates available to {L:dd-MMM-yyyy HH:mm} (cheapest: {C}p/kWh, peak: {P}p/kWh)",
                         newSlotCount, newlatestSlot.valid_to, cheapest, peak);
                 }
             }
@@ -174,7 +179,7 @@ public class InverterManager(
             }
         }
 
-        EnrichSlotsFromSolcast();
+        await EnrichWithSolcastData(slots);
         
         var processedSlots = EvaluateSlotActions(slots.ToArray());
 
@@ -494,31 +499,13 @@ public class InverterManager(
             InverterState.TodayPVkWh = solisState.data.eToday;
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
-
-            InverterState.ForecastDayLabel = "today";
-            var forecast = forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
-                                                          .Sum(x => x.ForecastkWh!);
-            if (forecast == null || forecast.Value == 0)
-            { 
-                InverterState.ForecastDayLabel = "tomorrow";
-                forecast = forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today.AddDays(1))
-                    .Sum(x => x.ForecastkWh!);
-            }
-
-            InverterState.ForecastPVkWh = forecast;
-            logger.LogInformation("Refreshed battery state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW",
-                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW);
+            
+            logger.LogInformation("Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast ({DL}): {F}kWh",
+                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW, 
+                InverterState.ForecastDayLabel, InverterState.ForecastPVkWh);
         }
     }
-
-    public async Task RefreshSolcastData()
-    {
-        if (!config.SolcastValid())
-            return;
-
-        await UpdateSolcastForecast();
-    }
-
+    
     public async Task RefreshAgileRates()
     {
         await RefreshData();

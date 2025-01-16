@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using Flurl;
@@ -12,9 +13,13 @@ namespace SolisManager.APIWrappers;
 /// </summary>
 public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 {
-    public async Task<IEnumerable<SolarForecast>> GetSolcastForecast()
+    private IEnumerable<SolarForecast>? lastForecastData;
+    public async Task UpdateSolcastDataFromAPI()
     {
-        logger.LogInformation("Attempting to pull forecast data from Solcast API...");
+        if (!config.SolcastValid())
+            return;
+        
+        logger.LogInformation("Executing scheduled update from Solcast API...");
         
         var url = "https://api.solcast.com.au"
             .AppendPathSegment("rooftop_sites")
@@ -28,32 +33,86 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
         try
         {
-            var filename = Path.Combine(Program.ConfigFolder, $"Solcast-{DateTime.UtcNow:dd-MMM-yyyy}.json");
-            SolcastResponse? newForecast = null;
+            var responseData = await url.GetJsonAsync<SolcastResponse>();
 
-            if (System.Diagnostics.Debugger.IsAttached && File.Exists(filename))
+            if (responseData is { forecasts: not null })
             {
-                var json = await File.ReadAllTextAsync(filename);
-                newForecast = JsonSerializer.Deserialize<SolcastResponse>(json);
+                lastForecastData = responseData.forecasts.Select(x => new SolarForecast
+                {
+                    ForecastkWh = x.pv_estimate / 2, // 30 min slot, so divide kW by 2 to get kWh
+                    PeriodStart = x.period_end.AddMinutes(-30)
+                });
+
+                // And cache it locally
+                await WriteSolcastDataToFile();
+            }
+        }
+        catch (FlurlHttpException ex)
+        {
+            if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
+            {
+                logger.LogWarning("Solcast API failed - too many requests. Will try again later");
             }
             else
+                logger.LogError("HTTP Exception getting solcast data: {E}", ex);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("Exception getting solcast data: {E}", ex);
+        }
+    }
+
+    private async Task WriteSolcastDataToFile()
+    {
+        if (lastForecastData != null && lastForecastData.Any())
+        {
+            var file = LocalCacheFileName();
+            var json = JsonSerializer.Serialize(lastForecastData, new JsonSerializerOptions { WriteIndented = true });
+
+            logger.LogInformation("Retrieved {N} forecasts from Solcast API. Data will be cached to {F} to reduce API calls",
+                lastForecastData.Count(), file);
+            await File.WriteAllTextAsync(file, json);
+        }
+    }
+
+    private async Task<bool> LoadSolcastDataFromFile()
+    {
+        var file = LocalCacheFileName();
+
+        if (File.Exists(file))
+        {
+            var json = await File.ReadAllTextAsync(file);
+            var fileForecasts = JsonSerializer.Deserialize<IEnumerable<SolarForecast>>(json);
+            if (fileForecasts is not null)
             {
-                newForecast = await url.GetJsonAsync<SolcastResponse>();
+                logger.LogInformation("Loaded {N} forecasts from {F} to reduce API calls", fileForecasts.Count(), file);
+                lastForecastData = fileForecasts;
+                return true;
             }
+        }
 
-            if (newForecast != null && newForecast.forecasts != null && newForecast.forecasts.Any())
+        return false;
+    }
+
+    private string LocalCacheFileName()
+    {
+        var cacheFile = Debugger.IsAttached ? $"Solcast-{DateTime.UtcNow:dd-MMM-yyyy}.json" : "Solcast-latest.json";
+        return Path.Combine(Program.ConfigFolder, cacheFile );
+    }
+
+    public async Task<IEnumerable<SolarForecast>?> GetSolcastForecast()
+    {
+        try
+        {
+            if (lastForecastData is null)
             {
-                logger.LogInformation("Retrieved {N} new forecasts from Solcast", newForecast.forecasts.Count());
-
-                if (System.Diagnostics.Debugger.IsAttached)
+                if (!await LoadSolcastDataFromFile())
                 {
-                    // Minimise Solcast API calls when debugging by writing the result of the call
-                    // to JSON and then reading it for future calls on the same day.
-                    var json = JsonSerializer.Serialize(newForecast, new JsonSerializerOptions { WriteIndented = true });
-                    await File.WriteAllTextAsync(filename, json);
+                    await UpdateSolcastDataFromAPI();
                 }
-                return CreateForecasts(newForecast.forecasts);
             }
+
+            return lastForecastData;
         }
         catch (FlurlHttpException ex)
         {
@@ -72,14 +131,6 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         return [];
     }
 
-    private IEnumerable<SolarForecast> CreateForecasts(IEnumerable<SolcastForecast> forecasts)
-    {
-        return forecasts.Select(x => new SolarForecast
-        {
-            ForecastkWh = x.pv_estimate / 2, // 30 min slot, so divide kW by 2 to get kWh
-            PeriodStart = x.period_end.AddMinutes(-30)
-        });
-    }
     
     private record SolcastResponse
     {

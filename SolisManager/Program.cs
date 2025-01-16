@@ -68,6 +68,8 @@ public class Program
         builder.Services.AddRazorComponents()
             .AddInteractiveWebAssemblyComponents();
 
+        builder.Services.AddDataProtection();
+        
         builder.Services.AddSingleton<SolisManagerConfig>();
         builder.Services.AddSingleton<InverterManager>();
         builder.Services.AddSingleton<IInverterService>(x => x.GetRequiredService<InverterManager>());

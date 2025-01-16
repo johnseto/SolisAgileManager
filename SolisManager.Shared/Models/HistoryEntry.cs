@@ -54,7 +54,7 @@ public class HistoryEntry
 
         ReadCoreValues(entry, parts);
         
-        if (parts.Last().StartsWith("\""))
+        if (parts.Last().StartsWith('\"'))
         {
             // Version 1 just had the reason
             entry.Reason = parts[6].Trim('\"');
@@ -63,7 +63,7 @@ public class HistoryEntry
         
         parts = logLine.Split(",", 9, StringSplitOptions.TrimEntries);
 
-        if (parts.Last().StartsWith("\""))
+        if (parts.Last().StartsWith('\"'))
         {
             // Version 2 had the Actual/Forecast parts.
             entry.ActualKWH = decimal.Parse(parts[6], CultureInfo.InvariantCulture);
