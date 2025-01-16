@@ -100,6 +100,7 @@ public class Program
 
         var logger = app.Services.GetRequiredService<ILogger<Program>>();
         
+        logger.LogInformation("===========================================================");
         logger.LogInformation("Application started. Logs being written to {C}", ConfigFolder);
         
         // First, load the config

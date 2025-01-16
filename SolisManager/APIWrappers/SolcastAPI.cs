@@ -104,7 +104,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
     {
         try
         {
-            if (lastForecastData is null)
+            if (lastForecastData is null || !lastForecastData.Any())
             {
                 if (!await LoadSolcastDataFromFile())
                 {

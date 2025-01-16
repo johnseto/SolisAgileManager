@@ -500,9 +500,9 @@ public class InverterManager(
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
             
-            logger.LogInformation("Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast ({DL}): {F}kWh",
+            logger.LogInformation("Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast ({DL}): {F}",
                 InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW, 
-                InverterState.ForecastDayLabel, InverterState.ForecastPVkWh);
+                InverterState.ForecastDayLabel, InverterState.ForecastPVkWh != null ? $"{InverterState.ForecastPVkWh}kWh" : "n/a" );
         }
     }
     
