@@ -25,27 +25,27 @@ public class InverterManager(
     
     private async Task EnrichWithSolcastData(IEnumerable<OctopusPriceSlot>? slots)
     {
-        var forecasts = await solcastApi.GetSolcastForecast();
+        var solcast = await solcastApi.GetSolcastForecast();
         
-        if (forecasts == null || !forecasts.Any())
+        if (solcast.forecasts == null || !solcast.forecasts.Any())
             return;
         
         InverterState.ForecastDayLabel = "today";
-        var forecast = forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
+        var forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
             .Sum(x => x.ForecastkWh!);
         if (forecast == null || forecast.Value == 0)
         { 
             InverterState.ForecastDayLabel = "tomorrow";
-            forecast = forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today.AddDays(1))
+            forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today.AddDays(1))
                 .Sum(x => x.ForecastkWh!);
         }
 
         InverterState.ForecastPVkWh = forecast;
-        InverterState.SolcastTimeStamp = null;
+        InverterState.SolcastTimeStamp = solcast.lastApiUpdate;
 
         if (slots != null && slots.Any())
         {
-            var lookup = forecasts.ToDictionary(x => x.PeriodStart);
+            var lookup = solcast.forecasts.ToDictionary(x => x.PeriodStart);
 
             var matchedData = false;
             foreach (var slot in slots)
@@ -53,7 +53,6 @@ public class InverterManager(
                 if (lookup.TryGetValue(slot.valid_from, out var solcastEstimate))
                 {
                     slot.pv_est_kwh = solcastEstimate.ForecastkWh;
-                    InverterState.SolcastTimeStamp = DateTime.UtcNow;
                     matchedData = true;
                 }
                 else

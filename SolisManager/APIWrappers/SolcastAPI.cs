@@ -14,6 +14,8 @@ namespace SolisManager.APIWrappers;
 public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 {
     private IEnumerable<SolarForecast>? lastForecastData;
+    private DateTime? lastAPIUpdate = null;
+    
     public async Task UpdateSolcastDataFromAPI()
     {
         if (!config.SolcastValid())
@@ -37,6 +39,8 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
             if (responseData is { forecasts: not null })
             {
+                lastAPIUpdate = DateTime.UtcNow;
+                
                 lastForecastData = responseData.forecasts.Select(x => new SolarForecast
                 {
                     ForecastkWh = x.pv_estimate / 2, // 30 min slot, so divide kW by 2 to get kWh
@@ -100,7 +104,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         return Path.Combine(Program.ConfigFolder, cacheFile );
     }
 
-    public async Task<IEnumerable<SolarForecast>?> GetSolcastForecast()
+    public async Task<(IEnumerable<SolarForecast>? forecasts, DateTime? lastApiUpdate)> GetSolcastForecast()
     {
         try
         {
@@ -112,7 +116,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
                 }
             }
 
-            return lastForecastData;
+            return (lastForecastData, lastAPIUpdate);
         }
         catch (FlurlHttpException ex)
         {
@@ -128,7 +132,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
             logger.LogError("Exception getting solcast data: {E}", ex);
         }
 
-        return [];
+        return (null, null);
     }
 
     
