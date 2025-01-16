@@ -10,7 +10,7 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
     public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates()
     {
         var from = DateTime.UtcNow;
-        var to = DateTime.UtcNow.AddHours(24);
+        var to = DateTime.UtcNow.AddHours(36);
 
         // https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-A/standard-unit-rates/
         

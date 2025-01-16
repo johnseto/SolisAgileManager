@@ -234,6 +234,10 @@ public class InverterManager(
 
         try
         {
+            // First, reset all the slot states
+            foreach (var slot in slots)
+                slot.Action = SlotAction.DoNothing;
+            
             OctopusPriceSlot[]? cheapestSlots = null;
             OctopusPriceSlot[]? priciestSlots = null;
 
