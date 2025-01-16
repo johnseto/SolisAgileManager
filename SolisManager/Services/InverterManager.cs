@@ -151,7 +151,7 @@ public class InverterManager(
             {
                 var newlatestSlot = slots.MaxBy(x => x.valid_from);
 
-                if (newlatestSlot != null && (lastSlot == null || lastSlot.valid_from > newlatestSlot.valid_from))
+                if (newlatestSlot != null && (lastSlot == null || newlatestSlot.valid_from > lastSlot.valid_from))
                 {
                     var newslots = (lastSlot == null ? slots : 
                             slots.Where(x => x.valid_from > lastSlot.valid_from)).ToList();
