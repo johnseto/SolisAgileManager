@@ -20,6 +20,7 @@ docker tag solisagilemanager webreaper/solisagilemanager:$DOCKERTAG
 docker push webreaper/solisagilemanager:$DOCKERTAG
 
 if [ -z "$1" ]; then
+    echo "*** Pushing docker image to webreaper/solisagilemanager:dev"
     docker push webreaper/solisagilemanager:dev
 else
     echo "*** Pushing docker image to webreaper/solisagilemanager:latest"
