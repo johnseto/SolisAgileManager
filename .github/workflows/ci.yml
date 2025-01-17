@@ -71,40 +71,6 @@ jobs:
         include: 
           - target: linux
             os: ubuntu-latest
-    steps:        
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          
-      - name: Build Docker for Dev (develop only)
-        if: github.ref == 'refs/heads/develop'
-        run: sh makedocker.sh
-
-      - name: Build Docker for Release (master only)
-        if: github.ref == 'refs/heads/main'
-        run: sh makedocker.sh  "1.0.${{ github.run_number }}"
-
-        # set up docker buildx for cross-platform builds
-
-  build-docker-multiplat:
-    runs-on: ${{ matrix.os }}
-    strategy: 
-      matrix: 
-        target: [linux]
-        include: 
-          - target: linux
-            os: ubuntu-latest
             platform: linux/amd64
 
     steps:        
@@ -122,11 +88,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
   
-      - name: Build and push
+      - name: Build/push develop
+        if: github.ref == 'refs/heads/develop'
         uses: docker/build-push-action@v5
         with:
+          push: true
           build-args: VERSION=1.0.${{ github.run_number }}
           platforms: linux/arm64, linux/amd64, darwin
-          tags: webreaper/solisagilemanager:alpha
+          tags: webreaper/solisagilemanager:dev
+          
+      - name: Build/push release
+        if: github.ref == 'refs/heads/develop'
+        uses: docker/build-push-action@v5
+        with:
           push: true
-          # labels: latest
+          build-args: VERSION=1.0.${{ github.run_number }}
+          platforms: linux/arm64, linux/amd64, darwin
+          tags: webreaper/solisagilemanager:1.0.${{ github.run_number }}
+          labels: latest
