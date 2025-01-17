@@ -128,6 +128,6 @@ jobs:
           context: .
           push: true
           provenance: false # avoids ECR failing on scans for attestation layers
-          platforms: linux/arm64, linux/amd64
+          platforms: linux/arm64, linux/amd64, darwin
           tags: webreaper/solisagilemanager:alpha
           # labels: latest
