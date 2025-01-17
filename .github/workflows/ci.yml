@@ -110,6 +110,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Login to DockerHub
+        run: ls -r *
+
       - name: Set up Docker buildx
         uses: docker/setup-buildx-action@v3
         with:
