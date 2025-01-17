@@ -110,7 +110,7 @@ jobs:
             os: ubuntu-latest
             platform: linux/arm64
           - target: mac
-            os: ubuntu-latest
+            os: macos-latest
             platform: darwin
 
     steps:        
