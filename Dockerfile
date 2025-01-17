@@ -7,7 +7,7 @@ WORKDIR /src
 COPY . .
 WORKDIR "/src"
 ARG TARGETARCH
-RUN dotnet publish SolisManager/SolisManager.csproj -a $TARGETARCH -c Release --self-contained true -p:PublishTrimmed=false --property:PublishDir=/app/publish
+RUN dotnet publish SolisManager/SolisManager.csproj -a $TARGETARCH -c Release --self-contained true -p:PublishTrimmed=false --property:PublishDir=/app/publish /p:Version=$VERSION
 
 FROM base AS final
 WORKDIR /app

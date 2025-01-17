@@ -125,6 +125,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
+          build-args: VERSION=1.0.${{ github.run_number }}
           context: .
           push: true
           provenance: false # avoids ECR failing on scans for attestation layers
