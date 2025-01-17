@@ -129,8 +129,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: false
+          push: true
           provenance: false # avoids ECR failing on scans for attestation layers
           platforms: ${{ matrix.platform }}
-          tags: alpha
+          tags: webreaper/solisagilemanager:alpha
           # labels: latest
