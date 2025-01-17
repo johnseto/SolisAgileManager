@@ -110,7 +110,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: List files
+      - name: List
         run: ls -R .
 
       - name: Set up Docker buildx
@@ -127,6 +127,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
+          context: .
           file: /Dockerfile
           push: true
           provenance: false # avoids ECR failing on scans for attestation layers
