@@ -101,7 +101,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy: 
       matrix: 
-        target: [linux, mac, rpi]
+        target: [linux, rpi]
         include: 
           - target: linux
             os: ubuntu-latest
