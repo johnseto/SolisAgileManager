@@ -19,8 +19,9 @@ echo "*** Pushing docker image to webreaper/solisagilemanager:${DOCKERTAG}"
 docker tag solisagilemanager webreaper/solisagilemanager:$DOCKERTAG
 docker push webreaper/solisagilemanager:$DOCKERTAG
 
-if [ -n "$1" ]
-then
+if [ -z "$1" ]; then
+    docker push webreaper/solisagilemanager:dev
+else
     echo "*** Pushing docker image to webreaper/solisagilemanager:latest"
     docker tag solisagilemanager webreaper/solisagilemanager:latest
     docker push webreaper/solisagilemanager:latest

@@ -89,7 +89,7 @@ jobs:
           
       - name: Build Docker for Dev (develop only)
         if: github.ref == 'refs/heads/develop'
-        run: sh makedocker.sh dev
+        run: sh makedocker.sh
 
       - name: Build Docker for Release (master only)
         if: github.ref == 'refs/heads/main'
