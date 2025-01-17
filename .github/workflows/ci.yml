@@ -109,9 +109,6 @@ jobs:
           - target: rpi
             os: ubuntu-latest
             platform: linux/arm64
-          - target: mac
-            os: macos-latest
-            platform: darwin
 
     steps:        
       - name: Checkout repository
