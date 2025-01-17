@@ -101,14 +101,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy: 
       matrix: 
-        target: [linux, rpi]
+        target: [linux]
         include: 
           - target: linux
             os: ubuntu-latest
             platform: linux/amd64
-          - target: rpi
-            os: ubuntu-latest
-            platform: linux/arm64
 
     steps:        
       - name: Checkout repository
@@ -131,6 +128,6 @@ jobs:
           context: .
           push: true
           provenance: false # avoids ECR failing on scans for attestation layers
-          platforms: ${{ matrix.platform }}
+          platforms: linux/arm64, linux/amd64
           tags: webreaper/solisagilemanager:alpha
           # labels: latest
