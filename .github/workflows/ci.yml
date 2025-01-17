@@ -110,7 +110,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Login to DockerHub
+      - name: List files
         run: ls -R .
 
       - name: Set up Docker buildx
@@ -127,8 +127,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./SolisAgileManager
-          file: ./Dockerfile
+          file: /Dockerfile
           push: true
           provenance: false # avoids ECR failing on scans for attestation layers
           platforms: ${{ matrix.platform }}
