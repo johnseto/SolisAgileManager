@@ -84,7 +84,13 @@ Here's a sample `docker-compose` entry:
             - /volume1/dockerdata/solismanager:/appdata
 ```
 
-Currently the only pre-built docker image is for `linux-x64` but I hope to add `linux-arm64` soon too.
+#### Supported Docker Platforms
+
+Multiplatform Docker Images are available for:
+
+* linux/amd64 - for x64 Intel processors
+* linux/arm64 - for ARM64 processors, such as Raspberry Pi
+* darwin - for MacOS (if you try this and it works pleae let me know!)
 
 ## Settings
 
