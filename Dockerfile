@@ -1,7 +1,8 @@
 ﻿FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
 
-FROM --platform=$BUILDPLATFORM cr.microsoft.com/dotnet/sdk:9.0 AS publish
+
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:9.0 AS publish
 WORKDIR /src
 COPY . .
 WORKDIR "/src"
