@@ -98,7 +98,7 @@ jobs:
           tags: webreaper/solisagilemanager:dev
           
       - name: Build/push release
-        if: github.ref == 'refs/heads/develop'
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
           push: true
