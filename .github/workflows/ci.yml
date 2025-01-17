@@ -130,6 +130,6 @@ jobs:
           context: .
           push: true
           provenance: false # avoids ECR failing on scans for attestation layers
-          platforms: ${{ matrix.platform }}
+          platforms: linux/arm64
           tags: alpha
           # labels: latest
