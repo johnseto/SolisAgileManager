@@ -14,6 +14,8 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish/Microsoft.*.dll .
 COPY --from=publish /app/publish/System.*.dll .
+RUN --from=publish rm /app/publish/Microsoft*.dll
+RUN --from=publish rm /app/publish/System*.dll
 COPY --from=publish /app/publish .
 
 ENTRYPOINT ["/app/SolisManager", "/appdata"]
