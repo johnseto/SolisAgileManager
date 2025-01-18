@@ -14,6 +14,6 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish/Microsoft.*.dll .
 COPY --from=publish /app/publish/System.*.dll .
-COPY --from=publish --exclude=Microsoft*.dll --exclude=System.*.dll /app/publish .
+COPY --from=publish /app/publish .
 
 ENTRYPOINT ["/app/SolisManager", "/appdata"]
