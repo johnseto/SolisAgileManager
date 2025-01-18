@@ -7,18 +7,18 @@ public record SolisManagerConfig
 {
     private static string settingsFileName = "SolisManagerConfig.json";
     
-    public string SolisAPIKey { get; set; }
-    public string SolisAPISecret { get; set; }
-    public string SolisInverterSerial { get; set; }
-    public string OctopusProduct { get; set; }
-    public string OctopusProductCode { get; set; }
+    public string SolisAPIKey { get; set; } = string.Empty;
+    public string SolisAPISecret { get; set; } = string.Empty
+    public string SolisInverterSerial { get; set; } = string.Empty
+    public string OctopusProduct { get; set; } = string.Empty;
+    public string OctopusProductCode { get; set; } = String.Empty;
     public int SlotsForFullBatteryCharge { get; set; }
     public int AlwaysChargeBelowPrice { get; set; } = 10;
     public int LowBatteryPercentage { get; set; } = 25;
     public int MaxChargeRateAmps { get; set; } = 50;
-    
-    public string SolcastAPIKey { get; set; }
-    public string SolcastSiteIdentifier { get; set; }
+
+    public string SolcastAPIKey { get; set; } = string.Empty;  
+    public string SolcastSiteIdentifier { get; set; } = string.Empty;
     public decimal PeakPeriodBatteryUse { get; set; } = 0.5M;
     public bool Simulate { get; set; } = true;
 
