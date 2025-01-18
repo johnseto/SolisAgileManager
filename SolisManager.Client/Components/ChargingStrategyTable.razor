@@ -112,15 +112,14 @@ else
         </tbody>
     </table>
 }
-<p class="update-text">Last update: @inverterService.InverterState.TimeStamp, last battery update: @inverterService.InverterState.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
 
+<LastUpdateState InverterState="@inverterService.InverterState"/>
 
 @code {
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private CancellationTokenSource tokenSource = new();
 
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
-    private string SolcastUpdate => inverterService.InverterState?.SolcastTimeStamp?.ToString() ?? "never";
     private bool hasSolcastData = false;
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
@@ -138,7 +137,7 @@ else
             return @<tr>
                        <td colspan="6" class="date-row">
                            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
-                           @slot.valid_from.ToString("dd-MMM-yyyy")
+                           @slot.valid_from.DisplayDate()
                        </td>
                    </tr>;
         }

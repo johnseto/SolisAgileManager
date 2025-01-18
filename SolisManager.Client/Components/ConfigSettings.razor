@@ -31,10 +31,21 @@
                 Charge Slots needed to achieve Full Battery (@(config.SlotsForFullBatteryCharge/2.0) hours)
             </MudSlider>
             <div class="config-field-row">
-                <MudNumericField T="int" Label="Always charge below (p/kWh)" @bind-Value="@config.AlwaysChargeBelowPrice" Min="-10" Max="100" Variant="UIConstants.MudVariant"/>
-                <MudNumericField T="int" Label="Low Battery Threshold (%)" @bind-Value="@config.LowBatteryPercentage" Min="1" Max="95" Variant="UIConstants.MudVariant"/>
-                <MudNumericField T="int" Label="Max Charge Rate (Amps)" @bind-Value="@config.MaxChargeRateAmps" Min="5" Max="95" Variant="UIConstants.MudVariant"/>
-                <MudNumericField T="int" Label="Battery % for Peak Period" @bind-Value="@PercentageProxy" Min="20" Max="100" Variant="UIConstants.MudVariant"/>
+                <ConfigSettingHelp HelpText="Specifies the maximum charge and discharge rate in Amps">
+                    <MudNumericField T="int" Label="Max Charge Rate (Amps)" @bind-Value="@config.MaxChargeRateAmps" Min="5" Max="95" Variant="UIConstants.MudVariant"/>
+                </ConfigSettingHelp>
+                <ConfigSettingHelp HelpText="Target SOC percentage to be achieved prior to the highest-priced peak period in the day.">
+                    <MudNumericField T="int" Label="Battery % for Peak Period" @bind-Value="@PeakPercentageProxy" Min="20" Max="100" Variant="UIConstants.MudVariant"/>
+                </ConfigSettingHelp>
+                <ConfigSettingHelp HelpText="Ensures that if the battery falls below a certain threshold, it will be charged regardless of price">
+                    <MudNumericField T="int" Label="Always charge below (p/kWh)" @bind-Value="@config.AlwaysChargeBelowPrice" Min="-10" Max="100" Variant="UIConstants.MudVariant"/>
+                </ConfigSettingHelp>
+                <ConfigSettingHelp HelpText="If slots are available with below-average prices, they will be used to boost-charge the battery if the SOC is below this value">
+                    <MudNumericField T="int" Label="Battery Boost Threshold (%)" @bind-Value="@config.LowBatteryPercentage" Min="1" Max="95" Variant="UIConstants.MudVariant"/>
+                </ConfigSettingHelp>
+                <ConfigSettingHelp HelpText="Scale factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%)">
+                    <MudNumericField T="int" Label="Solcast Damping/Reduction %" @bind-Value="@DampingPercentageProxy" Min="0" Max="100" Variant="UIConstants.MudVariant"/>
+                </ConfigSettingHelp>
                 <MudCheckBox Label="Simulate (no inverter changes)" LabelPosition="LabelPosition.End" @bind-Value="@config.Simulate"/>
             </div>
         </div>
@@ -54,12 +65,18 @@
     
     private SolisManagerConfig? config;
 
-    private int PercentageProxy
+    private int PeakPercentageProxy
     {
         get { return (int)(config.PeakPeriodBatteryUse * 100); }
         set { config.PeakPeriodBatteryUse = value / 100.0M;  }
     }
-    
+
+    private int DampingPercentageProxy
+    {
+        get { return (int)(config.SolcastDampingFactor * 100); }
+        set { config.SolcastDampingFactor = value / 100.0M;  }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         config = await inverterService.GetConfig();
@@ -78,16 +95,16 @@
     private async Task TestCharge()
     {
         MarkupString msg = new MarkupString("To validate the inverter configuration, a five-minute test charge will be run on your battery." +
-                           "<br/><br/>This will override existing charging slot settings in the SolisCloud Inverter Control, so if you don't enable " +
-                           "Solis Agile Manager immediately, you'll need to reconfigure them via the SolisCloud app.");
+                                            "<br/><br/>This will override existing charging slot settings in the SolisCloud Inverter Control, so if you don't enable " +
+                                            "Solis Agile Manager immediately, you'll need to reconfigure them via the SolisCloud app.");
         var result = await dialogService.ShowMessageBox("Run A Test Charge?",
-                                msg, yesText: "Charge My Battery", cancelText: "Cancel");
+            msg, yesText: "Charge My Battery", cancelText: "Cancel");
 
         if (result != null && result.Value)
         {
             await SaveConfig();
             await inverterService.TestCharge();
-            
+
             snackbar.Add("Config Settings Updated and Test Charge Initiated", Severity.Warning);
             navManager.NavigateTo("/");
         }

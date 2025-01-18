@@ -32,12 +32,12 @@ public class InverterManager(
         
         InverterState.ForecastDayLabel = "today";
         var forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
-            .Sum(x => x.ForecastkWh!);
+            .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
         if (forecast == null || forecast.Value == 0)
         { 
             InverterState.ForecastDayLabel = "tomorrow";
             forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today.AddDays(1))
-                .Sum(x => x.ForecastkWh!);
+                .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
         }
 
         InverterState.ForecastPVkWh = forecast;
