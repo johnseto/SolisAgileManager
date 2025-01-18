@@ -8,8 +8,8 @@ public record SolisManagerConfig
     private static string settingsFileName = "SolisManagerConfig.json";
     
     public string SolisAPIKey { get; set; } = string.Empty;
-    public string SolisAPISecret { get; set; } = string.Empty
-    public string SolisInverterSerial { get; set; } = string.Empty
+    public string SolisAPISecret { get; set; } = string.Empty;
+    public string SolisInverterSerial { get; set; } = string.Empty;
     public string OctopusProduct { get; set; } = string.Empty;
     public string OctopusProductCode { get; set; } = String.Empty;
     public int SlotsForFullBatteryCharge { get; set; }
