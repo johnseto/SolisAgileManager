@@ -17,7 +17,7 @@ public class InverterManager(
     public SolisManagerState InverterState { get; } = new();
 
     private readonly Dictionary<DateTime, OctopusPriceSlot> manualOverrides = new();
-    private readonly List<HistoryEntry> executionHistory = new();
+    private readonly List<HistoryEntry> executionHistory = [];
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
     private NewVersionResponse appVersion = new();
     private List<OctopusPriceSlot>? simulationData;
@@ -43,7 +43,7 @@ public class InverterManager(
         InverterState.ForecastPVkWh = forecast;
         InverterState.SolcastTimeStamp = solcast.lastApiUpdate;
 
-        if (slots != null && slots.Any())
+        if (slots != null && slots.Any() && solcast.forecasts != null)
         {
             var lookup = solcast.forecasts.ToDictionary(x => x.PeriodStart);
 
