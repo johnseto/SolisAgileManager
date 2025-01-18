@@ -220,6 +220,43 @@ what will happen (and the logs will show the commands that would have been sent 
 
 Once you run out of slots at the end of the simulation, click reset to start again.
 
+### Solcast Data
+
+The application can use a Hobbyist Rooftop account from [Solcast](https://solcast.com/free-rooftop-solar-forecasting) 
+to estimate the likely PV yield from your system over the next day or so. 
+
+Solcast API calls are rate-limited to 10 API calls per day - after which the call will fail and no data is
+returned. To avoid blowing through this limit the strategy is:
+
+1. Attempt to retrieve Solcast data from the API at 2am, 6am, and midday (because the forecast can change 
+   through the day)
+2. If the API call succeeds, the results are written to a file `Solcast-latest.json` in the config folder.
+3. If you restart the app it reads from that file if it exists.
+
+This avoids the API throttling in most cases. Also, Solcast recommend not doing it on the hour (because 
+otherwise everyone hits their API on the hour....) so the app actually makes the request at the somewhat
+arbitrary times of 02:13, 06:13 and 12:13.
+
+#### Solcast Damping Factor
+
+Solcast can often over-estimate the forecast for the PV yield, because it may under-estimate the cloud 
+impact, or may not take into account panel shading, and string efficiency. Therefore, the config settings 
+have a field for Solcast Damping Factor. So for example, if your Solcast forecast is generally 2x your
+_actual_ PV yield, then set the damping factor to 50%. 
+
+In future, the application will look at historic PV yields from the inverter, and compare this to the 
+Solcast forecast, and then auto-adjust to match reality.
+
+#### Using the Solcast Data
+
+Currently this data is only used for display purposes. I haven't worked out how I'll use the data yet (there 
+isn't enough PV to make a difference at the moment). Probably:
+
+* Move the Pre peak morning charge earlier to prioritise export on days when the PV is going to be good
+* Reduce overnight charging if the PV forecast for the next day is going to be good.
+
+If you have other ideas or suggestions, let me know!
+
 ### Technical Considerations
 
 A couple of people have raised concerns about the number of writes a half-hourly process will make to the
