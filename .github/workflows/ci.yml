@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy: 
       matrix: 
-        target: [mac, linux, windows, raspi]
+        target: [mac, linux, windows, raspi, linux-arm64]
         include: 
           - target: windows
             os: ubuntu-latest
@@ -24,9 +24,12 @@ jobs:
           - target: mac
             os: macos-latest
             runtime: osx-x64
+          - target: linux-arm64
+            os: ubunti-latest
+            runtime: linux-arm64
           - target: raspi
             os: ubuntu-latest
-            runtime: linux-arm64
+            runtime: linux/arm/v7
      
     steps:
     - name: Clone Repository (release)
