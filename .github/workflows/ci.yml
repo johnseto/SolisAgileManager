@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy: 
       matrix: 
-        target: [mac, linux, windows, raspi, linux-arm64]
+        target: [mac, linux, windows, raspi]
         include: 
           - target: windows
             os: ubuntu-latest
@@ -24,12 +24,9 @@ jobs:
           - target: mac
             os: macos-latest
             runtime: osx-x64
-          - target: linux-arm64
-            os: ubunti-latest
-            runtime: linux-arm64
           - target: raspi
             os: ubuntu-latest
-            runtime: linux/arm/v7
+            runtime: linux-arm64
      
     steps:
     - name: Clone Repository (release)
@@ -106,5 +103,5 @@ jobs:
         with:
           push: true
           build-args: VERSION=1.0.${{ github.run_number }}
-          platforms: linux/arm64, linux/amd64, darwin
+          platforms: linux/arm64, linux/amd64, darwin, linux/arm/v7
           tags: webreaper/solisagilemanager:1.0.${{ github.run_number }}, webreaper/solisagilemanager:latest
