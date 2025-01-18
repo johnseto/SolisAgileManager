@@ -8,11 +8,12 @@ COPY . .
 WORKDIR "/src"
 ARG TARGETARCH
 ARG VERSION
-RUN dotnet restore SolisManager/SolisManager.csproj -a $TARGETARCH
 RUN dotnet publish SolisManager/SolisManager.csproj -a $TARGETARCH -c Release --self-contained true -p:PublishTrimmed=false --property:PublishDir=/app/publish /p:Version=$VERSION
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=publish /app/publish/Microsoft.*.dll .
+COPY --from=publish /app/publish/System.*.dll .
+COPY --from=publish --exclude=Microsoft*.dll --exclude=System.*.dll /app/publish .
 
 ENTRYPOINT ["/app/SolisManager", "/appdata"]
