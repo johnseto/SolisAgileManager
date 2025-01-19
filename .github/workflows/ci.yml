@@ -90,7 +90,7 @@ jobs:
   
       - name: Build/push develop
         if: github.ref == 'refs/heads/develop'
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           push: true
           build-args: VERSION=1.0.${{ github.run_number }}
