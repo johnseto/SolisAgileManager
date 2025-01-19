@@ -89,7 +89,8 @@ Here's a sample `docker-compose` entry:
 Multiplatform Docker Images are available for:
 
 * linux/amd64 - for x64 Intel processors
-* linux/arm64 - for ARM64 processors, such as Raspberry Pi
+* linux/arm64 - for ARM64 processors
+* linux/amd/v7 - AMD/v7 processors Raspberry Pi
 * darwin - for MacOS (if you try this and it works pleae let me know!)
 
 ## Settings
