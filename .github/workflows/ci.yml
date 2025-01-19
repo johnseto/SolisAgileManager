@@ -72,7 +72,7 @@ jobs:
           - target: linux
             os: ubuntu-latest
             platform: linux/amd64
-            docker-platforms: linux/arm64, linux/amd64, darwin, linux/arm/v7
+            docker-platforms: linux/arm64, linux/amd64, darwin, linux/arm/v7, linux/arm32/v7
 
     steps:        
       - name: Checkout repository
@@ -94,7 +94,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          build-args: VERSION=1.0.${{ github.run_number }}-devx
+          build-args: VERSION=1.0.${{ github.run_number }}-dev
           platforms: ${{matrix.docker-platforms}}
           tags: webreaper/solisagilemanager:dev
           
