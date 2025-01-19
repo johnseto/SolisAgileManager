@@ -72,7 +72,7 @@ jobs:
           - target: linux
             os: ubuntu-latest
             platform: linux/amd64
-            docker-platforms: linux/arm64, linux/amd64, darwin, linux/arm/v7, linux/arm32/v7
+            docker-platforms: linux/arm64, linux/amd64, darwin, linux/arm/v7, linux/arm/v6, linux/arm/v5
 
     steps:        
       - name: Checkout repository
