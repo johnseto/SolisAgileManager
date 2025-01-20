@@ -126,6 +126,9 @@ public class InverterManager(
 
         IEnumerable<OctopusPriceSlot> slots;
 
+        // Save the overrides
+        var overrides = GetExistingSlotOverrides();
+        
         if (config.Simulate && simulationData != null)
         {
             slots = simulationData;
@@ -177,6 +180,9 @@ public class InverterManager(
             }
         }
 
+        // Now reapply
+        ApplyPreviousOverrides(overrides);
+        
         await EnrichWithSolcastData(slots);
         
         var processedSlots = EvaluateSlotActions(slots.ToArray());
@@ -187,6 +193,29 @@ public class InverterManager(
         await ExecuteSlotChanges(processedSlots);
     }
 
+    private IEnumerable<ChangeSlotActionRequest> GetExistingSlotOverrides()
+    {
+        return InverterState.Prices
+            .Where(x => x.ManualOverrideAction != null)
+            .Select(x => new ChangeSlotActionRequest
+            {
+                SlotStart = x.valid_from,
+                NewAction = x.ManualOverrideAction!.Value
+            });
+    }
+
+    private void ApplyPreviousOverrides(IEnumerable<ChangeSlotActionRequest> overrides)
+    {
+        var lookup = overrides.ToDictionary(x => x.SlotStart);
+        foreach (var slot in InverterState.Prices)
+        {
+            if (lookup.TryGetValue(slot.valid_from, out var overRide))
+                slot.ManualOverrideAction = overRide.NewAction;
+            else
+                slot.ManualOverrideAction = null;
+        }
+    }
+    
     private async Task ExecuteSlotChanges(IEnumerable<OctopusPriceSlot> slots)
     {
         var firstSlot = slots.FirstOrDefault();

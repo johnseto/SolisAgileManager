@@ -157,7 +157,7 @@ else
     {
         await inverterService.OverrideSlotAction(req);
         await RefreshData();
-        snackBar.Add($"Action chanbged to {req.NewAction.Humanize()} for {req.SlotStart:HH:mm}", Severity.Info);
+        snackBar.Add($"Action changed to {req.NewAction.Humanize()} for {req.SlotStart:HH:mm}", Severity.Info);
     }
 
     private async Task RefreshData()
