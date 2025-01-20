@@ -239,6 +239,24 @@ Once you run out of slots at the end of the simulation, click reset to start aga
 The application can use a Hobbyist Rooftop account from [Solcast](https://solcast.com/free-rooftop-solar-forecasting) 
 to estimate the likely PV yield from your system over the next day or so. 
 
+To configure this add settings for:
+
+* Your Solcast API key
+* Your Solcast Rooftop Site ID (this is a four-part hex ID)
+* A damping factor (see below)
+
+#### Solcast Damping Factor
+
+Solcast can often over-estimate the forecast for the PV yield, because it may under-estimate the cloud 
+impact, or may not take into account panel shading, and string efficiency. Therefore, the config settings 
+have a field for Solcast Damping Factor. So for example, if your Solcast forecast is generally 2x your
+_actual_ PV yield, then set the damping factor to 50%. 
+
+In future, the application will look at historic PV yields from the inverter, and compare this to the 
+Solcast forecast, and then auto-adjust to match reality.
+
+#### Avoiding Solcast Rate-limiting
+
 Solcast API calls are rate-limited to 10 API calls per day - after which the call will fail and no data is
 returned. To avoid blowing through this limit the strategy is:
 
@@ -250,16 +268,6 @@ returned. To avoid blowing through this limit the strategy is:
 This avoids the API throttling in most cases. Also, Solcast recommend not doing it on the hour (because 
 otherwise everyone hits their API on the hour....) so the app actually makes the request at the somewhat
 arbitrary times of 02:13, 06:13 and 12:13.
-
-#### Solcast Damping Factor
-
-Solcast can often over-estimate the forecast for the PV yield, because it may under-estimate the cloud 
-impact, or may not take into account panel shading, and string efficiency. Therefore, the config settings 
-have a field for Solcast Damping Factor. So for example, if your Solcast forecast is generally 2x your
-_actual_ PV yield, then set the damping factor to 50%. 
-
-In future, the application will look at historic PV yields from the inverter, and compare this to the 
-Solcast forecast, and then auto-adjust to match reality.
 
 #### Using the Solcast Data
 
