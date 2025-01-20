@@ -1,7 +1,9 @@
 @using System.Globalization
+@using Humanizer
 @using SolisManager.Client.Layout
 @inject IInverterService inverterService
 @inject IDialogService dialogService
+@inject ISnackbar snackBar
 
 @implements IDisposable
 
@@ -146,13 +148,16 @@ else
     private async Task ClearOverride(OctopusPriceSlot slot)
     {
         var req = new ChangeSlotActionRequest { SlotStart = slot.valid_from, NewAction = slot.PlanAction };
-        await ChangeSlotAction(req);
+        await inverterService.OverrideSlotAction(req);
+        await RefreshData();
+        snackBar.Add($"Override cleared for {slot.valid_from:HH:mm}", Severity.Info);
     }
     
     private async Task ChangeSlotAction(ChangeSlotActionRequest req)
     {
         await inverterService.OverrideSlotAction(req);
         await RefreshData();
+        snackBar.Add($"Action chanbged to {req.NewAction.Humanize()} for {req.SlotStart:HH:mm}", Severity.Info);
     }
 
     private async Task RefreshData()
