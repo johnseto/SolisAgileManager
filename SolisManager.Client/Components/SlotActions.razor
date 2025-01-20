@@ -1,7 +1,6 @@
 @if (Slot != null)
 {
     <div class="action-icon" title="@Slot.ActionReason">
-        
         @foreach( var action in AvailableActions )
         {
             <div class="slot-icon slot-action" title="@ToolTip(action)">
@@ -32,7 +31,7 @@
     protected override void OnParametersSet()
     {
         if (Slot != null)
-            AvailableActions = Enum.GetValues<SlotAction>().Except([Slot.Action]).ToArray();
+            AvailableActions = Enum.GetValues<SlotAction>().Except([Slot.ActionToExecute]).ToArray();
         else
             AvailableActions = [];
         
@@ -41,7 +40,11 @@
 
     private async Task OnActionChanged(SlotAction newAction)
     {
-        var req = new ChangeSlotActionRequest { Slot = Slot, NewAction = SlotAction.DoNothing };
-        await OnChangeSlotAction.InvokeAsync(req);
+        if (Slot != null)
+        {
+            var req = new ChangeSlotActionRequest { SlotStart = Slot.valid_from, NewAction = newAction };
+            await OnChangeSlotAction.InvokeAsync(req);
+        }
     }
+
 }

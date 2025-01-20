@@ -7,12 +7,22 @@
     
     [Parameter] public EventCallback<SlotAction> OnActionChanged { get; set; }
 
+    private string baseStyle = string.Empty;
+    
+    protected override void OnParametersSet()
+    {
+        if (OnActionChanged.HasDelegate)
+            baseStyle = "clickable-icon ";
+        
+        base.OnParametersSet();
+    }
+
     private async Task OnActionClicked()
     {
         await OnActionChanged.InvokeAsync(Action);
     }
     
-    private string SlotIconClass => Action switch
+    private string SlotIconClass => baseStyle + Action switch
     {
         SlotAction.Charge => "icon-charge",
         SlotAction.Discharge => "icon-discharge",
@@ -23,10 +33,10 @@
     
     private string Icon => Action switch
     {
-        SlotAction.DoNothing => Icons.Material.Filled.Cancel,
+        SlotAction.DoNothing => Icons.Material.Filled.PauseCircle,
         SlotAction.Charge => Icons.Material.Filled.Bolt,
         SlotAction.Discharge => Icons.Material.Filled.Battery0Bar,
         SlotAction.ChargeIfLowBattery => Icons.Material.Filled.BatteryUnknown,
-        _ => Icons.Material.Filled.PauseCircle
+        _ => Icons.Material.Filled.Warning
     };
 }

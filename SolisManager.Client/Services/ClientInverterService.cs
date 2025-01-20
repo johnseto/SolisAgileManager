@@ -32,7 +32,11 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
 
     public async Task<SolisManagerConfig> GetConfig()
     {
-        return await httpClient.GetFromJsonAsync<SolisManagerConfig>("inverter/getconfig");
+        var result = await httpClient.GetFromJsonAsync<SolisManagerConfig>("inverter/getconfig");
+        
+        ArgumentNullException.ThrowIfNull(result);
+        
+        return result;
     }
 
     public async Task SaveConfig(SolisManagerConfig config)

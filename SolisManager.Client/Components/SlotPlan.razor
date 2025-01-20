@@ -3,12 +3,12 @@
 @if (Slot != null)
 {
     <div class="action-icon" title="@Slot.ActionReason">
-        <ActionIcon Action="Slot.Action"/>
-        @Slot.Action.Description()
-        @if (Slot.IsManualOverride)
+        <ActionIcon Action="Slot.ActionToExecute"/>
+        @Slot.ActionToExecute.Description()
+        @if (Slot.ManualOverrideAction != null)
         {
-            <div class="override-icon" title="The slot action has been manually overriden">
-                <MudIcon Icon="@Icons.Material.Filled.Person" Title="Manual override"/>
+            <div class="override-icon" title="The slot action has been manually overriden - click to cancel override">
+                <MudIcon Icon="@Icons.Material.Filled.Person" Title="Manual override" @onclick="ClearOverride" Style="cursor:pointer;"/>
             </div>
         }
     </div>
@@ -18,4 +18,11 @@
     [Parameter]
     public OctopusPriceSlot? Slot { get; set; }
     
+    [Parameter]
+    public EventCallback<OctopusPriceSlot> OnOverrideCleared { get; set; }
+
+    private async Task ClearOverride()
+    {
+        await OnOverrideCleared.InvokeAsync(Slot);
+    }
 }

@@ -17,15 +17,13 @@
                 Simulation Mode
                 @if (inverterService.InverterState.Prices.Any())
                 {
-                    <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext"
-                             Variant="UIConstants.MudVariant" Size="Size.Small">
+                    <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext" Size="Size.Small">
                         Advance
                     </MudIcon>
                 }
                 else
                 {
-                    <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh"
-                             Variant="UIConstants.MudVariant" Size="Size.Small">
+                    <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh" Size="Size.Small">
                         Reset
                     </MudIcon>
                 }
@@ -101,11 +99,11 @@ else
                 </td>
                 <td style="@PriceStyle(slot)">@Math.Round(slot.value_inc_vat, 2)</td>
                 <td><PriceType Type="@slot.PriceType"/></td>
-                <td><SlotPlan Slot="@slot"/></td>
+                <td><SlotPlan Slot="@slot" OnOverrideCleared="ClearOverride"/></td>
                 <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
                 @if (hasSolcastData)
                 {
-                    <td>@ForecastEstimate(slot)</td>
+                    <td style="text-align:center;">@ForecastEstimate(slot)</td>
                 }
             </tr>
         }
@@ -145,6 +143,12 @@ else
         return null;
     }
 
+    private async Task ClearOverride(OctopusPriceSlot slot)
+    {
+        var req = new ChangeSlotActionRequest { SlotStart = slot.valid_from, NewAction = slot.PlanAction };
+        await ChangeSlotAction(req);
+    }
+    
     private async Task ChangeSlotAction(ChangeSlotActionRequest req)
     {
         await inverterService.OverrideSlotAction(req);
@@ -157,7 +161,7 @@ else
         await inverterService.RefreshInverterState();
         lastDate = null;
         hasSolcastData = inverterService.InverterState.Prices.Any(x => x.pv_est_kwh != null);
-        manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.IsManualOverride);
+        manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.ManualOverrideAction != null);
 
         StateHasChanged();
     }
