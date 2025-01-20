@@ -2,8 +2,8 @@
 @if (InverterState != null)
 {
     <div class="update-text">
-        Last update: @InverterState.TimeStamp.DisplayDate(), 
-        last battery update: @InverterState.BatteryTimeStamp.DisplayDate(), 
+        Last update: @InverterState.TimeStamp.DisplayDateTime(), 
+        last battery update: @InverterState.BatteryTimeStamp.DisplayDateTime(), 
         last Solcast update: @SolcastUpdate
     </div>
 }
@@ -11,5 +11,5 @@
 @code {
     [Parameter] public SolisManagerState? InverterState { get; set; }
     
-    private string SolcastUpdate => InverterState?.SolcastTimeStamp?.DisplayDate() ?? "never";
+    private string SolcastUpdate => InverterState?.SolcastTimeStamp?.DisplayDateTime() ?? "never";
 }
