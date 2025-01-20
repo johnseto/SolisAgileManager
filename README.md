@@ -103,12 +103,25 @@ secret, your inverter serial number, and the Octopus Product details of the curr
 You'll also need to set some other config setting:
 
 * Max Charge Rate in Amps - set to the level that your battery can charge/discharge at.
+
 * Charge slots for full battery - which tells the app how many slots of charging will be needed to go from
-  empty to full. This will depend on your battery size and charging rate.
-* Low Battery Threshold - the percentage at which you'd like to eagerly charge if prices are a bit lower
+  empty to full. This will depend on your battery size and charging rate. Eventually the app will calculate
+  this based on historical charging data, but for now, it's a manual setting.
+
+* `Battery Boost Threshold` - the percentage at which you'd like to boost charge if prices are a bit lower
   than average
+
 * The `Always charge below` rate. For example, if you set this to 10p/kWh, then _any_ slot lower than that
   price will always be set to charge, regardless of anything else.
+
+* `Battery %age for peak period`: this is an approximation of how much battery you need to get you through the 
+  peak period of 4pm-7pm. If you have a small battery and use a lot of power in the afternoon, you might want 
+  this to be 100% - so it'll charge too 100% before the peak time. 
+  
+  For me, we usually only use about 5-6kWh between 3pm and 7pm; our battery is 14kWh, so I have it set to 60%. 
+  The idea of this setting is that you want enough power to get through the peak period, but it doesn't 
+  necessarily need to be fully-charged.
+
 * Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
   any changes to the behaviour.
 
