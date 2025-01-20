@@ -3,8 +3,14 @@
     color: rgba(145, 129, 47, 0.6);
 }
 
-::deep .clickable-icon {
+.clickable-icon {
     cursor: pointer;
+}
+
+.clickable-icon:hover {
+    background-color: rgba(200, 200, 200, 0.6);
+    border-radius: 50%;
+    transition: background-color 0.5s ease-in;
 }
 
 ::deep .icon-charge {

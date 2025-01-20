@@ -1,5 +1,5 @@
-<div class="slot-icon">
-    <MudIcon Class="@SlotIconClass" Icon="@Icon" @onclick=OnActionClicked />
+<div class="@divStyle">
+    <MudIcon Class="@SlotIconClass" Icon="@Icon" @onclick=OnActionClicked Size="Size.Medium"/>
 </div>
 
 @code {
@@ -7,12 +7,12 @@
     
     [Parameter] public EventCallback<SlotAction> OnActionChanged { get; set; }
 
-    private string baseStyle = string.Empty;
+    private string divStyle = "slot-icon";
     
     protected override void OnParametersSet()
     {
         if (OnActionChanged.HasDelegate)
-            baseStyle = "clickable-icon ";
+            divStyle = "slot-icon clickable-icon";
         
         base.OnParametersSet();
     }
@@ -22,7 +22,7 @@
         await OnActionChanged.InvokeAsync(Action);
     }
     
-    private string SlotIconClass => baseStyle + Action switch
+    private string SlotIconClass => Action switch
     {
         SlotAction.Charge => "icon-charge",
         SlotAction.Discharge => "icon-discharge",
