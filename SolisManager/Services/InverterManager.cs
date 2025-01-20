@@ -533,10 +533,10 @@ public class InverterManager(
         await RefreshData();
     }
 
-    public async Task CancelSlotAction(OctopusPriceSlot slot)
+    public async Task OverrideSlotAction(ChangeSlotActionRequest change)
     {
-        var overrides = CreateOverrides(slot.valid_from, SlotAction.DoNothing, 1);
-        logger.LogInformation("Clearing slot action for {S}-{E}...", slot.valid_from, slot.valid_to);
+        var overrides = CreateOverrides(change.Slot.valid_from, SlotAction.DoNothing, 1);
+        logger.LogInformation("Clearing slot action for {S}-{E}...", change.Slot.valid_from, change.Slot.valid_to);
         await SetManualOverrides(overrides);
     }
 

@@ -1,0 +1,32 @@
+<div class="slot-icon">
+    <MudIcon Class="@SlotIconClass" Icon="@Icon" @onclick=OnActionClicked />
+</div>
+
+@code {
+    [Parameter] public SlotAction Action { get; set; }
+    
+    [Parameter] public EventCallback<SlotAction> OnActionChanged { get; set; }
+
+    private async Task OnActionClicked()
+    {
+        await OnActionChanged.InvokeAsync(Action);
+    }
+    
+    private string SlotIconClass => Action switch
+    {
+        SlotAction.Charge => "icon-charge",
+        SlotAction.Discharge => "icon-discharge",
+        SlotAction.DoNothing => "icon-noaction",
+        SlotAction.ChargeIfLowBattery => "icon-boost",
+        _ => string.Empty
+    };
+    
+    private string Icon => Action switch
+    {
+        SlotAction.DoNothing => Icons.Material.Filled.Cancel,
+        SlotAction.Charge => Icons.Material.Filled.Bolt,
+        SlotAction.Discharge => Icons.Material.Filled.Battery0Bar,
+        SlotAction.ChargeIfLowBattery => Icons.Material.Filled.BatteryUnknown,
+        _ => Icons.Material.Filled.PauseCircle
+    };
+}

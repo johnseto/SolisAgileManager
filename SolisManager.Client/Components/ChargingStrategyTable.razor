@@ -102,7 +102,7 @@ else
                 <td style="@PriceStyle(slot)">@Math.Round(slot.value_inc_vat, 2)</td>
                 <td><PriceType Type="@slot.PriceType"/></td>
                 <td><SlotPlan Slot="@slot"/></td>
-                <td><SlotActions Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
+                <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
                 @if (hasSolcastData)
                 {
                     <td>@ForecastEstimate(slot)</td>
@@ -145,9 +145,9 @@ else
         return null;
     }
 
-    private async Task CancelSlotAction(OctopusPriceSlot slot)
+    private async Task ChangeSlotAction(ChangeSlotActionRequest req)
     {
-        await inverterService.CancelSlotAction(slot);
+        await inverterService.OverrideSlotAction(req);
         await RefreshData();
     }
 
