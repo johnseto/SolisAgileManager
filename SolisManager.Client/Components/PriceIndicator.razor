@@ -2,13 +2,20 @@
 
 <div class="action-icon">
     <div class="type-icon" style="@Style" />
-    @Description
+    <div>
+        @Math.Round(Price, 2)
+    </div>
+    <div class="price-desc">
+        @Description
+    </div>
 </div>
 
 
 @code {
     [Parameter]
-    public Shared.Models.PriceType Type { get; set; }
+    public decimal Price { get; set; }
+    [Parameter]
+    public PriceType Type { get; set; }
 
     private string Description => Type switch
     {

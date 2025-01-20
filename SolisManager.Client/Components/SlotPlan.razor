@@ -4,7 +4,9 @@
 {
     <div class="action-icon" title="@Slot.ActionReason">
         <ActionIcon Action="Slot.ActionToExecute"/>
-        @Slot.ActionToExecute.Description()
+        <div class="action-desc">
+            @Slot.ActionToExecute.Description()
+        </div>
         @if (Slot.ManualOverrideAction != null)
         {
             <div class="override-icon" title="The slot action has been manually overriden - click to cancel override">

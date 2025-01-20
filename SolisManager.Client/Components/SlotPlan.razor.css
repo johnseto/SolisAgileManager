@@ -9,3 +9,12 @@
 ::deep .override-icon {
     color: rgba(145, 129, 47, 0.6);
 }
+
+.action-desc {
+}
+
+@media screen and (max-width: 900px) {
+    .action-desc {
+        display: none;
+    }
+}

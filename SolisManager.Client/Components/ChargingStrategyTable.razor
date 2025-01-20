@@ -43,7 +43,6 @@
             </div>
         }
 
-        <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
         <ValueChip Icon="@Icons.Material.Filled.House" Value="@inverterService.InverterState.HouseLoadkW"
                    Description="Current load being consumed by the house" Units="kW"/>
         <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@inverterService.InverterState.CurrentPVkW"
@@ -52,6 +51,7 @@
                    Description="Total Solar PV Generation today" Units="kWh"/>
         <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@inverterService.InverterState.ForecastPVkWh"
                    Description="@($"Solar PV Forecast {inverterService.InverterState.ForecastDayLabel}")" Units="kWh"/>
+        <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
     </div>
 </div>
 
@@ -78,7 +78,6 @@ else
         <tr>
             <th>Period</th>
             <th>Price (p/kWh)</th>
-            <th>Slot Type</th>
             <th>Plan</th>
             <th>Actions</th>
             @if (hasSolcastData)
@@ -99,8 +98,9 @@ else
                         <div class="valid-to">&nbsp;- @slot.valid_to.ToString("HH:mm")</div>
                     </div>
                 </td>
-                <td style="@PriceStyle(slot)">@Math.Round(slot.value_inc_vat, 2)</td>
-                <td><PriceType Type="@slot.PriceType"/></td>
+                <td style="@PriceStyle(slot)">
+                    <PriceIndicator Type="@slot.PriceType" Price="@slot.value_inc_vat"/>
+                </td>
                 <td><SlotPlan Slot="@slot" OnOverrideCleared="ClearOverride"/></td>
                 <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
                 @if (hasSolcastData)

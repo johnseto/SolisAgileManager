@@ -1,8 +1,12 @@
-.action-icon {
+.slot-actions {
     display: flex;
     flex-direction: row;
+    justify-content: space-evenly;
     column-gap: 10px;
     align-items: center;
+    border: 1px solid rgba(220, 220, 220, 0.4);
+    border-radius: 5px;
+    background-color: rgba(145, 129, 47, 0.1);
 }
 
 .slot-icon {

@@ -5,6 +5,7 @@
 
 .clickable-icon {
     cursor: pointer;
+    padding: 2px;
 }
 
 .clickable-icon:hover {
