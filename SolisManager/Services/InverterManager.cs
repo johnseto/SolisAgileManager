@@ -529,6 +529,10 @@ public class InverterManager(
 
     public async Task SaveConfig(SolisManagerConfig newConfig)
     {
+        var result = await octopusAPI.GetCurrentOctopusTariffCode(newConfig.OctopusAPIKey, newConfig.OctopusAccountNumber);
+
+        var product = OctopusAPI.GetProductFromTariffCode(result);
+        
         logger.LogInformation("Saving config to server...");
 
         newConfig.CopyPropertiesTo(config);

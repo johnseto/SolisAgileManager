@@ -10,6 +10,8 @@ public record SolisManagerConfig
     public string SolisAPIKey { get; set; } = string.Empty;
     public string SolisAPISecret { get; set; } = string.Empty;
     public string SolisInverterSerial { get; set; } = string.Empty;
+    public string OctopusAccountNumber { get; set; } = string.Empty;
+    public string OctopusAPIKey { get; set; } = string.Empty;
     public string OctopusProduct { get; set; } = string.Empty;
     public string OctopusProductCode { get; set; } = String.Empty;
     public int SlotsForFullBatteryCharge { get; set; }
