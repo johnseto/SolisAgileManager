@@ -11,7 +11,7 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
     public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates()
     {
         var from = DateTime.UtcNow;
-        var to = DateTime.UtcNow.AddHours(36);
+        var to = DateTime.UtcNow.AddDays(5);
 
         // https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-A/standard-unit-rates/
         
@@ -84,6 +84,14 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
         return result;
     }
 
+    /// <summary>
+    /// To identify the product code for a particular tariff, you can usually take off the first few letters of
+    /// the tariff (E-1R-, E-2R- or G-1R) which indicate if it is electricity single register, electricity dual
+    /// register (eg economy7) or gas single register, and the letter at the end (eg -A) which indicates the
+    /// region code. So, for example, E-1R-VAR-19-04-12-N is one of the tariffs for product VAR-19-04-12.
+    /// </summary>
+    /// <param name="tariffCode"></param>
+    /// <returns></returns>
     public static string GetProductFromTariffCode(string tariffCode)
     {
         if (string.IsNullOrEmpty(tariffCode))
@@ -93,6 +101,7 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
         if( lastDash > 0 )
             tariffCode = tariffCode.Substring(0, lastDash);
 
+        // Hacky, but we don't do it very often, so meh
         var first = tariffCode.IndexOf('-');
         if (first > 0)
         {
