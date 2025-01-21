@@ -16,10 +16,20 @@
         </div>
         <div class="config-fields">
             <h5>Octopus Product</h5>
-            <MudTextField T="string" Label="Octopus Product" @bind-Value="@config.OctopusProduct" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Octopus Product Code" @bind-Value="@config.OctopusProductCode" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Octopus Account Number" @bind-Value="@config.OctopusAccountNumber" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Octopus API Key" @bind-Value="@config.OctopusAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <MudRadioGroup @bind-Value="@manualProductKey">
+                <MudRadio Size="Size.Small" Value="@false">Use API Key (recommended)</MudRadio>
+                <MudRadio Size="Size.Small" Value="@true">Manually Enter Product Code</MudRadio>
+            </MudRadioGroup>
+            @if (!manualProductKey)
+            {
+                <MudTextField T="string" Label="Octopus Account Number" @bind-Value="@config.OctopusAccountNumber" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <MudTextField T="string" Label="Octopus API Key" @bind-Value="@config.OctopusAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+            }
+            else
+            {
+                <MudTextField T="string" Label="Octopus Product" @bind-Value="@config.OctopusProduct" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <MudTextField T="string" Label="Octopus Tariff Code" @bind-Value="@config.OctopusProductCode" Immediate="true" Variant="UIConstants.MudVariant"/>
+            }
         </div>
         <div class="config-fields">
             <h5>Solcast Settings</h5>
@@ -66,6 +76,7 @@
     public EventCallback OnSettingsChanged { get; set; }
     
     private SolisManagerConfig? config;
+    private bool manualProductKey = false;
 
     private int PeakPercentageProxy
     {
@@ -85,13 +96,23 @@
         await base.OnInitializedAsync();
     }
 
+    private async Task ValidateOctopus()
+    {   
+    }
+
     private async Task SaveConfig()
     {
-        await inverterService.SaveConfig(config);
-        await OnSettingsChanged.InvokeAsync();
+        var response = await inverterService.SaveConfig(config);
 
-        snackbar.Add("Config Settings Updated", Severity.Info);
-        navManager.NavigateTo("/");
+        if (response.Success)
+        {
+            await OnSettingsChanged.InvokeAsync();
+
+            snackbar.Add("Config Settings Updated", Severity.Info);
+            navManager.NavigateTo("/");
+        }
+        else
+            snackbar.Add($"Error: {response.Message}", Severity.Error);
     }
 
     private async Task TestCharge()

@@ -79,6 +79,7 @@ public class Program
         builder.Services.AddSingleton<RatesScheduler>();
         builder.Services.AddSingleton<SolcastScheduler>();
         builder.Services.AddSingleton<VersionCheckScheduler>();
+        builder.Services.AddSingleton<TariffScheduler>();
 
         builder.Services.AddSingleton<SolisAPI>();
         builder.Services.AddSingleton<SolcastAPI>();
@@ -161,6 +162,12 @@ public class Program
             .Schedule<BatteryScheduler>()
             .Cron("5,10,15,20,25,35,40,45,50,55 * * * *"));
         
+        // Check if the Octopus tariff has changed every 4 hours
+        app.Services.UseScheduler(s => s
+            .Schedule<TariffScheduler>()
+            .Cron("0 */4 * * *")
+            .RunOnceAtStart());
+
         // Check for a new version periodically
         app.Services.UseScheduler(s => s
             .Schedule<VersionCheckScheduler>()

@@ -125,8 +125,8 @@ public static class EndpointMapper
                 [FromServices] IInverterService inverterService) =>
             {
                 var configToSave = JsonSerializer.Deserialize<SolisManagerConfig>(configJson);
-                await inverterService.SaveConfig(configToSave);
-                return TypedResults.Ok();
+                var result = await inverterService.SaveConfig(configToSave);
+                return TypedResults.Ok(result);
             });
 
         return group;

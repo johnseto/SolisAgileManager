@@ -8,7 +8,7 @@ public interface IInverterService
     public Task RefreshInverterState();
     public Task<List<HistoryEntry>> GetHistory();
     public Task<SolisManagerConfig> GetConfig();
-    public Task SaveConfig(SolisManagerConfig config);
+    public Task<ConfigSaveResponse> SaveConfig(SolisManagerConfig config);
 
     public Task OverrideSlotAction(ChangeSlotActionRequest change);
     public Task TestCharge();
@@ -25,4 +25,5 @@ public interface IInverterRefreshService
 {
     public Task RefreshBatteryState();
     public Task RefreshAgileRates();
+    public Task RefreshTariff();
 }
