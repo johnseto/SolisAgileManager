@@ -517,12 +517,12 @@ public class InverterManager(
         await RefreshData();
     }
 
-    private async Task<bool> UpdateConfigWithOctopusTariff(string apiKey, string accountNUm)
+    private async Task<bool> UpdateConfigWithOctopusTariff(SolisManagerConfig theConfig)
     {
-        if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(accountNUm))
+        if (!string.IsNullOrEmpty(theConfig.OctopusAPIKey) && !string.IsNullOrEmpty(theConfig.OctopusAccountNumber))
         {
             var productCode =
-                await octopusAPI.GetCurrentOctopusTariffCode(apiKey, accountNUm);
+                await octopusAPI.GetCurrentOctopusTariffCode(theConfig.OctopusAPIKey, theConfig.OctopusAccountNumber);
 
             if (!string.IsNullOrEmpty(productCode))
             {
@@ -530,11 +530,11 @@ public class InverterManager(
 
                 if (!string.IsNullOrEmpty(product))
                 {
-                    if (config.OctopusProductCode != productCode)
-                        logger.LogInformation("Octopus product code has changed: {Old} => {New}", config.OctopusProductCode, productCode);
+                    if (theConfig.OctopusProductCode != productCode)
+                        logger.LogInformation("Octopus product code has changed: {Old} => {New}", theConfig.OctopusProductCode, productCode);
 
-                    config.OctopusProduct = product;
-                    config.OctopusProductCode = productCode;
+                    theConfig.OctopusProduct = product;
+                    theConfig.OctopusProductCode = productCode;
                     return true;
                 }
             }
@@ -548,7 +548,7 @@ public class InverterManager(
         if (!string.IsNullOrEmpty(config.OctopusAPIKey) && !string.IsNullOrEmpty(config.OctopusAccountNumber))
         {
             logger.LogDebug("Executing Tariff Refresh scheduler");
-            await UpdateConfigWithOctopusTariff(config.OctopusAPIKey, config.OctopusAccountNumber);
+            await UpdateConfigWithOctopusTariff(config);
         }
     }
 
@@ -570,7 +570,7 @@ public class InverterManager(
         {
             try
             {
-                var result = await UpdateConfigWithOctopusTariff(newConfig.OctopusAPIKey, newConfig.OctopusAccountNumber);
+                var result = await UpdateConfigWithOctopusTariff(newConfig);
 
                 if (!result)
                     throw new InvalidOperationException("Could not get product code");
