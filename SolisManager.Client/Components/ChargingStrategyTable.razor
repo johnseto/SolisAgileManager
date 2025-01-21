@@ -79,11 +79,11 @@ else
             <th>Period</th>
             <th>Price (p/kWh)</th>
             <th>Plan</th>
-            <th>Manual Actions</th>
             @if (hasSolcastData)
             {
                 <th>Forecast PV (kWh)</th>
             }
+            <th>Manual Actions</th>
         </tr>
         </thead>
         <tbody>
@@ -102,11 +102,11 @@ else
                     <PriceIndicator Type="@slot.PriceType" Price="@slot.value_inc_vat"/>
                 </td>
                 <td><SlotPlan Slot="@slot" OnOverrideCleared="ClearOverride"/></td>
-                <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
                 @if (hasSolcastData)
                 {
                     <td style="text-align:center;">@ForecastEstimate(slot)</td>
                 }
+                <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
             </tr>
         }
         </tbody>

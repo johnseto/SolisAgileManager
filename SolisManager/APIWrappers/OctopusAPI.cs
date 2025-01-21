@@ -67,7 +67,11 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
             var start = slot.valid_from;
             while (start < slot.valid_to)
             {
-                result.Add( new OctopusPriceSlot
+                // We don't care about 30-minute slots in the past
+                if (slot.valid_to < DateTime.UtcNow)
+                    continue;
+                
+                var smallSlot = new OctopusPriceSlot
                 {
                     valid_from = start,
                     valid_to = start.AddMinutes(30),
@@ -77,7 +81,10 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
                     PriceType = slot.PriceType,
                     value_inc_vat = slot.value_inc_vat,
                     pv_est_kwh = slot.pv_est_kwh
-                });
+                };
+                
+                if( smallSlot.valid_to > DateTime.UtcNow)
+                    result.Add(smallSlot);
                 
                 start = start.AddMinutes(30);
             }
