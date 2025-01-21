@@ -76,12 +76,22 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
 
         // https://api.octopus.energy/v1/accounts/{number}
 
-        var result = await "https://api.octopus.energy/"
-            .WithHeader("Authorization", token)
-            .AppendPathSegment($"/v1/accounts/{accountNumber}/")
-            .GetJsonAsync<OctopusAccountDetails>();
+        try
+        {
+            var response = await "https://api.octopus.energy/"
+                .WithHeader("Authorization", token)
+                .AppendPathSegment($"/v1/accounts/{accountNumber}/")
+                .GetStringAsync();
 
-        return result;
+            var result = JsonSerializer.Deserialize<OctopusAccountDetails>(response);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get Octopus account details");
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -122,25 +132,38 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
         
         if (accountDetails != null)
         {
-            var importAgreement = accountDetails.properties?
-                .First().electricity_meter_points?
-                .FirstOrDefault(x => !x.is_export)?
-                .agreements.FirstOrDefault(x => x.valid_from < DateTime.UtcNow && x.valid_to > DateTime.UtcNow);
+            var now = DateTime.UtcNow;
+            var currentProperty = accountDetails.properties.FirstOrDefault(x => x.moved_in_at < now && x.moved_out_at == null);
 
-            if (importAgreement != null)
+            if (currentProperty != null)
             {
-                logger.LogInformation("Found Octopus Product/Contract: {P}, Starts {S}", importAgreement.tariff_code, importAgreement.valid_from);
-                return importAgreement.tariff_code;
+                var exportMeter = currentProperty.electricity_meter_points.FirstOrDefault(x => !x.is_export);
+                if (exportMeter != null)
+                {
+                    // Look for a contract with no end date.
+                    var contract = exportMeter.agreements.FirstOrDefault(x => x.valid_from < now && x.valid_to == null);
+
+                    // It's possible it has an end-date set, that's later than today. 
+                    if( contract == null )
+                        contract = exportMeter.agreements.FirstOrDefault(x => x.valid_from < now && x.valid_to != null && x.valid_to > now);
+
+                    if (contract != null)
+                    {
+                        logger.LogInformation("Found Octopus Product/Contract: {P}, Starts {S}",
+                            contract.tariff_code, contract.valid_from);
+                        return contract.tariff_code;
+                    }
+                }
             }
         }
 
         return null;
     }
 
-    public record OctopusAgreement(string tariff_code, DateTime valid_from, DateTime valid_to);
+    public record OctopusAgreement(string tariff_code, DateTime? valid_from, DateTime? valid_to);
     public record OctopusMeter(string serial_number);
     public record OctopusMeterPoints(string mpan, OctopusMeter[] meters, OctopusAgreement[] agreements, bool is_export);
-    public record OctopusProperty(int id, OctopusMeterPoints[] electricity_meter_points);
+    public record OctopusProperty(int id, OctopusMeterPoints[] electricity_meter_points, DateTime? moved_in_at, DateTime? moved_out_at);
     public record OctopusAccountDetails(string number, OctopusProperty[] properties);
     
     private record OctopusPrices(int count, OctopusPriceSlot[] results);

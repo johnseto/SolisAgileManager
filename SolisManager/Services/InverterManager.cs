@@ -180,6 +180,9 @@ public class InverterManager(
         InverterState.Prices = processedSlots;
 
         await ExecuteSlotChanges(processedSlots);
+        
+        if( config.Simulate && simulationData == null )
+            simulationData = InverterState.Prices.ToList();
     }
 
     private IEnumerable<ChangeSlotActionRequest> GetExistingSlotOverrides()
