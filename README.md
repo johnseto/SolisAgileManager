@@ -133,10 +133,22 @@ inverter via the SolisCloud app. To do this:
 * Submit a request to control your inverter from the SolisCloud App, filling in the details and selecting
   ticket type `API Request - Owner`. In the notes, ask for API access too.
 
-### Finding the right Tariff
+### Octopus Tariff Setup
 
-Solis Manager defaults to a standard Agile tariff, but you probably want to set it to your _exact_ tariff to 
-ensure it's accurate. To do this: 
+The latest version of the app will connect to your Octopus account and find the current tariff that you're
+using. 
+
+* Enter the Account number and Octopus API Key into the settings. When you click 'Save config' the tariff
+  details will be pulled from your Octopus Account
+
+Once the API key and account are configured, the application will query every 4 hours to check if your tariff
+has changed, and update accordingly. So if you change tariff (e.g., switch from Agile to Cosy) you should 
+start seeing the new tariff prices flow into the app within 4 hours.
+
+### Manually Setting The Tariff
+
+It's possible to manually configure the tariff/product. Just leave the Octopus API key and Account number blank
+and enter the product and tariff codes yourself. 
 
 * [Click here](https://api.octopus.energy/v1/products/) to get the list of Octopus Agile Product codes (e.g.,
   `AGILE-24-10-01`).
@@ -149,6 +161,8 @@ the last `A` to the correct [Region Code](https://mysmartenergy.uk/Electricity-R
 need. Solis Manager doesn't do anything with the standing charge, so it doesn't matter if you're on an older
 tariff. 
 
+### History Data
+
 Once you've filled these in, the server will start running.
 
 As it runs, the last 30 days' worth of charging decisions will be logged to `SolisManagerExecutionHistory.csv` 
@@ -159,7 +173,7 @@ allows you to convienently check what it did, and why it did it:
   
 ### Will the app work with non-Agile Tariffs?
 
-I haven't tried, but it might!
+I haven't tried, but it might! I've had at least one person tell me that it works correctly with Octopus Go.
   
 ### How does it work?
 
@@ -308,8 +322,6 @@ year down to around 2,000), and hence the minimum number of Inverter EEPROM writ
 
 ### Coming Soon:
 
-* A future feature enhancement is to allow the app to determine if Octopus prices fall below zero for a certain
-  period, and if so to automatically dump the battery charge to the grid, and then recharge the battery.
 * The app will read in Solcast forecast data if you provide an API key and Site ID. Currently this information
   is only used for display purposes, but will eventually be used to optimise the algorithm (e.g., by skipping
   overnight charging if the forecast is for a decent PV yield.
