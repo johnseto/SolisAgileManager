@@ -44,6 +44,7 @@
         </div>
     }
 
+    <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
     <ValueChip Icon="@Icons.Material.Filled.House" Value="@inverterService.InverterState.HouseLoadkW"
                Description="Current load being consumed by the house" Units="kW"/>
     <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@inverterService.InverterState.CurrentPVkW"
@@ -52,7 +53,6 @@
                Description="Total Solar PV Generation today" Units="kWh"/>
     <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@inverterService.InverterState.ForecastPVkWh"
                Description="@($"Solar PV Forecast {inverterService.InverterState.ForecastDayLabel}")" Units="kWh"/>
-    <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
 </div>
 
 @if (selectedView == ViewSelector.ViewType.Chart)
