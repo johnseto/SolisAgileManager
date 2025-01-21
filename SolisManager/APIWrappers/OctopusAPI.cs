@@ -37,12 +37,53 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
                 var last = result.results.LastOrDefault()?.valid_to;
                 logger.LogInformation("Retrieved {C} rates from Octopus ({S:dd-MMM-yyyy HH:mm} - {E:dd-MMM-yyyy HH:mm})", 
                     result.count, first, last);
-                
-                return orderedSlots;
+
+                return SplitToHalfHourSlots(orderedSlots);
             }
         }
 
         return [];
+    }
+
+    /// <summary>
+    /// Keep the granularity for easy manual overrides
+    /// </summary>
+    /// <param name="slots"></param>
+    /// <returns></returns>
+    private IEnumerable<OctopusPriceSlot> SplitToHalfHourSlots(IEnumerable<OctopusPriceSlot> slots)
+    {
+        List<OctopusPriceSlot> result = new();
+
+        foreach (var slot in slots)
+        {
+            var slotLength = slot.valid_to - slot.valid_from;
+
+            if (slotLength.TotalMinutes == 30)
+            {
+                result.Add(slot);
+                continue;
+            }
+
+            var start = slot.valid_from;
+            while (start < slot.valid_to)
+            {
+                result.Add( new OctopusPriceSlot
+                {
+                    valid_from = start,
+                    valid_to = start.AddMinutes(30),
+                    ActionReason = slot.ActionReason,
+                    ManualOverrideAction = slot.ManualOverrideAction,
+                    PlanAction = slot.PlanAction,
+                    PriceType = slot.PriceType,
+                    value_inc_vat = slot.value_inc_vat,
+                    pv_est_kwh = slot.pv_est_kwh
+                });
+                
+                start = start.AddMinutes(30);
+            }
+        }
+
+        return result;
     }
 
     private async Task<string?> GetAuthToken(string apiKey)
