@@ -1,0 +1,15 @@
+
+@if (InverterState != null)
+{
+    <div class="update-text">
+        Last update: @InverterState.TimeStamp.DisplayDateTime(), 
+        last battery update: @InverterState.BatteryTimeStamp.DisplayDateTime(), 
+        last Solcast update: @SolcastUpdate
+    </div>
+}
+
+@code {
+    [Parameter] public SolisManagerState? InverterState { get; set; }
+    
+    private string SolcastUpdate => InverterState?.SolcastTimeStamp?.DisplayDateTime() ?? "never";
+}

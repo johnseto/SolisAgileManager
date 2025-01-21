@@ -89,7 +89,8 @@ Here's a sample `docker-compose` entry:
 Multiplatform Docker Images are available for:
 
 * linux/amd64 - for x64 Intel processors
-* linux/arm64 - for ARM64 processors, such as Raspberry Pi
+* linux/arm64 - for ARM64 processors
+* linux/amd/v7 - AMD/v7 processors Raspberry Pi
 * darwin - for MacOS (if you try this and it works pleae let me know!)
 
 ## Settings
@@ -102,12 +103,25 @@ secret, your inverter serial number, and the Octopus Product details of the curr
 You'll also need to set some other config setting:
 
 * Max Charge Rate in Amps - set to the level that your battery can charge/discharge at.
+
 * Charge slots for full battery - which tells the app how many slots of charging will be needed to go from
-  empty to full. This will depend on your battery size and charging rate.
-* Low Battery Threshold - the percentage at which you'd like to eagerly charge if prices are a bit lower
+  empty to full. This will depend on your battery size and charging rate. Eventually the app will calculate
+  this based on historical charging data, but for now, it's a manual setting.
+
+* `Battery Boost Threshold` - the percentage at which you'd like to boost charge if prices are a bit lower
   than average
+
 * The `Always charge below` rate. For example, if you set this to 10p/kWh, then _any_ slot lower than that
   price will always be set to charge, regardless of anything else.
+
+* `Battery %age for peak period`: this is an approximation of how much battery you need to get you through the 
+  peak period of 4pm-7pm. If you have a small battery and use a lot of power in the afternoon, you might want 
+  this to be 100% - so it'll charge too 100% before the peak time. 
+  
+  For me, we usually only use about 5-6kWh between 3pm and 7pm; our battery is 14kWh, so I have it set to 60%. 
+  The idea of this setting is that you want enough power to get through the peak period, but it doesn't 
+  necessarily need to be fully-charged.
+
 * Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
   any changes to the behaviour.
 
@@ -219,6 +233,51 @@ current inverter state, and the loaded Agile prices. As you advance through the 
 what will happen (and the logs will show the commands that would have been sent to the inverter).
 
 Once you run out of slots at the end of the simulation, click reset to start again.
+
+### Solcast Data
+
+The application can use a Hobbyist Rooftop account from [Solcast](https://solcast.com/free-rooftop-solar-forecasting) 
+to estimate the likely PV yield from your system over the next day or so. 
+
+To configure this add settings for:
+
+* Your Solcast API key
+* Your Solcast Rooftop Site ID (this is a four-part hex ID)
+* A damping factor (see below)
+
+#### Solcast Damping Factor
+
+Solcast can often over-estimate the forecast for the PV yield, because it may under-estimate the cloud 
+impact, or may not take into account panel shading, and string efficiency. Therefore, the config settings 
+have a field for Solcast Damping Factor. So for example, if your Solcast forecast is generally 2x your
+_actual_ PV yield, then set the damping factor to 50%. 
+
+In future, the application will look at historic PV yields from the inverter, and compare this to the 
+Solcast forecast, and then auto-adjust to match reality.
+
+#### Avoiding Solcast Rate-limiting
+
+Solcast API calls are rate-limited to 10 API calls per day - after which the call will fail and no data is
+returned. To avoid blowing through this limit the strategy is:
+
+1. Attempt to retrieve Solcast data from the API at 2am, 6am, and midday (because the forecast can change 
+   through the day)
+2. If the API call succeeds, the results are written to a file `Solcast-latest.json` in the config folder.
+3. If you restart the app it reads from that file if it exists.
+
+This avoids the API throttling in most cases. Also, Solcast recommend not doing it on the hour (because 
+otherwise everyone hits their API on the hour....) so the app actually makes the request at the somewhat
+arbitrary times of 02:13, 06:13 and 12:13.
+
+#### Using the Solcast Data
+
+Currently this data is only used for display purposes. I haven't worked out how I'll use the data yet (there 
+isn't enough PV to make a difference at the moment). Probably:
+
+* Move the Pre peak morning charge earlier to prioritise export on days when the PV is going to be good
+* Reduce overnight charging if the PV forecast for the next day is going to be good.
+
+If you have other ideas or suggestions, let me know!
 
 ### Technical Considerations
 

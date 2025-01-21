@@ -16,8 +16,7 @@ public class InverterManager(
 {
     public SolisManagerState InverterState { get; } = new();
 
-    private readonly Dictionary<DateTime, OctopusPriceSlot> manualOverrides = new();
-    private readonly List<HistoryEntry> executionHistory = new();
+    private readonly List<HistoryEntry> executionHistory = [];
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
     private NewVersionResponse appVersion = new();
     private List<OctopusPriceSlot>? simulationData;
@@ -32,18 +31,18 @@ public class InverterManager(
         
         InverterState.ForecastDayLabel = "today";
         var forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
-            .Sum(x => x.ForecastkWh!);
+            .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
         if (forecast == null || forecast.Value == 0)
         { 
             InverterState.ForecastDayLabel = "tomorrow";
             forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today.AddDays(1))
-                .Sum(x => x.ForecastkWh!);
+                .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
         }
 
         InverterState.ForecastPVkWh = forecast;
         InverterState.SolcastTimeStamp = solcast.lastApiUpdate;
 
-        if (slots != null && slots.Any())
+        if (slots != null && slots.Any() && solcast.forecasts != null)
         {
             var lookup = solcast.forecasts.ToDictionary(x => x.PeriodStart);
 
@@ -125,8 +124,12 @@ public class InverterManager(
         if (!config.IsValid())
             return;
 
+        // Save the overrides
+        var overrides = GetExistingSlotOverrides();
+        
+        // Our working set
         IEnumerable<OctopusPriceSlot> slots;
-
+        
         if (config.Simulate && simulationData != null)
         {
             slots = simulationData;
@@ -164,20 +167,11 @@ public class InverterManager(
                         newSlotCount, newlatestSlot.valid_to, cheapest, peak);
                 }
             }
-
-            if (config.Simulate)
-            {
-                simulationData = slots.ToList();
-
-                if( Debugger.IsAttached)
-                {
-                    //CreateSomeNegativeSlots(slots);
-                    //CreateSomeNegativeSlots(slots);
-                }
-
-            }
         }
 
+        // Now reapply
+        ApplyPreviousOverrides(slots, overrides);
+        
         await EnrichWithSolcastData(slots);
         
         var processedSlots = EvaluateSlotActions(slots.ToArray());
@@ -186,10 +180,31 @@ public class InverterManager(
         InverterState.Prices = processedSlots;
 
         await ExecuteSlotChanges(processedSlots);
-
-        CleanupOldOverrides();
     }
 
+    private IEnumerable<ChangeSlotActionRequest> GetExistingSlotOverrides()
+    {
+        return InverterState.Prices
+            .Where(x => x.ManualOverrideAction != null)
+            .Select(x => new ChangeSlotActionRequest
+            {
+                SlotStart = x.valid_from,
+                NewAction = x.ManualOverrideAction!.Value
+            });
+    }
+
+    private void ApplyPreviousOverrides(IEnumerable<OctopusPriceSlot> slots, IEnumerable<ChangeSlotActionRequest> overrides)
+    {
+        var lookup = overrides.ToDictionary(x => x.SlotStart);
+        foreach (var slot in slots)
+        {
+            if (lookup.TryGetValue(slot.valid_from, out var overRide))
+                slot.ManualOverrideAction = overRide.NewAction;
+            else
+                slot.ManualOverrideAction = null;
+        }
+    }
+    
     private async Task ExecuteSlotChanges(IEnumerable<OctopusPriceSlot> slots)
     {
         var firstSlot = slots.FirstOrDefault();
@@ -198,7 +213,7 @@ public class InverterManager(
             if (!config.Simulate)
                 await AddToExecutionHistory(firstSlot);
 
-            var matchedSlots = slots.TakeWhile(x => x.Action == firstSlot.Action).ToList();
+            var matchedSlots = slots.TakeWhile(x => x.ActionToExecute == firstSlot.ActionToExecute).ToList();
 
             if (matchedSlots.Any())
             {
@@ -208,11 +223,11 @@ public class InverterManager(
                 var start = matchedSlots.First().valid_from;
                 var end = matchedSlots.Last().valid_to;
 
-                if (firstSlot.Action == SlotAction.Charge)
+                if (firstSlot.ActionToExecute == SlotAction.Charge)
                 {
                     await solisApi.SetCharge(start, end, null, null, config.Simulate);
                 }
-                else if (firstSlot.Action == SlotAction.Discharge)
+                else if (firstSlot.ActionToExecute == SlotAction.Discharge)
                 {
                     await solisApi.SetCharge(null, null, start, end, config.Simulate);
                 }
@@ -236,7 +251,7 @@ public class InverterManager(
         {
             // First, reset all the slot states
             foreach (var slot in slots)
-                slot.Action = SlotAction.DoNothing;
+                slot.PlanAction = SlotAction.DoNothing;
             
             OctopusPriceSlot[]? cheapestSlots = null;
             OctopusPriceSlot[]? priciestSlots = null;
@@ -297,7 +312,7 @@ public class InverterManager(
                 foreach (var slot in cheapestSlots.Where(x => x.PriceType != PriceType.MostExpensive))
                 {
                     slot.PriceType = PriceType.Cheapest;
-                    slot.Action = SlotAction.Charge;
+                    slot.PlanAction = SlotAction.Charge;
                     slot.ActionReason = "This is the cheapest set of slots, to fully charge the battery";
                 }
             }
@@ -318,7 +333,7 @@ public class InverterManager(
                              x.PriceType == PriceType.Average && x.value_inc_vat < cheapThreshold))
                 {
                     slot.PriceType = PriceType.BelowAverage;
-                    slot.Action = SlotAction.ChargeIfLowBattery;
+                    slot.PlanAction = SlotAction.ChargeIfLowBattery;
                     slot.ActionReason =
                         $"Price is at least 10% below the average price of {averagePrice}p/kWh, so flagging as potential top-up";
                 }
@@ -348,7 +363,7 @@ public class InverterManager(
                     if (beforeCheapest && slot.PriceType == PriceType.BelowAverage)
                     {
                         slot.PriceType = PriceType.Dropping;
-                        slot.Action = SlotAction.DoNothing;
+                        slot.PlanAction = SlotAction.DoNothing;
                         slot.ActionReason = "Price is falling in the run-up to the cheapest period, so don't charge";
                         dipSlots--;
                         if (dipSlots == 0)
@@ -375,7 +390,7 @@ public class InverterManager(
                     foreach (var prePeakSlot in prePeakSlots)
                     {
                         // It's expensive, but not terrible. Suck it up and charge
-                        prePeakSlot.Action = SlotAction.Charge;
+                        prePeakSlot.PlanAction = SlotAction.Charge;
                         prePeakSlot.ActionReason = $"Cheaper slot to ensure battery is charged to {config.PeakPeriodBatteryUse:P0} before the peak period";
                     }
                 }
@@ -385,7 +400,7 @@ public class InverterManager(
             foreach (var slot in slots.Where(s => s.value_inc_vat < config.AlwaysChargeBelowPrice))
             {
                 slot.PriceType = PriceType.BelowThreshold;
-                slot.Action = SlotAction.Charge;
+                slot.PlanAction = SlotAction.Charge;
                 slot.ActionReason =
                     $"Price is below the threshold of {config.AlwaysChargeBelowPrice}p/kWh, so always charge";
             }
@@ -393,7 +408,7 @@ public class InverterManager(
             foreach (var slot in slots.Where(s => s.value_inc_vat < 0))
             {
                 slot.PriceType = PriceType.Negative;
-                slot.Action = SlotAction.Charge;
+                slot.PlanAction = SlotAction.Charge;
                 slot.ActionReason = "Negative price - always charge";
             }
 
@@ -401,10 +416,10 @@ public class InverterManager(
             // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
             if (InverterState.BatterySOC < config.LowBatteryPercentage)
             {
-                foreach (var slot in slots.Where(x => x.Action == SlotAction.ChargeIfLowBattery)
+                foreach (var slot in slots.Where(x => x.PlanAction == SlotAction.ChargeIfLowBattery)
                              .Take(config.SlotsForFullBatteryCharge))
                 {
-                    slot.Action = SlotAction.Charge;
+                    slot.PlanAction = SlotAction.Charge;
                     slot.ActionReason =
                         $"Upcoming slot is set to charge if low battery; battery is currently at {InverterState.BatterySOC}%";
                 }
@@ -426,23 +441,11 @@ public class InverterManager(
 
                     dischargeSlots.ForEach(x =>
                     {
-                        x.Action = SlotAction.Discharge;
+                        x.PlanAction = SlotAction.Discharge;
                         x.ActionReason =
                             "Contiguous negative slots allow the battery to be discharged and charged again.";
                     });
                 }
-            }
-            
-            foreach (var slot in slots)
-            {
-                if (manualOverrides.TryGetValue(slot.valid_from, out var manualOverride))
-                {
-                    slot.Action = manualOverride.Action;
-                    slot.ActionReason = "Manual override applied.";
-                    slot.IsManualOverride = true;
-                }
-                else
-                    slot.IsManualOverride = false;
             }
         }
         catch (Exception ex)
@@ -533,32 +536,30 @@ public class InverterManager(
         await RefreshData();
     }
 
-    public async Task CancelSlotAction(OctopusPriceSlot slot)
+    public async Task OverrideSlotAction(ChangeSlotActionRequest change)
     {
-        var overrides = CreateOverrides(slot.valid_from, SlotAction.DoNothing, 1);
-        logger.LogInformation("Clearing slot action for {S}-{E}...", slot.valid_from, slot.valid_to);
-        await SetManualOverrides(overrides);
+        logger.LogInformation("Updating slot action for {S} to {A}...", change.SlotStart, change.NewAction);
+        await SetManualOverrides([change]);
     }
 
     private int NearestHalfHour(int minute) => minute - (minute % 30);
 
-    private List<OctopusPriceSlot> CreateOverrides(DateTime start, SlotAction action, int slotCount)
+    private IEnumerable<ChangeSlotActionRequest> CreateOverrides(DateTime start, SlotAction action, int slotCount)
     {
-        var overrides = Enumerable.Range(0, slotCount)
-            .Select(x => new OctopusPriceSlot())
-            .ToList();
+        var currentSlot =  new DateTime(start.Year, start.Month, start.Day, start.Hour, NearestHalfHour(start.Minute), 0);
 
-        var currentSlot =
-            new DateTime(start.Year, start.Month, start.Day, start.Hour, NearestHalfHour(start.Minute), 0);
-        foreach (var slot in overrides)
+        List<ChangeSlotActionRequest> overrides = new();
+        
+        foreach (var slot in  Enumerable.Range(0, slotCount))
         {
-            slot.valid_from = currentSlot;
-            currentSlot = currentSlot.AddMinutes(30);
-            slot.valid_to = currentSlot;
-            slot.Action = action;
-        }
+            yield return new ChangeSlotActionRequest
+            {
+                NewAction = action,
+                SlotStart = currentSlot
+            };
 
-        return overrides;
+            currentSlot = currentSlot.AddMinutes(30);
+        }
     }
 
     public async Task TestCharge()
@@ -576,13 +577,13 @@ public class InverterManager(
         var slotsRequired = (int)Math.Round(config.SlotsForFullBatteryCharge * percentageToCharge,
             MidpointRounding.ToPositiveInfinity);
 
-        var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Charge, slotsRequired);
+        var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Charge, slotsRequired).ToList();
         await SetManualOverrides(overrides);
     }
 
     public async Task DischargeBattery()
     {
-        var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, CalculateDischargeSlots());
+        var overrides = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, CalculateDischargeSlots()).ToList();
         await SetManualOverrides(overrides);
     }
 
@@ -594,35 +595,41 @@ public class InverterManager(
 
     public async Task DumpAndChargeBattery()
     {
-        var discharge = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, CalculateDischargeSlots());
-        var charge = CreateOverrides(discharge.Last().valid_to, SlotAction.Charge, config.SlotsForFullBatteryCharge);
+        var discharge = CreateOverrides(DateTime.UtcNow, SlotAction.Discharge, CalculateDischargeSlots()).ToList();
+        var lastDischarge = discharge.Last().SlotStart.AddMinutes(30);
+        var charge = CreateOverrides(lastDischarge, SlotAction.Charge, config.SlotsForFullBatteryCharge);
         await SetManualOverrides(discharge.Concat(charge).ToList());
     }
 
-    private async Task SetManualOverrides(List<OctopusPriceSlot> overrides)
+    private async Task SetManualOverrides(List<ChangeSlotActionRequest> overrides)
     {
+        var lookup = InverterState.Prices.ToDictionary(x => x.valid_from);
+
         foreach (var overRide in overrides)
         {
-            manualOverrides[overRide.valid_from] = overRide;
-            logger.LogInformation("Added override: {S}", overRide);
+            if (lookup.TryGetValue(overRide.SlotStart, out var slot))
+            {
+                if (slot.PlanAction == overRide.NewAction)
+                {
+                    // Clear the existing override
+                    slot.ManualOverrideAction = null;
+                    logger.LogInformation("Cleared override: {S}", overRide);
+                    continue;
+                }
+
+                // Set the override
+                slot.ManualOverrideAction = overRide.NewAction;
+                logger.LogInformation("Set override: {S}", overRide);
+            }
         }
 
         await RefreshData();
     }
-
-    private void CleanupOldOverrides()
-    {
-        var lookup = InverterState.Prices.ToDictionary(x => x.valid_from);
-
-        foreach (var overRide in manualOverrides)
-            if (!lookup.ContainsKey(overRide.Value.valid_from))
-                manualOverrides.Remove(overRide.Value.valid_from);
-
-    }
-
+    
     public async Task ClearOverrides()
     {
-        manualOverrides.Clear();
+        foreach( var slot in InverterState.Prices)
+            slot.ManualOverrideAction = null;
         await RefreshData();
     }
 

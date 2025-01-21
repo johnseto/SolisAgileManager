@@ -17,9 +17,9 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
             InverterState = state;
     }
 
-    public async Task CancelSlotAction(OctopusPriceSlot slot)
+    public async Task OverrideSlotAction(ChangeSlotActionRequest request)
     {
-        await httpClient.PostAsJsonAsync("inverter/cancelslotaction", slot);
+        await httpClient.PostAsJsonAsync("inverter/overrideslotaction", request);
     }
     public async Task<List<HistoryEntry>> GetHistory()
     {
@@ -32,7 +32,11 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
 
     public async Task<SolisManagerConfig> GetConfig()
     {
-        return await httpClient.GetFromJsonAsync<SolisManagerConfig>("inverter/getconfig");
+        var result = await httpClient.GetFromJsonAsync<SolisManagerConfig>("inverter/getconfig");
+        
+        ArgumentNullException.ThrowIfNull(result);
+        
+        return result;
     }
 
     public async Task SaveConfig(SolisManagerConfig config)

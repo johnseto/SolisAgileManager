@@ -49,11 +49,11 @@ public static class EndpointMapper
                 return TypedResults.Ok();
             });
 
-        group.MapPost("cancelslotaction",
-            async (OctopusPriceSlot slot, 
+        group.MapPost("overrideslotaction",
+            async (ChangeSlotActionRequest req, 
                 [FromServices] IInverterService service) =>
             {
-                await service.CancelSlotAction(slot);
+                await service.OverrideSlotAction(req);
                 return TypedResults.Ok();
             });
 

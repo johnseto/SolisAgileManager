@@ -10,7 +10,7 @@ public interface IInverterService
     public Task<SolisManagerConfig> GetConfig();
     public Task SaveConfig(SolisManagerConfig config);
 
-    public Task CancelSlotAction(OctopusPriceSlot slot);
+    public Task OverrideSlotAction(ChangeSlotActionRequest change);
     public Task TestCharge();
     public Task ChargeBattery();
     public Task DischargeBattery();

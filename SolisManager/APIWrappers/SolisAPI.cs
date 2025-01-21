@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.APIWrappers;
@@ -37,13 +36,18 @@ public class SolisAPI
     public async Task<IReadOnlyList<UserStation>> UserStationList(int pageNo, int pageSize)
     {
         var result = await Post<ListResponse<UserStation>>(1,"userStationList", new UserStationListRequest(pageNo, pageSize));
-        return result.data.page.records;
+        if(result != null)
+            return result.data.page.records;
+
+        return [];
     }
 
     public async Task<IReadOnlyList<Inverter>> InverterList(int pageNo, int pageSize, int? stationId)
     {
         var result = await Post<ListResponse<Inverter>>(1,"inverterList", new InverterListRequest(pageNo, pageSize, stationId));
-        return result.data.page.records;
+        if( result != null )
+            return result.data.page.records;
+        return [];
     }
 
     private async Task<ChargeStateData?> ReadChargingState()

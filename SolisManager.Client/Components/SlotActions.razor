@@ -1,11 +1,10 @@
 @if (Slot != null)
 {
-    <div class="action-icon" title="@Slot.ActionReason">
-        @if (Slot.Action == Shared.Models.SlotAction.Charge ||
-             Slot.Action == Shared.Models.SlotAction.Discharge)
+    <div class="slot-actions" title="@Slot.ActionReason">
+        @foreach( var action in AvailableActions )
         {
-            <div class="slot-icon slot-action" title="Click here to cancel the current action">
-                <MudIcon Icon="@Icons.Material.Filled.Cancel" @onclick=CancelSlotAction />
+            <div class="slot-icon slot-action" title="@ToolTip(action)">
+                <ActionIcon Action="action" OnActionChanged="OnActionChanged"></ActionIcon>
             </div>
         }
     </div>
@@ -16,10 +15,36 @@
     public OctopusPriceSlot? Slot { get; set; }
 
     [Parameter]
-    public EventCallback<OctopusPriceSlot> OnCancelSlotAction { get; set; }
+    public EventCallback<ChangeSlotActionRequest> OnChangeSlotAction { get; set; }
 
-    private async Task CancelSlotAction()
+    private string ToolTip(SlotAction action) => action switch
     {
-        await OnCancelSlotAction.InvokeAsync(Slot);
+        SlotAction.DoNothing => "Click here to set this slot to No Action",
+        SlotAction.Charge => "Click here to set this slot to charge the battery",
+        SlotAction.Discharge => "Click here to set this slot to discharge the battery",
+        SlotAction.ChargeIfLowBattery => "Click here to set this slot to boost the battery if low",
+        _ => Icons.Material.Filled.PauseCircle
+    };
+
+    private SlotAction[] AvailableActions = [];
+
+    protected override void OnParametersSet()
+    {
+        if (Slot != null)
+            AvailableActions = Enum.GetValues<SlotAction>().Except([Slot.ActionToExecute]).ToArray();
+        else
+            AvailableActions = [];
+        
+        base.OnParametersSet();
     }
+
+    private async Task OnActionChanged(SlotAction newAction)
+    {
+        if (Slot != null)
+        {
+            var req = new ChangeSlotActionRequest { SlotStart = Slot.valid_from, NewAction = newAction };
+            await OnChangeSlotAction.InvokeAsync(req);
+        }
+    }
+
 }

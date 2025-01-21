@@ -25,7 +25,7 @@ public class HistoryEntry
         Price = slot.value_inc_vat;
         BatterySOC = batterySOC;
         Type = slot.PriceType;
-        Action = slot.Action;
+        Action = slot.ActionToExecute;
         ActualKWH = 0; // Todo
         ForecastKWH = slot.pv_est_kwh ?? 0;
         Reason = slot.ActionReason;

@@ -1,0 +1,20 @@
+
+<div class="help-popup">
+    @ChildContent
+    <MudIcon Icon="@Icons.Material.Filled.Help" Size="Size.Small" @onclick="ToggleOpen" Class="help-icon" Title="Click for help on this setting"/>
+    <MudPopover Open="_open" OverflowBehavior="OverflowBehavior.FlipAlways" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+        <div class="help-text">
+            <div>@HelpText</div>
+            <MudIcon @onclick="@ToggleOpen" Size="Size.Small" Icon="@Icons.Material.Filled.Close" Class="help-icon"/>
+        </div>
+    </MudPopover>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public string HelpText { get; set; } = string.Empty;
+    
+    private bool _open = false;
+    private void ToggleOpen() => _open = !_open;
+}

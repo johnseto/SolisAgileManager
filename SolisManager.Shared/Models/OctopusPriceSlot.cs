@@ -27,15 +27,16 @@ public record OctopusPriceSlot
     public DateTime valid_from { get; set;  }
     public DateTime valid_to { get; set;  }
     public PriceType PriceType { get; set; } = PriceType.Average;
-    public SlotAction Action { get; set; } = SlotAction.DoNothing;
+    public SlotAction PlanAction { get; set; } = SlotAction.DoNothing;
+    public SlotAction? ManualOverrideAction { get; set; }
     public string ActionReason { get; set; } = string.Empty;
     public Guid Id { get; set; } = Guid.NewGuid();
-    public bool IsManualOverride { get; set; }
     public decimal? pv_est_kwh { get; set; }
 
+    public SlotAction ActionToExecute => ManualOverrideAction ?? PlanAction;
     public override string ToString()
     {
-        return $"{valid_from:dd-MMM-yyyy HH:mm}-{valid_to:HH:mm}: {Action.Humanize()} (price: {value_inc_vat}p/kWh, Reason: {ActionReason})";
+        return $"{valid_from:dd-MMM-yyyy HH:mm}-{valid_to:HH:mm}: {ActionToExecute.Humanize()} (price: {value_inc_vat}p/kWh, Reason: {ActionReason})";
     }
 }
 

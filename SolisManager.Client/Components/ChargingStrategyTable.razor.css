@@ -32,6 +32,7 @@ td.date-row {
     display: flex;
     flex-direction: row;
     column-gap: 15px;
+    flex-wrap: wrap;
     align-items: flex-start;
 }
 
@@ -60,9 +61,5 @@ td.date-row {
     padding: 5px 10px;
     border-radius: 5px;
     font-weight: bold;
-}
-
-.update-text p {
-    font-size: 9pt;
 }
 

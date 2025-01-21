@@ -1,7 +1,9 @@
 @using System.Globalization
+@using Humanizer
 @using SolisManager.Client.Layout
 @inject IInverterService inverterService
 @inject IDialogService dialogService
+@inject ISnackbar snackBar
 
 @implements IDisposable
 
@@ -17,15 +19,13 @@
                 Simulation Mode
                 @if (inverterService.InverterState.Prices.Any())
                 {
-                    <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext"
-                             Variant="UIConstants.MudVariant" Size="Size.Small">
+                    <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext" Size="Size.Small">
                         Advance
                     </MudIcon>
                 }
                 else
                 {
-                    <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh"
-                             Variant="UIConstants.MudVariant" Size="Size.Small">
+                    <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh" Size="Size.Small">
                         Reset
                     </MudIcon>
                 }
@@ -43,7 +43,6 @@
             </div>
         }
 
-        <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
         <ValueChip Icon="@Icons.Material.Filled.House" Value="@inverterService.InverterState.HouseLoadkW"
                    Description="Current load being consumed by the house" Units="kW"/>
         <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@inverterService.InverterState.CurrentPVkW"
@@ -52,6 +51,7 @@
                    Description="Total Solar PV Generation today" Units="kWh"/>
         <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@inverterService.InverterState.ForecastPVkWh"
                    Description="@($"Solar PV Forecast {inverterService.InverterState.ForecastDayLabel}")" Units="kWh"/>
+        <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
     </div>
 </div>
 
@@ -78,12 +78,11 @@ else
         <tr>
             <th>Period</th>
             <th>Price (p/kWh)</th>
-            <th>Slot Type</th>
             <th>Plan</th>
-            <th>Actions</th>
+            <th>Manual Actions</th>
             @if (hasSolcastData)
             {
-                <th>PV Forecast (kWh)</th>
+                <th>Forecast PV (kWh)</th>
             }
         </tr>
         </thead>
@@ -99,28 +98,28 @@ else
                         <div class="valid-to">&nbsp;- @slot.valid_to.ToString("HH:mm")</div>
                     </div>
                 </td>
-                <td style="@PriceStyle(slot)">@Math.Round(slot.value_inc_vat, 2)</td>
-                <td><PriceType Type="@slot.PriceType"/></td>
-                <td><SlotPlan Slot="@slot"/></td>
-                <td><SlotActions Slot="@slot" OnCancelSlotAction="CancelSlotAction"/></td>
+                <td style="@PriceStyle(slot)">
+                    <PriceIndicator Type="@slot.PriceType" Price="@slot.value_inc_vat"/>
+                </td>
+                <td><SlotPlan Slot="@slot" OnOverrideCleared="ClearOverride"/></td>
+                <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
                 @if (hasSolcastData)
                 {
-                    <td>@ForecastEstimate(slot)</td>
+                    <td style="text-align:center;">@ForecastEstimate(slot)</td>
                 }
             </tr>
         }
         </tbody>
     </table>
 }
-<p class="update-text">Last update: @inverterService.InverterState.TimeStamp, last battery update: @inverterService.InverterState.BatteryTimeStamp, last Solcast update: @(SolcastUpdate)</p>
 
+<LastUpdateState InverterState="@inverterService.InverterState"/>
 
 @code {
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private CancellationTokenSource tokenSource = new();
 
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
-    private string SolcastUpdate => inverterService.InverterState?.SolcastTimeStamp?.ToString() ?? "never";
     private bool hasSolcastData = false;
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
@@ -138,7 +137,7 @@ else
             return @<tr>
                        <td colspan="6" class="date-row">
                            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
-                           @slot.valid_from.ToString("dd-MMM-yyyy")
+                           @slot.valid_from.DisplayDate()
                        </td>
                    </tr>;
         }
@@ -146,10 +145,19 @@ else
         return null;
     }
 
-    private async Task CancelSlotAction(OctopusPriceSlot slot)
+    private async Task ClearOverride(OctopusPriceSlot slot)
     {
-        await inverterService.CancelSlotAction(slot);
+        var req = new ChangeSlotActionRequest { SlotStart = slot.valid_from, NewAction = slot.PlanAction };
+        await inverterService.OverrideSlotAction(req);
         await RefreshData();
+        snackBar.Add($"Override cleared for {slot.valid_from:HH:mm}", Severity.Info);
+    }
+    
+    private async Task ChangeSlotAction(ChangeSlotActionRequest req)
+    {
+        await inverterService.OverrideSlotAction(req);
+        await RefreshData();
+        snackBar.Add($"Action changed to {req.NewAction.Humanize()} for {req.SlotStart:HH:mm}", Severity.Info);
     }
 
     private async Task RefreshData()
@@ -158,7 +166,7 @@ else
         await inverterService.RefreshInverterState();
         lastDate = null;
         hasSolcastData = inverterService.InverterState.Prices.Any(x => x.pv_est_kwh != null);
-        manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.IsManualOverride);
+        manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.ManualOverrideAction != null);
 
         StateHasChanged();
     }

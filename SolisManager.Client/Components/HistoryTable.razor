@@ -44,7 +44,7 @@ else
                     <td>@entry.Start.ToString("HH:mm") - @entry.End.ToString("HH:mm")</td>
                     <td>@Math.Round(entry.Price, 2)</td>
                     <td>@Math.Round((decimal)entry.BatterySOC, 2)%</td>
-                    <td>@Math.Round(entry.ForecastKWH, 2)</td>
+                    <td>@Math.Round(GetDampedForecast(entry), 2)</td>
                     <td>@entry.Action.Humanize()</td>
                     <td>@entry.Reason</td>
                 </tr>
@@ -57,9 +57,13 @@ else
 @code {
     IEnumerable<HistoryEntry>? historyEntries = null;
     ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
-    
+    SolisManagerConfig? config;
+
+    private decimal GetDampedForecast(HistoryEntry entry) => entry.ForecastKWH * (config?.SolcastDampingFactor ?? 1);
+
     protected override async Task OnInitializedAsync()
     {
+        config = await clientInverterService.GetConfig();
         historyEntries = await clientInverterService.GetHistory();
         
         await base.OnInitializedAsync();
