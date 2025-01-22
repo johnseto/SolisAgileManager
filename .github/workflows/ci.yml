@@ -57,7 +57,7 @@ jobs:
       if: github.ref == 'refs/heads/develop'
       uses: actions/upload-artifact@v4
       with:
-        name: SolisManagert-${{ matrix.target }}-dev-1.0.${{ github.run_number }}.zip
+        name: SolisManager-${{ matrix.target }}-1.0.${{ github.run_number }}-dev.zip
         path: ${{github.workspace}}/publish/SolisManager-${{matrix.target}}.zip
         retention-days: 5    
 
