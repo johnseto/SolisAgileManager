@@ -55,11 +55,11 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         return null;
     }
 
-    public async Task UpdateSolcastDataFromAPI()
+    public async Task UpdateSolcastDataFromAPI(bool overwrite)
     {
         if (!config.SolcastValid())
             return;
-
+        
         string[] siteIdentifiers;
 
         // We support up to 2 site IDs for people with multiple strings
@@ -69,7 +69,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         else
             siteIdentifiers = [config.SolcastSiteIdentifier];
 
-        var data = new Dictionary<DateTime, SolarForecast>();
+        Dictionary<DateTime, SolarForecast> data = new();
 
         foreach (var siteIdentifier in siteIdentifiers)
         {
@@ -96,6 +96,12 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
         if (data.Values.Count != 0)
         {
+            if (lastForecastData != null && !overwrite)
+            {
+                var count = lastForecastData.Count(forecast => data.TryAdd(forecast.PeriodStart, forecast));
+                logger.LogInformation("Merged new forecasts with {C} existing ones", count);
+            }
+
             lastAPIUpdate = DateTime.UtcNow;
             lastForecastData = data.Values.OrderBy(x => x.PeriodStart).ToList();
 
@@ -151,7 +157,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
             {
                 if (!await LoadSolcastDataFromFile())
                 {
-                    await UpdateSolcastDataFromAPI();
+                    await UpdateSolcastDataFromAPI(false);
                 }
             }
 

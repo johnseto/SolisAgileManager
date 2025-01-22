@@ -30,14 +30,10 @@ public class InverterManager(
             return;
         
         InverterState.ForecastDayLabel = "today";
+        
+        // THe forecast is the sum of all slot forecasts for the day, offset by the damping factor
         var forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
-            .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
-        if (forecast == null || forecast.Value == 0)
-        { 
-            InverterState.ForecastDayLabel = "tomorrow";
-            forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today.AddDays(1))
-                .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
-        }
+                                                 .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
 
         InverterState.ForecastPVkWh = forecast;
         InverterState.SolcastTimeStamp = solcast.lastApiUpdate;

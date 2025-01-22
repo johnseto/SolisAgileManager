@@ -27,7 +27,7 @@ public class SolcastScheduler( SolcastAPI solcastService, ILogger<SolcastSchedul
     public async Task Invoke()
     {
         logger.LogDebug("Executing Solcast scheduler");
-        await solcastService.UpdateSolcastDataFromAPI();
+        await solcastService.UpdateSolcastDataFromAPI(true);
     }
 }
 
@@ -41,7 +41,7 @@ public class SolcastExtraScheduler( SolcastAPI solcastService, IInverterService 
         if (config.SolcastExtraUpdates)
         {
             logger.LogDebug("Executing Extra Solcast scheduler");
-            await solcastService.UpdateSolcastDataFromAPI();
+            await solcastService.UpdateSolcastDataFromAPI(false);
         }
     }
 }
