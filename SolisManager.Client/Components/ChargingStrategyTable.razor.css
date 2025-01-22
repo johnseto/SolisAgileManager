@@ -1,5 +1,21 @@
-.table{
-    width: auto;
+.strategy-table { 
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+    height: calc(100vh - 40px);
+}
+
+.table-chart { 
+    flex: 1 1 100%;
+    overflow-y: scroll;
+}
+
+.table {
+    width: 100%;
+}
+
+.table td {
+    vertical-align: middle;
 }
 
 td.date-row {
@@ -18,6 +34,7 @@ td.date-row {
 
 .title-bar {
     display: flex;
+    flex: 1 0;
     flex-direction: row;
     align-items: center;
     column-gap: 15px;
@@ -31,7 +48,6 @@ td.date-row {
 
 .title-and-nav {
     display: flex;
-    flex-wrap: nowrap;
     flex: 1;
     flex-direction: row;
     column-gap: 15px;
@@ -53,6 +69,13 @@ td.date-row {
 }
 
 @media screen and (max-width: 900px) {
+    .table {
+        width: auto;
+    }
+    .strategy-table {
+        height: calc(100vh - 80px);
+    }
+    
     .valid-to {
         display: none;
     }
