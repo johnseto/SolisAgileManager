@@ -739,6 +739,8 @@ public class InverterManager(
 
     public async Task<TariffComparison> GetTariffComparisonData(string tariffA, string tariffB)
     {
+        logger.LogInformation("Running comparison for {A} vs {B}...", tariffA, tariffB);
+        
         var ratesA = await octopusAPI.GetOctopusRates(tariffA);
         var ratesB = await octopusAPI.GetOctopusRates(tariffB);
 
