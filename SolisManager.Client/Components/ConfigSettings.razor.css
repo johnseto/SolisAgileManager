@@ -1,10 +1,14 @@
 .config-settings{
     max-width: 600px;
-    margin: 20px;
     border-radius: 15px;
     padding: 20px;
     color: black;
     background-color: white;
+    margin: 20px;
+}
+
+.config-settings h5 {
+    margin-top: 15px;    
 }
 
 .config-field-row { 

@@ -1,4 +1,4 @@
-<div class="@divStyle">
+<div class="@divStyle" title="@ToolTip">
     <MudIcon Class="@SlotIconClass" Icon="@Icon" @onclick=OnActionClicked Size="Size.Medium"/>
 </div>
 
@@ -22,6 +22,15 @@
         await OnActionChanged.InvokeAsync(Action);
     }
     
+    private string ToolTip => Action switch
+    {
+        SlotAction.DoNothing => "Click here to set this slot to No Action",
+        SlotAction.Charge => "Click here to set this slot to charge the battery",
+        SlotAction.Discharge => "Click here to set this slot to discharge the battery",
+        SlotAction.ChargeIfLowBattery => "Click here to set this slot to boost the battery if low",
+        _ => Icons.Material.Filled.PauseCircle
+    };
+
     private string SlotIconClass => Action switch
     {
         SlotAction.Charge => "icon-charge",

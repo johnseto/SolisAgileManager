@@ -4,17 +4,11 @@ public static class Utils
 {
     public static string? DisplayDate(this DateTime dateTime)
     {
-        if( dateTime == null )
-            return null;
-
         return $"{dateTime:dd-MMM-yyyy}";
     }
 
     public static string? DisplayDateTime(this DateTime dateTime)
     {
-        if( dateTime == null )
-            return null;
-
         return $"{dateTime:dd-MMM-yyyy HH:mm}";
     }
 

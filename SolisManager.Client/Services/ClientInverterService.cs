@@ -39,12 +39,21 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
         return result;
     }
 
-    public async Task SaveConfig(SolisManagerConfig config)
+    public async Task<ConfigSaveResponse> SaveConfig(SolisManagerConfig config)
     {
         // TODO - investigate why passing the object directly, rather than the json
         // as a queryparam, doesn't work. 
         var json = JsonSerializer.Serialize(config);
-        await httpClient.PostAsync($"inverter/saveconfig?configJson={json}", null);
+        var response = await httpClient.PostAsync($"inverter/saveconfig?configJson={json}", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var errResponse = await response.Content.ReadFromJsonAsync<ConfigSaveResponse?>();
+            if( errResponse != null )
+                return errResponse;
+        }
+
+        return new ConfigSaveResponse { Success = false, Message = "Unknown error saving config." };
     }
 
     public async Task ClearOverrides()
@@ -82,8 +91,10 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
         await httpClient.GetAsync("inverter/dumpandchargebattery");
     }
     
-    public async Task<NewVersionResponse?> GetVersionInfo()
+    public async Task<NewVersionResponse> GetVersionInfo()
     {
-        return await httpClient.GetFromJsonAsync<NewVersionResponse>("inverter/versioninfo");
+        var result = await httpClient.GetFromJsonAsync<NewVersionResponse>("inverter/versioninfo");
+        ArgumentNullException.ThrowIfNull(result);
+        return result;
     }
 }

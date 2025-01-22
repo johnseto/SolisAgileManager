@@ -18,4 +18,6 @@ WORKDIR /app
 COPY --from=publish /app/core .
 COPY --from=publish /app/publish .
 
+RUN chmod +x /app/SolisManager
+
 ENTRYPOINT ["/app/SolisManager", "/appdata"]

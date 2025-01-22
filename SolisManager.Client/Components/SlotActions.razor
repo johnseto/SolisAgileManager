@@ -3,9 +3,7 @@
     <div class="slot-actions" title="@Slot.ActionReason">
         @foreach( var action in AvailableActions )
         {
-            <div class="slot-icon slot-action" title="@ToolTip(action)">
-                <ActionIcon Action="action" OnActionChanged="OnActionChanged"></ActionIcon>
-            </div>
+            <ActionIcon Action="action" OnActionChanged="OnActionChanged"></ActionIcon>
         }
     </div>
 }
@@ -16,16 +14,7 @@
 
     [Parameter]
     public EventCallback<ChangeSlotActionRequest> OnChangeSlotAction { get; set; }
-
-    private string ToolTip(SlotAction action) => action switch
-    {
-        SlotAction.DoNothing => "Click here to set this slot to No Action",
-        SlotAction.Charge => "Click here to set this slot to charge the battery",
-        SlotAction.Discharge => "Click here to set this slot to discharge the battery",
-        SlotAction.ChargeIfLowBattery => "Click here to set this slot to boost the battery if low",
-        _ => Icons.Material.Filled.PauseCircle
-    };
-
+    
     private SlotAction[] AvailableActions = [];
 
     protected override void OnParametersSet()

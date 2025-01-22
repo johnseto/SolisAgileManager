@@ -16,13 +16,34 @@
         </div>
         <div class="config-fields">
             <h5>Octopus Product</h5>
-            <MudTextField T="string" Label="Octopus Product" @bind-Value="@config.OctopusProduct" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Octopus Product Code" @bind-Value="@config.OctopusProductCode" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <ConfigSettingHelp>
+                <HelpContent>
+                    Set your Octopus API key and account number to ensure the app can periodically update to match the tariff you're on.<br/>
+                    If you would rather set the products detail (e.g., to simulate a tariff you're not currently using) then leave
+                    the API key and account blank, and specify the Agile product code manually.
+                </HelpContent>
+                <ChildContent>
+                    <MudRadioGroup @bind-Value="@manualProductKey">
+                        <MudRadio Size="Size.Small" Value="@false">Use API Key (recommended)</MudRadio>
+                        <MudRadio Size="Size.Small" Value="@true">Manually Enter Product Code</MudRadio>
+                    </MudRadioGroup>
+                </ChildContent>
+            </ConfigSettingHelp>
+            @if (!manualProductKey)
+            {
+                    <MudTextField T="string" Label="Octopus Account Number" @bind-Value="@config.OctopusAccountNumber" Immediate="true" Variant="UIConstants.MudVariant"/>
+                    <MudTextField T="string" Label="Octopus API Key" @bind-Value="@config.OctopusAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+            }
+            else
+            {
+                <MudTextField T="string" Label="Octopus Product" @bind-Value="@config.OctopusProduct" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <MudTextField T="string" Label="Octopus Tariff Code" @bind-Value="@config.OctopusProductCode" Immediate="true" Variant="UIConstants.MudVariant"/>
+            }
         </div>
         <div class="config-fields">
             <h5>Solcast Settings</h5>
-            <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
             <ConfigSettingHelp HelpText="Scale factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%)">
                 <MudNumericField T="int" Label="Solcast Damping/Reduction %" @bind-Value="@DampingPercentageProxy" Min="0" Max="100" Variant="UIConstants.MudVariant"/>
             </ConfigSettingHelp>
@@ -31,7 +52,16 @@
             <h5>General/Battery Options</h5>
             <MudSlider @bind-Value="@config.SlotsForFullBatteryCharge" Size="Size.Large" TickMarks="true" ValueLabel="true"
                        Min="1" Max="10" Immediate="true" Variant="UIConstants.MudVariant">
-                Charge Slots needed to achieve Full Battery (@(config.SlotsForFullBatteryCharge/2.0) hours)
+                <ConfigSettingHelp>
+                    <HelpContent>This setting tells the app how many slots 30-minute slots of charging will be needed 
+                        to go from empty to full. This will depend on your battery size and charging rate.<br/>
+                        In a future version of the app will calculate this based on historical charging data, but
+                        for now it's a manual setting.
+                    </HelpContent>
+                    <ChildContent>
+                        Charge Slots needed to achieve Full Battery (@(config.SlotsForFullBatteryCharge / 2.0) hours)
+                    </ChildContent>
+                </ConfigSettingHelp>
             </MudSlider>
             <div class="config-field-row">
                 <ConfigSettingHelp HelpText="Specifies the maximum charge and discharge rate in Amps">
@@ -64,17 +94,18 @@
     public EventCallback OnSettingsChanged { get; set; }
     
     private SolisManagerConfig? config;
+    private bool manualProductKey = false;
 
     private int PeakPercentageProxy
     {
-        get { return (int)(config.PeakPeriodBatteryUse * 100); }
-        set { config.PeakPeriodBatteryUse = value / 100.0M;  }
+        get => (int)(config!.PeakPeriodBatteryUse * 100);
+        set => config!.PeakPeriodBatteryUse = value / 100.0M;
     }
 
     private int DampingPercentageProxy
     {
-        get { return (int)(config.SolcastDampingFactor * 100); }
-        set { config.SolcastDampingFactor = value / 100.0M;  }
+        get => (int)(config!.SolcastDampingFactor * 100);
+        set => config!.SolcastDampingFactor = value / 100.0M;
     }
 
     protected override async Task OnInitializedAsync()
@@ -85,11 +116,20 @@
 
     private async Task SaveConfig()
     {
-        await inverterService.SaveConfig(config);
-        await OnSettingsChanged.InvokeAsync();
+        if (config != null)
+        {
+            var response = await inverterService.SaveConfig(config);
 
-        snackbar.Add("Config Settings Updated", Severity.Info);
-        navManager.NavigateTo("/");
+            if (response.Success)
+            {
+                await OnSettingsChanged.InvokeAsync();
+
+                snackbar.Add("Config Settings Updated", Severity.Info);
+                navManager.NavigateTo("/");
+            }
+            else
+                snackbar.Add($"Error: {response.Message}", Severity.Error);
+        }
     }
 
     private async Task TestCharge()

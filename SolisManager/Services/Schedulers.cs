@@ -31,6 +31,16 @@ public class SolcastScheduler( SolcastAPI solcastService, ILogger<SolcastSchedul
     }
 }
 
+
+public class TariffScheduler( IInverterRefreshService inverterRefresh, ILogger<SolcastScheduler> logger ) : IInvocable
+{
+    public async Task Invoke()
+    {
+        logger.LogDebug("Executing Tariff scheduler");
+        await inverterRefresh.RefreshTariff();
+    }
+}
+
 public class VersionCheckScheduler( InverterManager service, ILogger<BatteryScheduler> logger) : IInvocable
 {
     public async Task Invoke()

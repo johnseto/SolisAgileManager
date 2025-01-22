@@ -5,13 +5,16 @@
 
 .clickable-icon {
     cursor: pointer;
-    padding: 2px;
+    border-radius: 5px;
+    background-color: rgba(200, 200, 200, 0.5);
+    border: solid 2px lightgray;
 }
 
 .clickable-icon:hover {
-    background-color: rgba(200, 200, 200, 0.6);
-    border-radius: 50%;
-    transition: background-color 0.5s ease-in;
+    background-color: rgba(200, 200, 200, 0.1);
+    border: solid 2px black;
+    transition: background-color 0.5s ease-in, border 0.5s ease;
+    color: revert;
 }
 
 ::deep .icon-charge {
@@ -23,7 +26,7 @@
 }
 
 ::deep .icon-noaction {
-    color: rgba(200,200,200, 0.8);
+    color: darkgray;
 }
 
 ::deep .icon-boost {

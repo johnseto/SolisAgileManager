@@ -180,6 +180,9 @@ public class InverterManager(
         InverterState.Prices = processedSlots;
 
         await ExecuteSlotChanges(processedSlots);
+        
+        if( config.Simulate && simulationData == null )
+            simulationData = InverterState.Prices.ToList();
     }
 
     private IEnumerable<ChangeSlotActionRequest> GetExistingSlotOverrides()
@@ -517,6 +520,41 @@ public class InverterManager(
         await RefreshData();
     }
 
+    private async Task<bool> UpdateConfigWithOctopusTariff(SolisManagerConfig theConfig)
+    {
+        if (!string.IsNullOrEmpty(theConfig.OctopusAPIKey) && !string.IsNullOrEmpty(theConfig.OctopusAccountNumber))
+        {
+            var productCode =
+                await octopusAPI.GetCurrentOctopusTariffCode(theConfig.OctopusAPIKey, theConfig.OctopusAccountNumber);
+
+            if (!string.IsNullOrEmpty(productCode))
+            {
+                var product = OctopusAPI.GetProductFromTariffCode(productCode);
+
+                if (!string.IsNullOrEmpty(product))
+                {
+                    if (theConfig.OctopusProductCode != productCode)
+                        logger.LogInformation("Octopus product code has changed: {Old} => {New}", theConfig.OctopusProductCode, productCode);
+
+                    theConfig.OctopusProduct = product;
+                    theConfig.OctopusProductCode = productCode;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public async Task RefreshTariff()
+    {
+        if (!string.IsNullOrEmpty(config.OctopusAPIKey) && !string.IsNullOrEmpty(config.OctopusAccountNumber))
+        {
+            logger.LogDebug("Executing Tariff Refresh scheduler");
+            await UpdateConfigWithOctopusTariff(config);
+        }
+    }
+
     public Task<List<HistoryEntry>> GetHistory()
     {
         return Task.FromResult(executionHistory);
@@ -527,13 +565,34 @@ public class InverterManager(
         return Task.FromResult(config);
     }
 
-    public async Task SaveConfig(SolisManagerConfig newConfig)
+    public async Task<ConfigSaveResponse> SaveConfig(SolisManagerConfig newConfig)
     {
         logger.LogInformation("Saving config to server...");
 
+        if (!string.IsNullOrEmpty(newConfig.OctopusAPIKey) && !string.IsNullOrEmpty(newConfig.OctopusAccountNumber))
+        {
+            try
+            {
+                var result = await UpdateConfigWithOctopusTariff(newConfig);
+
+                if (!result)
+                    throw new InvalidOperationException("Could not get product code");
+            }
+            catch(Exception ex)
+            {
+                logger.LogError(ex, "Octopus account lookup failed");
+                return new ConfigSaveResponse
+                {
+                    Success = false,
+                    Message = "Unable to get tariff details from Octopus. Please check your account and API key."
+                };
+            }
+        }
         newConfig.CopyPropertiesTo(config);
         await config.SaveToFile(Program.ConfigFolder);
         await RefreshData();
+        
+        return new ConfigSaveResponse{ Success = true };
     }
 
     public async Task OverrideSlotAction(ChangeSlotActionRequest change)
@@ -651,7 +710,7 @@ public class InverterManager(
         }
     }
 
-    public Task<NewVersionResponse?> GetVersionInfo()
+    public Task<NewVersionResponse> GetVersionInfo()
     {
         return Task.FromResult(appVersion);
     }

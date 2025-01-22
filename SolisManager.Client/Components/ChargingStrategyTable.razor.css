@@ -19,7 +19,8 @@ td.date-row {
 .title-bar {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
+    align-items: center;
+    column-gap: 15px;
     white-space: nowrap;
     flex-wrap: wrap;
     justify-content: space-between;
@@ -28,14 +29,19 @@ td.date-row {
     border-bottom: 1px solid rgba(100, 100, 100, 0.3);
 }
 
-.title-and-simulation{
+.title-and-nav {
     display: flex;
+    flex-wrap: nowrap;
+    flex: 1;
     flex-direction: row;
     column-gap: 15px;
     flex-wrap: wrap;
     align-items: flex-start;
 }
 
+.title-text {
+    margin-top: 5px;
+}
 .extra-info {
     display: flex;
     flex-direction: row;
@@ -50,12 +56,17 @@ td.date-row {
     .valid-to {
         display: none;
     }
+
     .extra-info {
         column-gap: 5px;
     }
+
+    .title-bar {
+        column-gap: 3px;
+    }
 }
 
-.simulate-indicator { 
+.simulate-indicator {
     color: white;
     background-color: darkred;
     padding: 5px 10px;
