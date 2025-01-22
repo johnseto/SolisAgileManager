@@ -1,11 +1,11 @@
 
 ![favicon](https://github.com/user-attachments/assets/65727c13-a402-45c4-907c-3bc3ef7bbca7)
 
-# Solis Manager - Automated Battery Management for Solis Inverters and Octopus Agile
+# Solis Manager - Automated Battery Management for Solis Inverters and Octopus Tariffs
 
 This app is designed to optimally manage the battery charging for your Solar/PV/Battery system, when
-used with the Octopus Agile tariff. The idea is that it will analyse upcoming Agile prices, and then
-apply an opinionated strategy to manage your battery based on the cheapest periods.
+used with the Octopus Smart tariffs. The idea is that it will analyse upcoming prices for Agile, Cosy, Go, etc, 
+and then apply an opinionated strategy to manage your battery based on the cheapest periods.
 
 ### Screenshots:
 
@@ -18,22 +18,6 @@ apply an opinionated strategy to manage your battery based on the cheapest perio
 <img src="https://github.com/user-attachments/assets/4ab0001e-1fa9-42d9-a5b1-c94e4cddcf8a" width=400 height=auto/>
 &nbsp;
 <img src="https://github.com/user-attachments/assets/c6a36fe7-3f7d-451e-b339-8aed458f3e54" width=400 height=auto/>
-
-### But why not just use the excellent [PredBat](https://springfall2008.github.io/batpred/) plugin for Home Assistant?
-
-I spent quite a lot of time researching PredBat. It looks awesome, and I would love to run it. However, Solis support
-for Predbat is quite limited, which makes it unsuitable for my needs. Specifically, there is no current way to run 
-PredBat with a Solis Inverter, solely using the Solis API. This means that there are only two alternatives:
-
-* Run the Solis Inverter and PredBat / Home Assistant using Modbus. The problem with that is that the Solis Wifi dongle
-  cannot support Modbus _and_ the Solis API, at the same time. So running Predbat with Modbus means losing the SolisCloud
-  application which is excellent for monitoring the inverter state.
-* The only way to get ModBus working **and** continue to use SolisCloud, is to use custom hardware, and that's not a road
-  I'm interested in going down.
-
-As soon as somebody writes an add-in / configuration for Predbat that supports Solis via the SolisCloud API, and which also
-implements API control conflation to reduce EEPROM writes on the inverter (see below), then I will probably switch to using 
-PredBat, as it's a far superior product. At that point, I'll likely archive this project.
 
 ### Warranty / Disclaimer 
 
@@ -90,8 +74,11 @@ Multiplatform Docker Images are available for:
 
 * linux/amd64 - for x64 Intel processors
 * linux/arm64 - for ARM64 processors
-* linux/amd/v7 - AMD/v7 processors Raspberry Pi
+* linux/amd/v7 - AMD/v7 processors
 * darwin - for MacOS (if you try this and it works pleae let me know!)
+
+Note that currently we haven't had success installing the docker image on Raspberry Pi, so you should use
+the binary bundle (see "Installing as a local app" above.
 
 ## Settings
 
@@ -100,43 +87,9 @@ secret, your inverter serial number, and the Octopus Product details of the curr
 
 <img width="600" alt="SettingsScreenshot" src="https://github.com/user-attachments/assets/2346f008-10e4-408b-a0ac-97b1af6c0a1c" />
 
-You'll also need to set some other config setting:
+#### Octopus Tariff Setup
 
-* Max Charge Rate in Amps - set to the level that your battery can charge/discharge at.
-
-* Charge slots for full battery - which tells the app how many slots of charging will be needed to go from
-  empty to full. This will depend on your battery size and charging rate. Eventually the app will calculate
-  this based on historical charging data, but for now, it's a manual setting.
-
-* `Battery Boost Threshold` - the percentage at which you'd like to boost charge if prices are a bit lower
-  than average
-
-* The `Always charge below` rate. For example, if you set this to 10p/kWh, then _any_ slot lower than that
-  price will always be set to charge, regardless of anything else.
-
-* `Battery %age for peak period`: this is an approximation of how much battery you need to get you through the 
-  peak period of 4pm-7pm. If you have a small battery and use a lot of power in the afternoon, you might want 
-  this to be 100% - so it'll charge too 100% before the peak time. 
-  
-  For me, we usually only use about 5-6kWh between 3pm and 7pm; our battery is 14kWh, so I have it set to 60%. 
-  The idea of this setting is that you want enough power to get through the peak period, but it doesn't 
-  necessarily need to be fully-charged.
-
-* Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
-  any changes to the behaviour.
-
-**Note**: For this to work, you'll need to have raised a ticket with Solis to get access to control the 
-inverter via the SolisCloud app. To do this:
-
-* Go to the [Solis Support Portal](https://solis-service.solisinverters.com/en/support/solutions)
-* Click 'Submit a ticket'
-* Submit a request to control your inverter from the SolisCloud App, filling in the details and selecting
-  ticket type `API Request - Owner`. In the notes, ask for API access too.
-
-### Octopus Tariff Setup
-
-The latest version of the app will connect to your Octopus account and find the current tariff that you're
-using. 
+The app will connect to your Octopus account and find the current tariff that you're using. 
 
 * Enter the Account number and Octopus API Key into the settings. When you click 'Save config' the tariff
   details will be pulled from your Octopus Account
@@ -145,10 +98,11 @@ Once the API key and account are configured, the application will query every 4 
 has changed, and update accordingly. So if you change tariff (e.g., switch from Agile to Cosy) you should 
 start seeing the new tariff prices flow into the app within 4 hours.
 
-### Manually Setting The Tariff
+#### Manual Tariff Settings 
 
-It's possible to manually configure the tariff/product. Just leave the Octopus API key and Account number blank
-and enter the product and tariff codes yourself. 
+If you don't want to use your Octopus account to infer the current tariff, you can enter the product and tariff
+product code manually. Just leave the Octopus API key and Account number blank and enter the product and tariff 
+codes yourself. 
 
 * [Click here](https://api.octopus.energy/v1/products/) to get the list of Octopus Agile Product codes (e.g.,
   `AGILE-24-10-01`).
@@ -160,6 +114,48 @@ Note that in the most common cases, selecting `AGILE-24-10-01` and `E-1R-AGILE-2
 the last `A` to the correct [Region Code](https://mysmartenergy.uk/Electricity-Region) will do exactly what you
 need. Solis Manager doesn't do anything with the standing charge, so it doesn't matter if you're on an older
 tariff. 
+
+### Other Configuration Settings
+
+You'll also need to set some other config settings that control the way the charging plan works:
+
+* Max Charge Rate in Amps - set to the level that your battery can charge/discharge at. You should refer
+  to your inverter/installer to check what is the max safe charging rate for your system's battery. 
+
+* Charge slots for full battery - which tells the app how many slots of charging will be needed to go from
+  empty to full. This will depend on your battery size and charging rate. Eventually the app will calculate
+  this based on historical charging data, but for now, it's a manual setting.
+
+* `Battery Boost Threshold` - the percentage at which you'd like to boost charge if prices are a bit lower
+  than average
+
+* The `Always charge below` rate. For example, if you set this to 10p/kWh, then _any_ slot lower than that
+  price will always be set to charge, regardless of anything else. Can be useful to ensure you prioritise
+  export, for example.
+  This can be useful for some tariffs - e.g. if you are on Cosy, which has alternating periods of high and
+  low prices, set is value to just above the cheap price and it will guarantee that your battery always
+  charges in the pricing 'troughs'. I set it to 15p/kWh when I'm on Cosy.
+
+* `Battery %age for peak period`: set this is an approximation of how much battery you need to get you
+  through the peak period of 4pm-7pm. If you have a small battery and use a lot of power in the afternoon,
+  you might want this to be 100% - so it'll allow enough charging to get to 100% before the peak time starts.
+  
+  For me, we usually only use about 5-6kWh between 3pm and 7pm; our battery is 14kWh, so I have it set to 60%. 
+  The idea of this setting is that you want enough power to get through the peak period, but it doesn't 
+  necessarily need to be fully-charged.
+
+* Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
+  any changes to the behaviour.
+
+### Getting Inverter Control Permission from Solis 
+
+**Note**: For this app to work, you'll need to have raised a ticket with Solis to get access to control the 
+inverter via the SolisCloud app. To do this:
+
+* Go to the [Solis Support Portal](https://solis-service.solisinverters.com/en/support/solutions)
+* Click 'Submit a ticket'
+* Submit a request to control your inverter from the SolisCloud App, filling in the details and selecting
+  ticket type `API Request - Owner`. In the notes, ask for API access too.
 
 ### History Data
 
@@ -173,9 +169,12 @@ allows you to convienently check what it did, and why it did it:
   
 ### Will the app work with non-Agile Tariffs?
 
-I haven't tried, but it might! I've had at least one person tell me that it works correctly with Octopus Go.
+Yes! The latest version has been updated to work with all Octopus Smart Tariffs. For example, the screenshot
+below shows the charging plan for Cosy - with the `Always Charge Above` config setting set to 15p/kWh.
+
+<img width="1252" alt="Screenshot 2025-01-22 at 07 18 28" src="https://github.com/user-attachments/assets/36d1e49a-c9d8-4549-b414-d3a4cbbd34ad" />
   
-### How does it work?
+### How does the app work?
 
 At first launch SolisManager will load the next set of Agile Tariff data, along with some information about
 your inverter. It will then estimate the best charging strategy based on a number of rules, as set out below. 
@@ -248,7 +247,7 @@ what will happen (and the logs will show the commands that would have been sent 
 
 Once you run out of slots at the end of the simulation, click reset to start again.
 
-### Solcast Data
+### Solcast PV Forecast Data
 
 The application can use a Hobbyist Rooftop account from [Solcast](https://solcast.com/free-rooftop-solar-forecasting) 
 to estimate the likely PV yield from your system over the next day or so. 
@@ -259,15 +258,37 @@ To configure this add settings for:
 * Your Solcast Rooftop Site ID (this is a four-part hex ID)
 * A damping factor (see below)
 
+Currently the Solcast data is only used for display purposes, but will eventually be used to optimise the 
+algorithm (e.g., by skipping overnight charging if the forecast is for a decent PV yield.
+  
 #### Solcast Damping Factor
 
 Solcast can often over-estimate the forecast for the PV yield, because it may under-estimate the cloud 
 impact, or may not take into account panel shading, and string efficiency. Therefore, the config settings 
 have a field for Solcast Damping Factor. So for example, if your Solcast forecast is generally 2x your
-_actual_ PV yield, then set the damping factor to 50%. 
+_actual_ PV yield, then set the damping factor to 50%. The damping factor is applied immediately to all
+of the Solcast figures in the UI, so you can adjust this up/down until it matches reality.
 
 In future, the application will look at historic PV yields from the inverter, and compare this to the 
 Solcast forecast, and then auto-adjust to match reality.
+
+### Technical Considerations
+
+#### But why not just use the excellent [PredBat](https://springfall2008.github.io/batpred/) plugin for Home Assistant?
+
+I spent quite a lot of time researching PredBat. It looks awesome, and I would love to run it. However, Solis support
+for Predbat is quite limited, which makes it unsuitable for my needs. Specifically, there is no current way to run 
+PredBat with a Solis Inverter, solely using the Solis API. This means that there are only two alternatives:
+
+* Run the Solis Inverter and PredBat / Home Assistant using Modbus. The problem with that is that the Solis Wifi dongle
+  cannot support Modbus _and_ the Solis API, at the same time. So running Predbat with Modbus means losing the SolisCloud
+  application which is excellent for monitoring the inverter state.
+* The only way to get ModBus working **and** continue to use SolisCloud, is to use custom hardware, and that's not a road
+  I'm interested in going down.
+
+As soon as somebody writes an add-in / configuration for Predbat that supports Solis via the SolisCloud API, and which also
+implements API control conflation to reduce EEPROM writes on the inverter (see below), then I will probably switch to using 
+PredBat, as it's a far superior product. At that point, I'll likely archive this project.
 
 #### Avoiding Solcast Rate-limiting
 
@@ -293,7 +314,7 @@ isn't enough PV to make a difference at the moment). Probably:
 
 If you have other ideas or suggestions, let me know!
 
-### Technical Considerations
+### Reducing Inverter EEPROM Writes
 
 A couple of people have raised concerns about the number of writes a half-hourly process will make to the
 SolisCloud API, and consequently the Inverter EEPROM. Excessive writes could result in a reduced longevity
@@ -319,12 +340,6 @@ Then the actual calls are conflated to the following:
 
 This optimisation means that the absolute minimum number of `control` API calls are made (from about 17,000 per
 year down to around 2,000), and hence the minimum number of Inverter EEPROM writes are carried out.
-
-### Coming Soon:
-
-* The app will read in Solcast forecast data if you provide an API key and Site ID. Currently this information
-  is only used for display purposes, but will eventually be used to optimise the algorithm (e.g., by skipping
-  overnight charging if the forecast is for a decent PV yield.
 
 ### Other Things I've Written
 
