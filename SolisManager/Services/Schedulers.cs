@@ -36,6 +36,7 @@ public class TariffScheduler( IInverterRefreshService inverterRefresh, ILogger<S
 {
     public async Task Invoke()
     {
+        logger.LogDebug("Executing Tariff scheduler");
         await inverterRefresh.RefreshTariff();
     }
 }

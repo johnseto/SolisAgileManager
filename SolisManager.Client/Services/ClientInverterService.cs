@@ -91,8 +91,10 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
         await httpClient.GetAsync("inverter/dumpandchargebattery");
     }
     
-    public async Task<NewVersionResponse?> GetVersionInfo()
+    public async Task<NewVersionResponse> GetVersionInfo()
     {
-        return await httpClient.GetFromJsonAsync<NewVersionResponse>("inverter/versioninfo");
+        var result = await httpClient.GetFromJsonAsync<NewVersionResponse>("inverter/versioninfo");
+        ArgumentNullException.ThrowIfNull(result);
+        return result;
     }
 }

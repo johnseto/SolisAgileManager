@@ -16,14 +16,23 @@
         </div>
         <div class="config-fields">
             <h5>Octopus Product</h5>
-            <MudRadioGroup @bind-Value="@manualProductKey">
-                <MudRadio Size="Size.Small" Value="@false">Use API Key (recommended)</MudRadio>
-                <MudRadio Size="Size.Small" Value="@true">Manually Enter Product Code</MudRadio>
-            </MudRadioGroup>
+            <ConfigSettingHelp>
+                <HelpContent>
+                    Set your Octopus API key and account number to ensure the app can periodically update to match the tariff you're on.<br/>
+                    If you would rather set the products detail (e.g., to simulate a tariff you're not currently using) then leave
+                    the API key and account blank, and specify the Agile product code manually.
+                </HelpContent>
+                <ChildContent>
+                    <MudRadioGroup @bind-Value="@manualProductKey">
+                        <MudRadio Size="Size.Small" Value="@false">Use API Key (recommended)</MudRadio>
+                        <MudRadio Size="Size.Small" Value="@true">Manually Enter Product Code</MudRadio>
+                    </MudRadioGroup>
+                </ChildContent>
+            </ConfigSettingHelp>
             @if (!manualProductKey)
             {
-                <MudTextField T="string" Label="Octopus Account Number" @bind-Value="@config.OctopusAccountNumber" Immediate="true" Variant="UIConstants.MudVariant"/>
-                <MudTextField T="string" Label="Octopus API Key" @bind-Value="@config.OctopusAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+                    <MudTextField T="string" Label="Octopus Account Number" @bind-Value="@config.OctopusAccountNumber" Immediate="true" Variant="UIConstants.MudVariant"/>
+                    <MudTextField T="string" Label="Octopus API Key" @bind-Value="@config.OctopusAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
             }
             else
             {
@@ -33,8 +42,8 @@
         </div>
         <div class="config-fields">
             <h5>Solcast Settings</h5>
-            <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
             <ConfigSettingHelp HelpText="Scale factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%)">
                 <MudNumericField T="int" Label="Solcast Damping/Reduction %" @bind-Value="@DampingPercentageProxy" Min="0" Max="100" Variant="UIConstants.MudVariant"/>
             </ConfigSettingHelp>
@@ -80,14 +89,14 @@
 
     private int PeakPercentageProxy
     {
-        get { return (int)(config.PeakPeriodBatteryUse * 100); }
-        set { config.PeakPeriodBatteryUse = value / 100.0M;  }
+        get => (int)(config!.PeakPeriodBatteryUse * 100);
+        set => config!.PeakPeriodBatteryUse = value / 100.0M;
     }
 
     private int DampingPercentageProxy
     {
-        get { return (int)(config.SolcastDampingFactor * 100); }
-        set { config.SolcastDampingFactor = value / 100.0M;  }
+        get => (int)(config!.SolcastDampingFactor * 100);
+        set => config!.SolcastDampingFactor = value / 100.0M;
     }
 
     protected override async Task OnInitializedAsync()
@@ -96,23 +105,22 @@
         await base.OnInitializedAsync();
     }
 
-    private async Task ValidateOctopus()
-    {   
-    }
-
     private async Task SaveConfig()
     {
-        var response = await inverterService.SaveConfig(config);
-
-        if (response.Success)
+        if (config != null)
         {
-            await OnSettingsChanged.InvokeAsync();
+            var response = await inverterService.SaveConfig(config);
 
-            snackbar.Add("Config Settings Updated", Severity.Info);
-            navManager.NavigateTo("/");
+            if (response.Success)
+            {
+                await OnSettingsChanged.InvokeAsync();
+
+                snackbar.Add("Config Settings Updated", Severity.Info);
+                navManager.NavigateTo("/");
+            }
+            else
+                snackbar.Add($"Error: {response.Message}", Severity.Error);
         }
-        else
-            snackbar.Add($"Error: {response.Message}", Severity.Error);
     }
 
     private async Task TestCharge()

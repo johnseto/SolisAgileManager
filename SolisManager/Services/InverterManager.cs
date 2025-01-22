@@ -710,7 +710,7 @@ public class InverterManager(
         }
     }
 
-    public Task<NewVersionResponse?> GetVersionInfo()
+    public Task<NewVersionResponse> GetVersionInfo()
     {
         return Task.FromResult(appVersion);
     }
