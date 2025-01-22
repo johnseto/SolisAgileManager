@@ -569,6 +569,15 @@ public class InverterManager(
     {
         logger.LogInformation("Saving config to server...");
 
+        if (newConfig.SolcastSiteIdentifier.Count(x => x == ',') > 1)
+        {
+            return new ConfigSaveResponse
+            {
+                Success = false,
+                Message = "A maximum of two Solcast site IDs can be specified"
+            };
+        }
+        
         if (!string.IsNullOrEmpty(newConfig.OctopusAPIKey) && !string.IsNullOrEmpty(newConfig.OctopusAccountNumber))
         {
             try

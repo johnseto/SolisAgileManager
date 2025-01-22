@@ -42,7 +42,9 @@
         </div>
         <div class="config-fields">
             <h5>Solcast Settings</h5>
-            <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <ConfigSettingHelp HelpText="Specify up to two Solcast comma-separated site identifiers (one for each string)">
+                <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+            </ConfigSettingHelp>
             <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
             <ConfigSettingHelp HelpText="Scale factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%)">
                 <MudNumericField T="int" Label="Solcast Damping/Reduction %" @bind-Value="@DampingPercentageProxy" Min="0" Max="100" Variant="UIConstants.MudVariant"/>
