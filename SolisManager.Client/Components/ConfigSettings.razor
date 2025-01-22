@@ -52,7 +52,16 @@
             <h5>General/Battery Options</h5>
             <MudSlider @bind-Value="@config.SlotsForFullBatteryCharge" Size="Size.Large" TickMarks="true" ValueLabel="true"
                        Min="1" Max="10" Immediate="true" Variant="UIConstants.MudVariant">
-                Charge Slots needed to achieve Full Battery (@(config.SlotsForFullBatteryCharge/2.0) hours)
+                <ConfigSettingHelp>
+                    <HelpContent>This setting tells the app how many slots 30-minute slots of charging will be needed 
+                        to go from empty to full. This will depend on your battery size and charging rate.<br/>
+                        In a future version of the app will calculate this based on historical charging data, but
+                        for now it's a manual setting.
+                    </HelpContent>
+                    <ChildContent>
+                        Charge Slots needed to achieve Full Battery (@(config.SlotsForFullBatteryCharge / 2.0) hours)
+                    </ChildContent>
+                </ConfigSettingHelp>
             </MudSlider>
             <div class="config-field-row">
                 <ConfigSettingHelp HelpText="Specifies the maximum charge and discharge rate in Amps">
