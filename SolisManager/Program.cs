@@ -78,6 +78,7 @@ public class Program
         builder.Services.AddSingleton<BatteryScheduler>();
         builder.Services.AddSingleton<RatesScheduler>();
         builder.Services.AddSingleton<SolcastScheduler>();
+        builder.Services.AddSingleton<SolcastExtraScheduler>();
         builder.Services.AddSingleton<VersionCheckScheduler>();
         builder.Services.AddSingleton<TariffScheduler>();
 
@@ -138,16 +139,24 @@ public class Program
 
         app.ConfigureAPIEndpoints();
         
-        // Get the solcast data at 2am, 6am and midday. Run it on the 
-        // 13th minute, because that reduces load (half of the world
-        // runs their solcast ingestion on the hour).
-        // Don't run at first startup. It means you won't get 
-        // data for a while, but that's probably okay.
+        // Get the solcast data at 2am, on the 13th minute, because that
+        // reduces load (half of the world runs their solcast ingestion
+        // on the hour). Don't run at first startup unless debugging.
+        // It means you won't get data for a while, but that's okay.
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
-            .Cron("13 2,6,12 * * *")
+            .Cron("13 2 * * *")
             .RunAtStartupIfDebugging());
 
+        // An additional scheduler for a couple of extra solcast updates
+        // through the day (6am and midday). This will give better 
+        // forecasting accuracy, but at the cost of risking hitting the
+        // rate limit. So the execution of this scheduler depends on the
+        // config setting.
+        app.Services.UseScheduler(s => s
+            .Schedule<SolcastExtraScheduler>()
+            .Cron("13 6,12 * * *"));
+        
         // Refresh and apply the octopus rates every 30 mins
         app.Services.UseScheduler(s => s
             .Schedule<RatesScheduler>()

@@ -6,14 +6,16 @@
     <MudIcon Icon="@Icons.Material.Filled.Help" Size="Size.Small" @onclick="ToggleOpen" Class="help-icon" Title="Click for help on this setting"/>
     <MudPopover Open="_open" OverflowBehavior="OverflowBehavior.FlipAlways" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
         <div class="help-text">
-            @if (HelpContent != null)
-            {
-                @HelpContent   
-            }
-            else
-            {
-                <div>@HelpText</div>
-            }
+            <div>
+                @if (HelpContent != null)
+                {
+                    @HelpContent
+                }
+                else
+                {
+                    @HelpText
+                }
+            </div>
             <MudIcon @onclick="@ToggleOpen" Size="Size.Small" Icon="@Icons.Material.Filled.Close" Class="help-icon"/>
         </div>
     </MudPopover>

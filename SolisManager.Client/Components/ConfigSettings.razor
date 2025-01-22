@@ -42,10 +42,22 @@
         </div>
         <div class="config-fields">
             <h5>Solcast Settings</h5>
-                <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
-                <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
             <ConfigSettingHelp HelpText="Scale factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%)">
                 <MudNumericField T="int" Label="Solcast Damping/Reduction %" @bind-Value="@DampingPercentageProxy" Min="0" Max="100" Variant="UIConstants.MudVariant"/>
+            </ConfigSettingHelp>
+            <ConfigSettingHelp>
+                <HelpContent>
+                    Solcast has an API rate-limit of 10 calls per day, so solcast data will only be pulled at 2am each day, and 
+                    then cached (in a file called <code>Solcast-latest.json</code>). <br/>
+                    If you want additional updates through the day (at 6am and midday) to update the solcast forecast as the 
+                    day progresses, check this option. However, note that if you are using Solcast elsewhere (e.g., in 
+                    Home Assistant) this may mean that you're more likely to hit your API rate limit.
+                </HelpContent>
+                <ChildContent>
+                    <MudCheckBox Label="Extra Solcast updates" LabelPosition="LabelPosition.End" @bind-Value="@config.SolcastExtraUpdates"/>
+                </ChildContent>
             </ConfigSettingHelp>
         </div>
         <div class="config-fields">

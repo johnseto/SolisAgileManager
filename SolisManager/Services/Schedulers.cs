@@ -32,6 +32,22 @@ public class SolcastScheduler( SolcastAPI solcastService, ILogger<SolcastSchedul
 }
 
 
+public class SolcastExtraScheduler( SolcastAPI solcastService, IInverterService invService, ILogger<SolcastScheduler> logger ) : IInvocable
+{
+    public async Task Invoke()
+    {
+        var config = await invService.GetConfig();
+
+        if (config.SolcastExtraUpdates)
+        {
+            logger.LogDebug("Executing Extra Solcast scheduler");
+            await solcastService.UpdateSolcastDataFromAPI();
+        }
+    }
+}
+
+
+
 public class TariffScheduler( IInverterRefreshService inverterRefresh, ILogger<SolcastScheduler> logger ) : IInvocable
 {
     public async Task Invoke()
