@@ -10,7 +10,9 @@
     {
         var config = await inverterService.GetConfig();
 
-        var name = string.Concat(config.OctopusProduct.TakeWhile(x => x != '-'));
+        var product = config.OctopusProductCode.GetProductFromTariffCode();
+        
+        var name = string.Concat(product.TakeWhile(x => x != '-'));
 
         if (!string.IsNullOrEmpty(name))
             TariffName = name.ToLower().ApplyCase(LetterCasing.Title);

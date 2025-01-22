@@ -140,7 +140,7 @@ public class InverterManager(
             
             logger.LogTrace("Refreshing data...");
 
-            var octRatesTask = octopusAPI.GetOctopusRates();
+            var octRatesTask = octopusAPI.GetOctopusRates(config.OctopusProductCode);
 
             await Task.WhenAll(RefreshBatteryState(), octRatesTask, LoadExecutionHistory());
 
@@ -529,17 +529,11 @@ public class InverterManager(
 
             if (!string.IsNullOrEmpty(productCode))
             {
-                var product = OctopusAPI.GetProductFromTariffCode(productCode);
+                if (theConfig.OctopusProductCode != productCode)
+                    logger.LogInformation("Octopus product code has changed: {Old} => {New}", theConfig.OctopusProductCode, productCode);
 
-                if (!string.IsNullOrEmpty(product))
-                {
-                    if (theConfig.OctopusProductCode != productCode)
-                        logger.LogInformation("Octopus product code has changed: {Old} => {New}", theConfig.OctopusProductCode, productCode);
-
-                    theConfig.OctopusProduct = product;
-                    theConfig.OctopusProductCode = productCode;
-                    return true;
-                }
+                theConfig.OctopusProductCode = productCode;
+                return true;
             }
         }
 
@@ -745,5 +739,19 @@ public class InverterManager(
         {
             logger.LogWarning("Unable to check GitHub for latest version: {E}", ex);
         }
+    }
+
+    public async Task<TariffComparison> GetTariffComparisonData(string tariffA, string tariffB)
+    {
+        var ratesA = await octopusAPI.GetOctopusRates(tariffA);
+        var ratesB = await octopusAPI.GetOctopusRates(tariffB);
+
+        return new TariffComparison
+        {
+            TariffA = tariffA,
+            TariffAPrices = ratesA,
+            TariffB = tariffB,
+            TariffBPrices = ratesB
+        };
     }
 }

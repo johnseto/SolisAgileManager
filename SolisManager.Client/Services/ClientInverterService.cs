@@ -17,10 +17,21 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
             InverterState = state;
     }
 
+    public async Task<TariffComparison> GetTariffComparisonData(string tariffA, string tariffB)
+    {
+        var url = $"inverter/tariffcomparison/{tariffA}/{tariffB}";
+        var result = await httpClient.GetFromJsonAsync<TariffComparison>(url);
+        if (result != null)
+            return result;
+
+        return new TariffComparison();
+    }
+
     public async Task OverrideSlotAction(ChangeSlotActionRequest request)
     {
         await httpClient.PostAsJsonAsync("inverter/overrideslotaction", request);
     }
+
     public async Task<List<HistoryEntry>> GetHistory()
     {
         var result = await httpClient.GetFromJsonAsync<List<HistoryEntry>>("inverter/history");

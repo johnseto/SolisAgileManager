@@ -57,6 +57,15 @@ public static class EndpointMapper
                 return TypedResults.Ok();
             });
 
+
+        group.MapGet("tariffcomparison/{tariffA}/{tariffB}",
+            async (string tariffA, string tariffB, 
+                [FromServices] IInverterService service) =>
+            {
+                var result = await service.GetTariffComparisonData(tariffA, tariffB);
+                return TypedResults.Ok(result);
+            });
+
         return group;
     }
 

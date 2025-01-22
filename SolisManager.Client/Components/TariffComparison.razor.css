@@ -1,0 +1,13 @@
+.chart-area {
+    height: calc(100vh - 200px);
+    width: 100%;
+}
+
+.title-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: flex-start;
+    column-gap: 10px;
+}
+

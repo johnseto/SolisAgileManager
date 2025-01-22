@@ -10,6 +10,9 @@ public interface IInverterService
     public Task<SolisManagerConfig> GetConfig();
     public Task<ConfigSaveResponse> SaveConfig(SolisManagerConfig config);
 
+    Task<TariffComparison> GetTariffComparisonData(string tariffA, string tariffB);
+
+
     public Task OverrideSlotAction(ChangeSlotActionRequest change);
     public Task TestCharge();
     public Task ChargeBattery();

@@ -32,4 +32,37 @@ public static class Utils
         }
 
     }
+    
+    
+    /// <summary>
+    /// To identify the product code for a particular tariff, you can usually take off the first few letters of
+    /// the tariff (E-1R-, E-2R- or G-1R) which indicate if it is electricity single register, electricity dual
+    /// register (eg economy7) or gas single register, and the letter at the end (eg -A) which indicates the
+    /// region code. So, for example, E-1R-VAR-19-04-12-N is one of the tariffs for product VAR-19-04-12.
+    /// </summary>
+    /// <param name="tariffCode"></param>
+    /// <returns></returns>
+    public static string GetProductFromTariffCode(this string tariffCode)
+    {
+        if (string.IsNullOrEmpty(tariffCode))
+            return string.Empty;
+        
+        var lastDash = tariffCode.LastIndexOf('-');
+        if( lastDash > 0 )
+            tariffCode = tariffCode.Substring(0, lastDash);
+
+        // Hacky, but we don't do it very often, so meh
+        var first = tariffCode.IndexOf('-');
+        if (first > 0)
+        {
+            tariffCode = tariffCode.Substring(first + 1);
+            var second = tariffCode.IndexOf('-');
+            if (second > 0)
+            {
+                return tariffCode.Substring(second + 1);
+            }
+        }
+
+        return string.Empty;
+    }
 }

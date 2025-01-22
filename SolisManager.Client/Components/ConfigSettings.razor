@@ -25,7 +25,7 @@
                 <ChildContent>
                     <MudRadioGroup @bind-Value="@manualProductKey">
                         <MudRadio Size="Size.Small" Value="@false">Use API Key (recommended)</MudRadio>
-                        <MudRadio Size="Size.Small" Value="@true">Manually Enter Product Code</MudRadio>
+                        <MudRadio Size="Size.Small" Value="@true">Manually Enter Tariff Code</MudRadio>
                     </MudRadioGroup>
                 </ChildContent>
             </ConfigSettingHelp>
@@ -36,7 +36,6 @@
             }
             else
             {
-                <MudTextField T="string" Label="Octopus Product" @bind-Value="@config.OctopusProduct" Immediate="true" Variant="UIConstants.MudVariant"/>
                 <MudTextField T="string" Label="Octopus Tariff Code" @bind-Value="@config.OctopusProductCode" Immediate="true" Variant="UIConstants.MudVariant"/>
             }
         </div>

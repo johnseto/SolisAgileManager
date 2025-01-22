@@ -2,24 +2,27 @@
 using System.Text.Json;
 using Flurl;
 using Flurl.Http;
+using SolisManager.Shared;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.APIWrappers;
 
-public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
+public class OctopusAPI( ILogger<OctopusAPI> logger)
 {
-    public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates()
+    public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates(string tariffCode)
     {
         var from = DateTime.UtcNow;
         var to = DateTime.UtcNow.AddDays(5);
 
+        var product = tariffCode.GetProductFromTariffCode();
+        
         // https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-A/standard-unit-rates/
         
         var result = await "https://api.octopus.energy"
             .AppendPathSegment("/v1/products")
-            .AppendPathSegment(config.OctopusProduct)
+            .AppendPathSegment(product)
             .AppendPathSegment("electricity-tariffs")
-            .AppendPathSegment(config.OctopusProductCode)
+            .AppendPathSegment(tariffCode)
             .AppendPathSegment("standard-unit-rates")
             .SetQueryParams(new {
                 period_from = from,
@@ -140,38 +143,6 @@ public class OctopusAPI( SolisManagerConfig config, ILogger<OctopusAPI> logger)
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// To identify the product code for a particular tariff, you can usually take off the first few letters of
-    /// the tariff (E-1R-, E-2R- or G-1R) which indicate if it is electricity single register, electricity dual
-    /// register (eg economy7) or gas single register, and the letter at the end (eg -A) which indicates the
-    /// region code. So, for example, E-1R-VAR-19-04-12-N is one of the tariffs for product VAR-19-04-12.
-    /// </summary>
-    /// <param name="tariffCode"></param>
-    /// <returns></returns>
-    public static string GetProductFromTariffCode(string tariffCode)
-    {
-        if (string.IsNullOrEmpty(tariffCode))
-            return string.Empty;
-        
-        var lastDash = tariffCode.LastIndexOf('-');
-        if( lastDash > 0 )
-            tariffCode = tariffCode.Substring(0, lastDash);
-
-        // Hacky, but we don't do it very often, so meh
-        var first = tariffCode.IndexOf('-');
-        if (first > 0)
-        {
-            tariffCode = tariffCode.Substring(first + 1);
-            var second = tariffCode.IndexOf('-');
-            if (second > 0)
-            {
-                return tariffCode.Substring(second + 1);
-            }
-        }
-
-        return string.Empty;
     }
     
     public async Task<string?> GetCurrentOctopusTariffCode(string apiKey, string accountNumber)

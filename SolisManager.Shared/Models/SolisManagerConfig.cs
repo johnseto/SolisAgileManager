@@ -12,7 +12,6 @@ public record SolisManagerConfig
     public string SolisInverterSerial { get; set; } = string.Empty;
     public string OctopusAccountNumber { get; set; } = string.Empty;
     public string OctopusAPIKey { get; set; } = string.Empty;
-    public string OctopusProduct { get; set; } = string.Empty;
     public string OctopusProductCode { get; set; } = String.Empty;
     public int SlotsForFullBatteryCharge { get; set; }
     public int AlwaysChargeBelowPrice { get; set; } = 10;
@@ -63,8 +62,11 @@ public record SolisManagerConfig
         if (string.IsNullOrEmpty(SolisAPISecret)) return false;
         if (string.IsNullOrEmpty(SolisInverterSerial)) return false;
 
-        if (string.IsNullOrEmpty(OctopusProduct)) return false;
-        if (string.IsNullOrEmpty(OctopusProductCode)) return false;
+        if (string.IsNullOrEmpty(OctopusAPIKey) && string.IsNullOrEmpty(OctopusAccountNumber))
+        {
+            if (string.IsNullOrEmpty(OctopusProductCode)) return false;
+                return false;
+        }
 
         return true;
     }
