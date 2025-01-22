@@ -38,8 +38,8 @@ public class OctopusAPI( ILogger<OctopusAPI> logger)
             
                 var first = result.results.FirstOrDefault()?.valid_from;
                 var last = result.results.LastOrDefault()?.valid_to;
-                logger.LogInformation("Retrieved {C} rates from Octopus ({S:dd-MMM-yyyy HH:mm} - {E:dd-MMM-yyyy HH:mm})", 
-                    result.count, first, last);
+                logger.LogInformation("Retrieved {C} rates from Octopus ({S:dd-MMM-yyyy HH:mm} - {E:dd-MMM-yyyy HH:mm}) for product {Code}", 
+                    result.count, first, last, tariffCode);
 
                 return SplitToHalfHourSlots(orderedSlots);
             }
