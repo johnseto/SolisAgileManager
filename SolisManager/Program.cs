@@ -139,13 +139,13 @@ public class Program
 
         app.ConfigureAPIEndpoints();
         
-        // Get the solcast data at 2am, on the 13th minute, because that
-        // reduces load (half of the world runs their solcast ingestion
-        // on the hour). Don't run at first startup unless debugging.
+        // Get the solcast data at just after midnight, on the 13th minute,
+        // because that reduces load (half of the world runs their solcast
+        // ingestion on the hour). Don't run at first startup unless debugging.
         // It means you won't get data for a while, but that's okay.
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
-            .Cron("13 2 * * *")
+            .Cron("13 0 * * *")
             .RunAtStartupIfDebugging());
 
         // An additional scheduler for a couple of extra solcast updates
