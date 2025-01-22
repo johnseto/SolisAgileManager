@@ -8,7 +8,7 @@ on:
         required: false
 
 jobs:
-  relsease-solismanager:
+  build-solismanager:
     runs-on: ${{ matrix.os }}
     strategy: 
       matrix: 

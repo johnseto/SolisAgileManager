@@ -45,7 +45,7 @@
                 <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
             </ConfigSettingHelp>
             <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <ConfigSettingHelp HelpText="Scale factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%)">
+            <ConfigSettingHelp HelpText="Damping factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%). A value of 100% will use the raw solcast data">
                 <MudNumericField T="int" Label="Solcast Damping/Reduction %" @bind-Value="@DampingPercentageProxy" Min="0" Max="100" Variant="UIConstants.MudVariant"/>
             </ConfigSettingHelp>
             <ConfigSettingHelp>
@@ -103,9 +103,8 @@
 </div>
 
 @code {
-    [Parameter]
-    public EventCallback OnSettingsChanged { get; set; }
-    
+    [Parameter] public EventCallback OnSettingsChanged { get; set; }
+
     private SolisManagerConfig? config;
     private bool manualProductKey = false;
 

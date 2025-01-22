@@ -20,7 +20,7 @@ public record SolisManagerConfig
 
     public string SolcastAPIKey { get; set; } = string.Empty;  
     public string SolcastSiteIdentifier { get; set; } = string.Empty;
-    public decimal SolcastDampingFactor { get; set; } = 0.3M;
+    public decimal SolcastDampingFactor { get; set; } = 0.55M;
     public bool SolcastExtraUpdates { get; set; } = false;
 
     public decimal PeakPeriodBatteryUse { get; set; } = 0.5M;
