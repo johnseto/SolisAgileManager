@@ -172,7 +172,7 @@ public class Program
         app.Services.UseScheduler(s => s
             .Schedule<VersionCheckScheduler>()
             .Cron("15 6,12,18 * * *")
-            .RunOnceAtStart());
+            .RunAtStartupIfDebugging());
 
         await app.RunAsync();
     }

@@ -35,6 +35,7 @@ td.date-row {
     flex: 1;
     flex-direction: row;
     column-gap: 15px;
+    flex-wrap: wrap;
     align-items: flex-start;
 }
 
