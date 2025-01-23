@@ -12,9 +12,14 @@
 
 @if (comparison == null)
 {
-    <p>
-        Please select a tariff for comparison.
-    </p>
+    @if (string.IsNullOrEmpty(selectedTariff))
+    {
+        <p>Please select a tariff for comparison.</p>
+    }
+    else
+    {
+        <p>Loading rates for comparison...</p>
+    }
 }
 else
 {
@@ -67,6 +72,8 @@ else
 
             if (chart != null && comparison != null)
             {
+                await chart.UpdateSeriesAsync();
+
                 var maxA = comparison.TariffAPrices.Max(x => x.valid_to);
                 var maxB = comparison.TariffBPrices.Max(x => x.valid_to);
 
@@ -74,8 +81,6 @@ else
         
                 await chart.ZoomXAsync(DateTime.UtcNow.ToUnixTimeMilliseconds(), 
                     closest.ToUnixTimeMilliseconds());
-
-                await chart.UpdateSeriesAsync();
             }
         }
     }

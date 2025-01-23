@@ -34,9 +34,12 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
             logger.LogInformation("Querying Solcast API for forecast (site ID: {ID}...", siteIdentifier);
 
             var responseData = await url.GetJsonAsync<SolcastResponse>();
-            
-            if( responseData != null)
+
+            if (responseData != null)
+            {
+                logger.LogInformation("Data received from Solcast: {D}", JsonSerializer.Serialize(responseData));
                 return responseData;
+            }
         }
         catch (FlurlHttpException ex)
         {
