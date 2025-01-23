@@ -10,18 +10,7 @@
                             RegionCode="@currentTariff?.Last()" RegionClearable="false"/>
 </div>
 
-@if (comparison == null)
-{
-    @if (string.IsNullOrEmpty(selectedTariff))
-    {
-        <p>Please select a tariff for comparison.</p>
-    }
-    else
-    {
-        <p>Loading rates for comparison...</p>
-    }
-}
-else
+@if (comparison != null)
 {
     <ComparisonChart FirstName="@($"Current Tariff ({currentTariff})")" FirstSeries="comparison.TariffAPrices"
                      SecondName="@selectedTariff" SecondSeries="@comparison.TariffBPrices" />
