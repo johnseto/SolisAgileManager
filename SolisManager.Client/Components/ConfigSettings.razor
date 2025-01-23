@@ -25,7 +25,7 @@
                 <ChildContent>
                     <MudRadioGroup @bind-Value="@manualProductKey">
                         <MudRadio Size="Size.Small" Value="@false">Use API Key (recommended)</MudRadio>
-                        <MudRadio Size="Size.Small" Value="@true">Manually Enter Tariff Code</MudRadio>
+                        <MudRadio Size="Size.Small" Value="@true">Select Octopus Tariff</MudRadio>
                     </MudRadioGroup>
                 </ChildContent>
             </ConfigSettingHelp>
@@ -37,6 +37,12 @@
             else
             {
                 <OctopusProductSelector @bind-TariffCode="config.OctopusProductCode" Disabled="@AutomaticAccount"/>
+                @if (AutomaticAccount)
+                {
+                    <div class="tariff-tip">
+                        The Octopus Product has been set from your account. To set manually, clear the account/API settings.
+                    </div>
+                }
             }
         </div>
         <div class="config-fields">
