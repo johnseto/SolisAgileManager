@@ -6,8 +6,10 @@
 <div class="title-bar">
     <h5>Comparison vs Current Tariff</h5>
 
-    <OctopusProductSelector @bind-TariffCode="@selectedTariff" @bind-TariffCode:after="@RecalcNewComparison" 
+    <div class="product-selector">
+        <OctopusProductSelector @bind-TariffCode="@selectedTariff" @bind-TariffCode:after="@RecalcNewComparison" 
                             RegionCode="@currentTariff?.Last()" RegionClearable="false"/>
+    </div>
 </div>
 
 @if (comparison != null)

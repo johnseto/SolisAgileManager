@@ -1,11 +1,11 @@
 
 .product-selector{
     display: flex;
+    flex: 1;
     flex-direction: row;
     column-gap: 10px;
     flex-wrap: wrap;
     align-items: center;
-    min-width: 500px;
 }
 
 .region {
