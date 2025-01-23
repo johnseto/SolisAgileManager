@@ -13,9 +13,9 @@
                          Name="@FirstName"
                          XValue="@(e => e.valid_from)"
                          YValue="@(e => e.value_inc_vat)"
-                         SeriesType="SeriesType.Line"
-                         Color="blue"
-                         Stroke="@(new SeriesStroke { Color = "blue", Width = 3 })"/>
+                         SeriesType="SeriesType.Area"
+                         Color="dodgerblue"
+                         Stroke="@(new SeriesStroke { Color = "dodgerblue", Width = 3 })"/>
 
         <ApexPointSeries TItem="OctopusPriceSlot"
                          Items="@SecondSeries"
@@ -23,8 +23,8 @@
                          XValue="@(e => e.valid_from)"
                          YValue="@(e => e.value_inc_vat)"
                          SeriesType="SeriesType.Line"
-                         Color="red"
-                         Stroke="@(new SeriesStroke { Color = "red", Width = 3 })"/>
+                         Color="firebrick"
+                         Stroke="@(new SeriesStroke { Color = "firebrick", Width = 3 })"/>
     </ApexChart>
 </div>
 
@@ -88,8 +88,25 @@
             DecimalsInFloat = 2
         });
         
+        var fill = new Fill
+        {
+            // First type is for the first series, second type is for the second series.
+            Type = [FillType.Gradient, FillType.Solid],
+            Gradient = new FillGradient
+            {
+                Shade = GradientShade.Light,
+                ShadeIntensity = 0,
+                OpacityFrom = 0.8,
+                OpacityTo = 0.1,
+                GradientToColors = ["dodgerblue", "white"],
+                Type = GradientType.Vertical
+            }
+        };
+        
+
         options = new ApexChartOptions<OctopusPriceSlot>
         {
+            Fill = fill,
             Yaxis = yAxis,
             Chart = new Chart
             { 
