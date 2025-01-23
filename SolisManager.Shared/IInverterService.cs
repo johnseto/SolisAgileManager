@@ -22,6 +22,10 @@ public interface IInverterService
     public Task AdvanceSimulation();
     public Task ResetSimulation();
     public Task<NewVersionResponse> GetVersionInfo();
+
+    Task<OctopusProductResponse?> GetOctopusProducts();
+    Task<OctopusTariffResponse?> GetOctopusTariffs(string product);
+
 }
 
 public interface IInverterRefreshService

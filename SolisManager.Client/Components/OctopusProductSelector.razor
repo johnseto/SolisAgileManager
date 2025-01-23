@@ -1,4 +1,4 @@
-@inject ClientInverterService service
+@inject IInverterService service
 
 @if (products != null)
 {
@@ -65,7 +65,7 @@
         {
             tariffs = await service.GetOctopusTariffs(selectedProduct.code);
 
-            if (tariffs.single_register_electricity_tariffs.TryGetValue($"_{selectedRegion.code}", out var tariff))
+            if (tariffs != null && tariffs.single_register_electricity_tariffs.TryGetValue($"_{selectedRegion.code}", out var tariff))
             {
                 var newTariffCode = tariff.direct_debit_monthly.code;
                 if (newTariffCode != TariffCode)
@@ -102,7 +102,8 @@
         
         var octProducts = await service.GetOctopusProducts();
 
-        products = octProducts.results.Where(x => x.brand == "OCTOPUS_ENERGY" && x.direction == "IMPORT").ToList();
+        if( octProducts != null )
+            products = octProducts.results.Where(x => x.brand == "OCTOPUS_ENERGY" && x.direction == "IMPORT").ToList();
         
         await base.OnInitializedAsync();
     }

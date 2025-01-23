@@ -714,6 +714,16 @@ public class InverterManager(
         return Task.FromResult(appVersion);
     }
 
+    public async Task<OctopusProductResponse?> GetOctopusProducts()
+    {
+        return await octopusAPI.GetOctopusProducts();
+    }
+
+    public async Task<OctopusTariffResponse?> GetOctopusTariffs(string product)
+    {
+        return await octopusAPI.GetOctopusTariffs(product);
+    }
+
     public async Task CheckForNewVersion()
     {
         try
