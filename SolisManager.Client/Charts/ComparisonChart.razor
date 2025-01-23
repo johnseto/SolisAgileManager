@@ -1,0 +1,107 @@
+@using ApexCharts
+
+<div class="chart-area">
+    <ApexChart @ref="chart"
+               TItem="OctopusPriceSlot"
+               XAxisType="XAxisType.Datetime"
+               Options="@options"
+               Height="@("100%")"
+               FormatYAxisLabel="@FormatYAxisLabel">
+
+        <ApexPointSeries TItem="OctopusPriceSlot"
+                         Items="FirstSeries"
+                         Name="@FirstName"
+                         XValue="@(e => e.valid_from)"
+                         YValue="@(e => e.value_inc_vat)"
+                         SeriesType="SeriesType.Line"
+                         Color="blue"
+                         Stroke="@(new SeriesStroke { Color = "blue", Width = 3 })"/>
+
+        <ApexPointSeries TItem="OctopusPriceSlot"
+                         Items="@SecondSeries"
+                         Name="@SecondName"
+                         XValue="@(e => e.valid_from)"
+                         YValue="@(e => e.value_inc_vat)"
+                         SeriesType="SeriesType.Line"
+                         Color="red"
+                         Stroke="@(new SeriesStroke { Color = "red", Width = 3 })"/>
+    </ApexChart>
+</div>
+
+@code {
+    [Parameter]
+    public IEnumerable<OctopusPriceSlot>? FirstSeries { get; set; }
+
+    [Parameter]
+    public string? FirstName { get; set; }
+
+    [Parameter]
+    public IEnumerable<OctopusPriceSlot>? SecondSeries { get; set; }
+
+    [Parameter]
+    public string? SecondName { get; set; }
+
+    private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
+    private ApexChart<OctopusPriceSlot>? chart;
+    private ApexChartOptions<OctopusPriceSlot>? options;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (chart != null)
+            await chart.UpdateSeriesAsync();
+
+        await DoGraphZoom();
+
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task DoGraphZoom()
+    {
+        if (chart != null && FirstSeries != null && SecondSeries != null)
+        {
+            await chart.UpdateSeriesAsync();
+
+            var maxA = FirstSeries.Max(x => x.valid_to);
+            var maxB = SecondSeries.Max(x => x.valid_to);
+
+            var closest = new List<DateTime>{ maxA, maxB }.Min(x => x);
+        
+            await chart.ZoomXAsync(DateTime.UtcNow.ToUnixTimeMilliseconds(), 
+                closest.ToUnixTimeMilliseconds());
+        }
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        InitOptions();
+        await base.OnInitializedAsync();
+    }
+    
+    private void InitOptions()
+    {
+        var yAxis = new List<YAxis>();
+
+        yAxis.Add(new YAxis
+        {
+            Title = new AxisTitle { Text = "Price (p/kWh)" },
+            SeriesName = "Price",
+            DecimalsInFloat = 2
+        });
+        
+        options = new ApexChartOptions<OctopusPriceSlot>
+        {
+            Yaxis = yAxis,
+            Chart = new Chart
+            { 
+                Toolbar = new Toolbar
+                {
+                    Show = true,
+                    Tools = new Tools
+                    {
+                        Download = false
+                    }
+                }
+            },
+        };
+    }
+}
