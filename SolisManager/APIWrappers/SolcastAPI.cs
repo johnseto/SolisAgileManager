@@ -17,6 +17,13 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
     private IEnumerable<SolarForecast>? lastForecastData;
     private DateTime? lastAPIUpdate = null;
 
+    private async Task DumpSolcastRawData( SolcastResponse response)
+    {
+        var file = Path.Combine(Program.ConfigFolder, "Solcast-raw.json" );
+        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(file, json);
+    }
+    
     private async Task<SolcastResponse?> GetSolcastForecast(string siteIdentifier)
     {
         var url = "https://api.solcast.com.au"
@@ -37,7 +44,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
             if (responseData != null)
             {
-                logger.LogInformation("Data received from Solcast: {D}", JsonSerializer.Serialize(responseData));
+                await DumpSolcastRawData(responseData);
                 return responseData;
             }
         }
