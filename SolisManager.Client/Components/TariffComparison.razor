@@ -1,12 +1,12 @@
 @using ApexCharts
-@inject IInverterService clientInverterService
+@inject IInverterService inverterService
 
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
     <h5>Comparison vs Current Tariff</h5>
 
-    <OctopusProductSelector @bind-TariffCode="@selectedTariff" @bind-TariffCode:after="@TariffChanged" 
+    <OctopusProductSelector @bind-TariffCode="@selectedTariff" @bind-TariffCode:after="@RecalcNewComparison" 
                             RegionCode="@currentTariff?.Last()" RegionClearable="false"/>
 </div>
 
@@ -49,17 +49,21 @@ else
 
 @code {
     Shared.Models.TariffComparison? comparison;
-    string? currentTariff;
     private ApexChart<OctopusPriceSlot>? chart;
     private ApexChartOptions<OctopusPriceSlot>? options;
     private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
     private string? selectedTariff;
+    private string? currentTariff;
     
-    private async Task TariffChanged()
+    private async Task RecalcNewComparison()
     {
         if (! string.IsNullOrEmpty(currentTariff) && ! string.IsNullOrEmpty(selectedTariff))
         {
-            comparison = await clientInverterService.GetTariffComparisonData(currentTariff, selectedTariff);
+            var config = await inverterService.GetConfig();
+            config.LastComparisonTariff = selectedTariff;
+            await inverterService.SaveConfig(config);
+            
+            comparison = await inverterService.GetTariffComparisonData(currentTariff, selectedTariff);
 
             if (chart != null && comparison != null)
             {
@@ -78,9 +82,12 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        var config = await clientInverterService.GetConfig();
+        var config = await inverterService.GetConfig();
         currentTariff = config.OctopusProductCode;
+        selectedTariff = config.LastComparisonTariff;
 
+        await RecalcNewComparison();
+        
         InitOptions();
         
         await base.OnInitializedAsync();
