@@ -25,6 +25,7 @@ public record SolisManagerConfig
 
     public decimal PeakPeriodBatteryUse { get; set; } = 0.5M;
     public bool Simulate { get; set; } = true;
+    public string? LastComparisonTariff { get; set; }
 
     public async Task SaveToFile(string folder)
     {

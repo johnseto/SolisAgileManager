@@ -179,6 +179,58 @@ public class OctopusAPI( ILogger<OctopusAPI> logger)
         return null;
     }
 
+    // Avoid rate-limiting
+    private readonly Dictionary<string, OctopusTariffResponse> cachedTariffs = new();
+    private OctopusProductResponse? cachedProducts;
+
+    public async Task<OctopusTariffResponse?> GetOctopusTariffs(string code)
+    {
+        if (cachedTariffs.TryGetValue(code, out var result))
+            return result;
+        
+        try
+        {
+            var response = await "https://api.octopus.energy/"
+                .AppendPathSegment($"/v1/products/{code}")
+                .GetStringAsync();
+
+            result = JsonSerializer.Deserialize<OctopusTariffResponse>(response);
+            if (result != null)
+            {
+                cachedTariffs[code] = result;
+                return result;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get Octopus tariff details");
+        }
+
+        return null;
+    }
+    
+    public async Task<OctopusProductResponse?> GetOctopusProducts()
+    {
+        if (cachedProducts != null)
+            return cachedProducts;
+
+        try
+        {
+            var response = await "https://api.octopus.energy/"
+                .AppendPathSegment($"/v1/products/")
+                .GetStringAsync();
+
+            cachedProducts = JsonSerializer.Deserialize<OctopusProductResponse>(response);
+            return cachedProducts;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get Octopus product details");
+        }
+
+        return null;
+    }
+    
     public record OctopusAgreement(string tariff_code, DateTime? valid_from, DateTime? valid_to);
     public record OctopusMeter(string serial_number);
     public record OctopusMeterPoints(string mpan, OctopusMeter[] meters, OctopusAgreement[] agreements, bool is_export);

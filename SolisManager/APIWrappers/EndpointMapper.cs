@@ -14,7 +14,8 @@ public static class EndpointMapper
             .MapInverterAPI()
             .MapGetConfigAPI()
             .MapToolsAPI()
-            .MapSaveConfigAPI();
+            .MapSaveConfigAPI()
+            .MapProductsApi();
         
         return app;
     }
@@ -124,6 +125,26 @@ public static class EndpointMapper
                 await service.ResetSimulation();
                 return TypedResults.Ok();
             });
+        return group;
+    }
+
+    private static RouteGroupBuilder MapProductsApi(this RouteGroupBuilder group)
+    {
+        group.MapGet("octopusproducts",
+            async ([FromServices] OctopusAPI api) =>
+            {
+                var result = await api.GetOctopusProducts();
+                return TypedResults.Ok(result);
+            });
+
+        group.MapGet("octopustariffs/{product}",
+            async (string product, 
+                [FromServices] OctopusAPI api) =>
+            {
+                var result = await api.GetOctopusTariffs(product);
+                return TypedResults.Ok(result);
+            });
+
         return group;
     }
 

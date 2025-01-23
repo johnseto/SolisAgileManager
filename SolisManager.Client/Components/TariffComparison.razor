@@ -4,7 +4,10 @@
 <PageTitle>Solis Manager</PageTitle>
 
 <div class="title-bar">
-    <h5>Comparison</h5>
+    <h5>Comparison vs Current Tariff</h5>
+
+    <OctopusProductSelector @bind-TariffCode="@selectedTariff" @bind-TariffCode:after="@TariffChanged" 
+                            RegionCode="@currentTariff?.Last()" RegionClearable="false"/>
 </div>
 
 @if (comparison == null)
@@ -50,24 +53,27 @@ else
     private ApexChart<OctopusPriceSlot>? chart;
     private ApexChartOptions<OctopusPriceSlot>? options;
     private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
-    private bool doneZoom = false;
+    private string? selectedTariff;
     
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task TariffChanged()
     {
-        if (comparison != null && chart != null && !doneZoom)
+        if (! string.IsNullOrEmpty(currentTariff) && ! string.IsNullOrEmpty(selectedTariff))
         {
-            doneZoom = true;
-            var maxA = comparison.TariffAPrices.Max(x => x.valid_to);
-            var maxB = comparison.TariffBPrices.Max(x => x.valid_to);
+            comparison = await clientInverterService.GetTariffComparisonData(currentTariff, selectedTariff);
 
-            var closest = new List<DateTime>{ maxA, maxB }.Min(x => x);
-            
-            await chart.ZoomXAsync(DateTime.UtcNow.ToUnixTimeMilliseconds(), 
-                closest.ToUnixTimeMilliseconds());
+            if (chart != null && comparison != null)
+            {
+                var maxA = comparison.TariffAPrices.Max(x => x.valid_to);
+                var maxB = comparison.TariffBPrices.Max(x => x.valid_to);
 
-        }
+                var closest = new List<DateTime>{ maxA, maxB }.Min(x => x);
         
-        await base.OnAfterRenderAsync(firstRender);
+                await chart.ZoomXAsync(DateTime.UtcNow.ToUnixTimeMilliseconds(), 
+                    closest.ToUnixTimeMilliseconds());
+
+                await chart.UpdateSeriesAsync();
+            }
+        }
     }
     
     protected override async Task OnInitializedAsync()
@@ -75,7 +81,6 @@ else
         var config = await clientInverterService.GetConfig();
         currentTariff = config.OctopusProductCode;
 
-        comparison = await clientInverterService.GetTariffComparisonData(currentTariff, "E-1R-AGILE-BB-24-10-01-J");
         InitOptions();
         
         await base.OnInitializedAsync();

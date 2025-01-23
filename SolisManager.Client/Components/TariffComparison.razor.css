@@ -6,7 +6,7 @@
 .title-bar {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
+    align-items: baseline;
     justify-content: flex-start;
     column-gap: 10px;
 }

@@ -36,7 +36,7 @@
             }
             else
             {
-                <MudTextField T="string" Label="Octopus Tariff Code" @bind-Value="@config.OctopusProductCode" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <OctopusProductSelector @bind-TariffCode="config.OctopusProductCode" Disabled="@AutomaticAccount"/>
             }
         </div>
         <div class="config-fields">
@@ -108,6 +108,8 @@
     private SolisManagerConfig? config;
     private bool manualProductKey = false;
 
+    private bool AutomaticAccount => config != null && !string.IsNullOrEmpty(config.OctopusAccountNumber) && !string.IsNullOrEmpty(config.OctopusAPIKey);
+    
     private int PeakPercentageProxy
     {
         get => (int)(config!.PeakPeriodBatteryUse * 100);

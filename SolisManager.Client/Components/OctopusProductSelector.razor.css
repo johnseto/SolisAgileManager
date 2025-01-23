@@ -1,0 +1,26 @@
+
+.product-selector{
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    min-width: 500px;
+}
+
+.region {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    column-gap: 10px;
+    font-weight: bold;
+    align-items: center;
+    background-color: rgba(145, 129, 47, 0.3);
+    border-radius: 10px;
+    padding: 5px 10px;
+    color: black;
+}
+
+.clear-region {
+    cursor: pointer;
+}

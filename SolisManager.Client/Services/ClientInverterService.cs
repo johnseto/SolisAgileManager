@@ -108,4 +108,18 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
         ArgumentNullException.ThrowIfNull(result);
         return result;
     }
+
+    public async Task<OctopusProductResponse> GetOctopusProducts()
+    {
+        var result = await httpClient.GetFromJsonAsync<OctopusProductResponse>("inverter/octopusproducts");
+        ArgumentNullException.ThrowIfNull(result);
+        return result;
+    }
+
+    public async Task<OctopusTariffResponse> GetOctopusTariffs(string product)
+    {
+        var result = await httpClient.GetFromJsonAsync<OctopusTariffResponse>($"inverter/octopustariffs/{product}");
+        ArgumentNullException.ThrowIfNull(result);
+        return result;
+    }
 }
