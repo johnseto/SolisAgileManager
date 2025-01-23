@@ -17,9 +17,9 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
     private IEnumerable<SolarForecast>? lastForecastData;
     private DateTime? lastAPIUpdate = null;
 
-    private async Task DumpSolcastRawData( SolcastResponse response)
+    private async Task DumpSolcastRawData( string siteId, SolcastResponse response)
     {
-        var file = Path.Combine(Program.ConfigFolder, "Solcast-raw.json" );
+        var file = Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.json" );
         var json = JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(file, json);
     }
@@ -44,7 +44,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
             if (responseData != null)
             {
-                await DumpSolcastRawData(responseData);
+                await DumpSolcastRawData(siteIdentifier, responseData);
                 return responseData;
             }
         }
