@@ -90,7 +90,8 @@ public class Program
         builder.Services.AddScheduler();
         builder.Services.AddMudServices();
         builder.Services.AddBlazoredLocalStorage();
-            
+        builder.Services.AddMemoryCache();
+        
         if (!Debugger.IsAttached)
         {
             // Use Kestrel options to set the port. Using .Urls.Add breaks WASM debugging.

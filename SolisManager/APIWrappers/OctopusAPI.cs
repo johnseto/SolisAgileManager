@@ -2,13 +2,19 @@
 using System.Text.Json;
 using Flurl;
 using Flurl.Http;
+using Microsoft.Extensions.Caching.Memory;
 using SolisManager.Shared;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.APIWrappers;
 
-public class OctopusAPI( ILogger<OctopusAPI> logger)
+public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
 {
+    private readonly MemoryCacheEntryOptions _cacheOptions =
+        new MemoryCacheEntryOptions()
+                    .SetSize(1)
+                    .SetAbsoluteExpiration(TimeSpan.FromDays(1));
+
     public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates(string tariffCode)
     {
         var from = DateTime.UtcNow;
@@ -179,14 +185,12 @@ public class OctopusAPI( ILogger<OctopusAPI> logger)
         return null;
     }
 
-    // Avoid rate-limiting
-    private readonly Dictionary<string, OctopusTariffResponse> cachedTariffs = new();
-    private OctopusProductResponse? cachedProducts;
-
     public async Task<OctopusTariffResponse?> GetOctopusTariffs(string code)
     {
-        if (cachedTariffs.TryGetValue(code, out var result))
-            return result;
+        string cacheKey = "octopus-tariff-" + code.ToLower();
+     
+        if (memoryCache.TryGetValue<OctopusTariffResponse>(cacheKey, out var tariff))
+            return tariff;
         
         try
         {
@@ -194,11 +198,11 @@ public class OctopusAPI( ILogger<OctopusAPI> logger)
                 .AppendPathSegment($"/v1/products/{code}")
                 .GetStringAsync();
 
-            result = JsonSerializer.Deserialize<OctopusTariffResponse>(response);
-            if (result != null)
+            tariff = JsonSerializer.Deserialize<OctopusTariffResponse>(response);
+            if (tariff != null)
             {
-                cachedTariffs[code] = result;
-                return result;
+                memoryCache.Set(cacheKey, tariff, _cacheOptions);
+                return tariff;
             }
         }
         catch (Exception ex)
@@ -211,17 +215,24 @@ public class OctopusAPI( ILogger<OctopusAPI> logger)
     
     public async Task<OctopusProductResponse?> GetOctopusProducts()
     {
-        if (cachedProducts != null)
-            return cachedProducts;
-
+        const string cacheKey = "octopus-products";
+     
+        if (memoryCache.TryGetValue<OctopusProductResponse>(cacheKey, out var products))
+            return products;
+        
         try
         {
             var response = await "https://api.octopus.energy/"
                 .AppendPathSegment($"/v1/products/")
                 .GetStringAsync();
 
-            cachedProducts = JsonSerializer.Deserialize<OctopusProductResponse>(response);
-            return cachedProducts;
+            products = JsonSerializer.Deserialize<OctopusProductResponse>(response);
+
+            if (products != null)
+            {
+                memoryCache.Set(cacheKey, products, _cacheOptions);
+                return products;
+            }
         }
         catch (Exception ex)
         {
