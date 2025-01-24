@@ -81,7 +81,8 @@ public class Program
         builder.Services.AddSingleton<SolcastExtraScheduler>();
         builder.Services.AddSingleton<VersionCheckScheduler>();
         builder.Services.AddSingleton<TariffScheduler>();
-
+        builder.Services.AddSingleton<InverterTimeAdjustScheduler>();
+        
         builder.Services.AddSingleton<SolisAPI>();
         builder.Services.AddSingleton<SolcastAPI>();
         builder.Services.AddSingleton<OctopusAPI>();
@@ -146,6 +147,13 @@ public class Program
             .Schedule<SolcastScheduler>()
             .Cron("13 0 * * *")
             .RunAtStartupIfDebugging());
+
+        // Scheduler for updating the inverter date/time to avoid drift
+        // Once a day, at 2am
+        app.Services.UseScheduler(s => s
+            .Schedule<InverterTimeAdjustScheduler>()
+            .Cron("0 2 * * *")
+            .RunOnceAtStart());
 
         // An additional scheduler for a couple of extra solcast updates
         // through the day (6am and midday). This will give better 

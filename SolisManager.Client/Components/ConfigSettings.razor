@@ -13,6 +13,9 @@
             <MudTextField T="string" Label="Solis API Key" @bind-Value="@config.SolisAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
             <MudTextField T="string" Label="Solis API Secret" @bind-Value="@config.SolisAPISecret" Immediate="true" Variant="UIConstants.MudVariant"/>
             <MudTextField T="string" Label="Solis Inverter Serial Number" @bind-Value="@config.SolisInverterSerial" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <ConfigSettingHelp HelpText="Enabling this setting will automatically update the inverter's clock every day at 2am, to avoid time drift">
+                <MudCheckBox Label="Auto Update Inverter Time" LabelPosition="LabelPosition.End" @bind-Value="@config.AutoAdjustInverterTime"/>
+            </ConfigSettingHelp>
         </div>
         <div class="config-fields">
             <h5>Octopus Product</h5>

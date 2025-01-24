@@ -27,6 +27,8 @@ public record SolisManagerConfig
     public bool Simulate { get; set; } = true;
     public string? LastComparisonTariff { get; set; }
 
+    public bool AutoAdjustInverterTime { get; set; } = false;
+
     public async Task SaveToFile(string folder)
     {
         var configPath = Path.Combine(folder, settingsFileName);

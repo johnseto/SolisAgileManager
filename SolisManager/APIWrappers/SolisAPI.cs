@@ -17,6 +17,13 @@ public class SolisAPI
     private readonly SolisManagerConfig config;
 
     private string simulatedChargeState = string.Empty;
+
+    private enum CommandIDs
+    {
+        SetInverterTime = 56,
+        SetCharge = 103,
+        ReadChargeState = 4643
+    }
     
     public SolisAPI(SolisManagerConfig _config, ILogger<SolisAPI> _logger)
     {
@@ -56,8 +63,10 @@ public class SolisAPI
         { 
             return ChargeStateData.FromChargeStateData(simulatedChargeState);
         }
-
-        var result = await Post<AtReadResponse>(2, "atRead", new { inverterSn = config.SolisInverterSerial, cid = 4643 });
+        
+        var result = await Post<AtReadResponse>(2, "atRead", 
+            new { inverterSn = config.SolisInverterSerial, 
+                cid = CommandIDs.ReadChargeState });
 
         if (result != null && !string.IsNullOrEmpty(result.data.msg))
         {
@@ -184,13 +193,7 @@ public class SolisAPI
         if (await InverterNeedsUpdating(chargePower, dischargePower, chargeTimes, dischargeTimes))
         {
             string chargeValues = $"{chargePower},{dischargePower},{chargeTimes},{dischargeTimes},0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
-
-            var requestBody = new
-            {
-                inverterSn = config.SolisInverterSerial,
-                cid = 103,
-                value = chargeValues
-            };
+            
 
             logger.LogInformation("Sending new charge instruction to {Inv}: {CA}, {DA}, {CT}, {DT}", 
                             simulateOnly ? "mock inverter" : "Solis Inverter",
@@ -202,14 +205,64 @@ public class SolisAPI
             }
             else
             {
-                // Actually submit it. 
-                var result = await Post<object>(2, "control", requestBody);
+                await SendControlRequest(CommandIDs.SetCharge, chargeValues);
             }
         }
         else
         {
             logger.LogInformation("Skipping charge request (Inverter state matches: {CA}, {DA}, {CT}, {DT})", 
                                                 chargePower, dischargePower, chargeTimes, dischargeTimes);
+        }
+    }
+    
+    /// <summary>
+    /// Get the historic graph data for the inverter
+    /// </summary>
+    /// <param name="dayOffset"></param>
+    /// <returns></returns>
+    public async Task<InverterDayResponse?> GetInverterDay(int dayOffset = 0)
+    {
+        var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
+        var result = await Post<InverterDayResponse>(1,"inverterDay", 
+            new { 
+                sn = config.SolisInverterSerial,
+                money = "UKP",
+                time = $"{dayToQuery:yyyy-MM-dd}",
+                timezone = 0
+            });
+        return result;
+    }
+    
+    public async Task UpdateInverterTime()
+    {
+        logger.LogInformation("Updating inverter time to avoid drift...");
+        
+        var time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        await SendControlRequest(CommandIDs.SetInverterTime, time);
+    }
+
+    /// <summary>
+    /// Send the actual control request to the inverter. 
+    /// </summary>
+    /// <param name="cmdId"></param>
+    /// <param name="payload"></param>
+    private async Task SendControlRequest(CommandIDs cmdId, string payload)
+    {
+        var requestBody = new
+        {
+            inverterSn = config.SolisInverterSerial,
+            cid = (int)cmdId,
+            value = payload
+        };
+        
+        if (config.Simulate)
+        {
+            logger.LogInformation("Simulated inverter control request: {B}", requestBody);
+        }
+        else
+        {
+            // Actually submit it. 
+            await Post<object>(2, "control", requestBody);
         }
     }
 
@@ -256,6 +309,21 @@ public class SolisAPI
         return string.Empty;
     }
 }
+
+public record InverterDayRecord(
+    string timeStr,
+    string dataTimestamp,
+    string time,
+    decimal batteryCapacitySoc, // Battery charge level
+    decimal batteryPower, // Battery Charge power
+    decimal pSum, // Current PV Output
+    decimal familyLoadPower, // House load
+    decimal homeLoadTodayEnergy, // Total house load today
+    decimal pac, // PV output 
+    decimal eToday // Today PV total
+);
+
+public record InverterDayResponse(string msg, IEnumerable<InverterDayRecord> data);
 
 public record UserStationListRequest(int pageNo, int pageSize);
 

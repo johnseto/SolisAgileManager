@@ -545,6 +545,14 @@ public class InverterManager(
         }
     }
 
+    public async Task UpdateInverterTime()
+    {
+        if (config.AutoAdjustInverterTime)
+        {
+            await solisApi.UpdateInverterTime();
+        }
+    }
+
     public Task<List<HistoryEntry>> GetHistory()
     {
         return Task.FromResult(executionHistory);
