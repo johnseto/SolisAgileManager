@@ -567,12 +567,23 @@ public class InverterManager(
     {
         logger.LogInformation("Saving config to server...");
 
-        if (newConfig.SolcastSiteIdentifier.Count(x => x == ',') > 1)
+        var siteIds = SolcastAPI.GetSolcastSites(newConfig.SolcastSiteIdentifier);
+
+        if (siteIds.Length > 2)
         {
             return new ConfigSaveResponse
             {
                 Success = false,
                 Message = "A maximum of two Solcast site IDs can be specified"
+            };
+        }
+        
+        if (siteIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != siteIds.Length)
+        {
+            return new ConfigSaveResponse
+            {
+                Success = false,
+                Message = "Each specified Site ID must be unique"
             };
         }
         

@@ -68,23 +68,34 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         return null;
     }
 
+    public static string[] GetSolcastSites(string siteIdList)
+    {
+        string[] siteIdentifiers;
+
+        // We support up to 2 site IDs for people with multiple strings
+        if (siteIdList.Contains(','))
+            siteIdentifiers = siteIdList.Split(',',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        else
+            siteIdentifiers = [siteIdList];
+
+        return siteIdentifiers;
+    }
+    
     public async Task UpdateSolcastDataFromAPI(bool overwrite)
     {
         if (!config.SolcastValid())
             return;
         
-        string[] siteIdentifiers;
-
-        // We support up to 2 site IDs for people with multiple strings
-        if (config.SolcastSiteIdentifier.Contains(','))
-            siteIdentifiers = config.SolcastSiteIdentifier.Split(',', 2,
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        else
-            siteIdentifiers = [config.SolcastSiteIdentifier];
-
         Dictionary<DateTime, SolarForecast> data = new();
 
-        foreach (var siteIdentifier in siteIdentifiers)
+        var siteIdentifiers = GetSolcastSites(config.SolcastSiteIdentifier);
+
+        if(siteIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Count() != siteIdentifiers.Length)
+            logger.LogWarning("Same Solcast site ID specified twice in config. Ignoring the second one");
+
+        // Only ever take the first 2
+        foreach (var siteIdentifier in siteIdentifiers.Take(2))
         {
             var responseData = await GetSolcastForecast(siteIdentifier);
 
