@@ -106,7 +106,7 @@
                         <td><SlotPlan Slot="@slot" OnOverrideCleared="ClearOverride"/></td>
                         @if (hasSolcastData)
                         {
-                            <td style="text-align:center;">@ForecastEstimate(slot)</td>
+                            <td style="text-align:center;" title="@ForecastTooltip(slot)">@ForecastEstimate(slot)</td>
                         }
                         <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
                     </tr>
@@ -125,6 +125,8 @@
 
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? 
                         Math.Round(s.pv_est_kwh.Value * forecastDamping, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
+
+    private string ForecastTooltip(OctopusPriceSlot s) => $"Solcast Power forecast: {s.pv_est_kwh}kW";
     private bool hasSolcastData = false;
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
