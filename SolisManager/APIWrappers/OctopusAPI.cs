@@ -13,7 +13,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
     private readonly MemoryCacheEntryOptions _cacheOptions =
         new MemoryCacheEntryOptions()
                     .SetSize(1)
-                    .SetAbsoluteExpiration(TimeSpan.FromDays(1));
+                    .SetAbsoluteExpiration(TimeSpan.FromDays(7));
 
     public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates(string tariffCode)
     {
