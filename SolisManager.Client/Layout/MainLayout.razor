@@ -1,26 +1,28 @@
 ﻿@inherits LayoutComponentBase
 
-<MudThemeProvider />
+<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@DarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider/>
 
-<div class="page">
-    @if (showSidebar)
-    {
-        <div class="sidebar">
-            <NavMenu/>
-        </div>
-    }
+<CascadingValue Value="@DarkMode">
+    <div class="page">
+        @if (showSidebar)
+        {
+            <div class="sidebar">
+                <NavMenu/>
+            </div>
+        }
 
-    <main>
-        <article class="content px-4">
-            <ConfigValidator @bind-ConfigIsValid="@showSidebar">
-                @Body
-            </ConfigValidator>
-        </article>
-    </main>
-</div>
+        <main>
+            <article class="content px-4">
+                <ConfigValidator @bind-ConfigIsValid="@showSidebar">
+                    @Body
+                </ConfigValidator>
+            </article>
+        </main>
+    </div>
+</CascadingValue>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
@@ -30,4 +32,16 @@
 
 @code {
     private bool showSidebar = true;
+    
+    private bool DarkMode;
+    private MudThemeProvider _mudThemeProvider;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            DarkMode = await _mudThemeProvider.GetSystemPreference();
+            StateHasChanged();
+        }
+    }
 }

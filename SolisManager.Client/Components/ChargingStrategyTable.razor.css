@@ -12,8 +12,12 @@
 
 .table {
     width: 100%;
+    background-color: rgba(0, 0, 0, 0);
 }
 
+.table-dark {
+    color: rgb(230, 230, 230);
+}
 .table td {
     vertical-align: middle;
 }

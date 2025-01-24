@@ -9,7 +9,7 @@
 
 <PageTitle>Solis Manager</PageTitle>
 
-<div class="strategy-table">
+<div class="strategy-table @DarkModeStyle">
     <div class="title-bar">
         <div class="title-and-nav">
             <div class="title-text">
@@ -63,7 +63,7 @@
         }
         else
         {
-            <table class="table">
+            <table class="table @DarkModeStyle">
                 <colgroup>
                     <col style="width:100px;"/>
                     <col style="width:150px;"/>
@@ -120,6 +120,10 @@
 </div>
 
 @code {
+    [CascadingParameter] protected bool DarkMode { get; set; }
+
+    private string DarkModeStyle => DarkMode ? "table-dark" : string.Empty;
+    
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private CancellationTokenSource tokenSource = new();
 
@@ -133,7 +137,7 @@
     private decimal forecastDamping = 1M;
     private DateOnly? lastDate = null;
     private ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
-    private string PriceStyle(OctopusPriceSlot slot) => $"text-align:center; color: {(slot.value_inc_vat < 0 ? "darkred" : "black")};";
+    private string PriceStyle(OctopusPriceSlot slot) => $"text-align:center;";
 
     private RenderFragment? DateHeader(OctopusPriceSlot slot)
     {
@@ -143,7 +147,7 @@
         {
             lastDate = date;
             return @<tr>
-                       <td colspan="6" class="date-row">
+                       <td colspan="@(hasSolcastData ? 5 : 4)" class="date-row">
                            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
                            @slot.valid_from.DisplayDate()
                        </td>

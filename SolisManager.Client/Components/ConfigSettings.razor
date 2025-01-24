@@ -3,7 +3,7 @@
 @inject ISnackbar snackbar
 @inject NavigationManager navManager
 
-<div class="config-settings">
+<div class="config-settings @DarkModeStyle">
     <h2>Solis Manager Configuration</h2>
 
     @if (config != null)
@@ -114,8 +114,11 @@
 @code {
     [Parameter] public EventCallback OnSettingsChanged { get; set; }
 
+    [CascadingParameter] protected bool DarkMode { get; set; }
+    
     private SolisManagerConfig? config;
     private bool manualProductKey = false;
+    private string DarkModeStyle => DarkMode ? "config-settings-dark" : string.Empty;
 
     private bool AutomaticAccount => config != null && !string.IsNullOrEmpty(config.OctopusAccountNumber) && !string.IsNullOrEmpty(config.OctopusAPIKey);
     
