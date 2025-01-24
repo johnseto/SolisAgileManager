@@ -19,12 +19,11 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
     private async Task DumpSolcastRawData(string siteId, SolcastResponse response)
     {
-        if (Debugger.IsAttached)
-        {
-            var file = Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.json");
-            var json = JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(file, json);
-        }
+        var file = Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.csv");
+        string[] lines = ["No data"];
+        if( response.forecasts != null )
+            lines = response.forecasts.Select(x => $"{x.period_end}, {x.pv_estimate}").ToArray();
+        await File.WriteAllLinesAsync(file, lines);
     }
 
     private async Task<SolcastResponse?> GetSolcastForecast(string siteIdentifier)
