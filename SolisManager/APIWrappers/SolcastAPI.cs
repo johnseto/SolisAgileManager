@@ -55,7 +55,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         {
             if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
             {
-                logger.LogWarning("Solcast API failed - too many requests. Will try again later");
+                logger.LogWarning("Solcast API failed - too many requests. Will try again at next scheduled update");
             }
             else
                 logger.LogError("HTTP Exception getting solcast data: {E}", ex);
@@ -191,7 +191,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         {
             if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
             {
-                logger.LogWarning("Solcast API failed - too many requests. Will try again later");
+                logger.LogWarning("Solcast API failed - too many requests. Will try again at next scheduled update");
             }
             else
                 logger.LogError("HTTP Exception getting solcast data: {E}", ex);
