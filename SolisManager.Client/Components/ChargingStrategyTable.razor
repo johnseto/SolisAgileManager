@@ -123,10 +123,12 @@
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private CancellationTokenSource tokenSource = new();
 
-    private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
+    private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? 
+                        Math.Round(s.pv_est_kwh.Value * forecastDamping, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
     private bool hasSolcastData = false;
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
+    private decimal forecastDamping = 1M;
     private DateOnly? lastDate = null;
     private ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
     private string PriceStyle(OctopusPriceSlot slot) => $"text-align:center; color: {(slot.value_inc_vat < 0 ? "darkred" : "black")};";
@@ -208,6 +210,7 @@
     {
         var config = await inverterService.GetConfig();
         isSimulateMode = config.Simulate;
+        forecastDamping = config.SolcastDampingFactor;
 
         await RefreshData();
         _ = RunTimer();
