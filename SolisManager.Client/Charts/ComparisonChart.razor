@@ -1,10 +1,12 @@
 @using ApexCharts
 
+@inherits ChartBase<OctopusPriceSlot>
+
 <div class="chart-area">
     <ApexChart @ref="chart"
                TItem="OctopusPriceSlot"
                XAxisType="XAxisType.Datetime"
-               Options="@options"
+               Options="@Options"
                Height="@("100%")"
                FormatYAxisLabel="@FormatYAxisLabel">
 
@@ -41,11 +43,7 @@
     [Parameter]
     public string? SecondName { get; set; }
 
-    [CascadingParameter] public bool DarkMode { get; set; }
-
     private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
-    private ApexChart<OctopusPriceSlot>? chart;
-    private ApexChartOptions<OctopusPriceSlot>? options;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -72,14 +70,8 @@
                 closest.ToUnixTimeMilliseconds());
         }
     }
-    
-    protected override async Task OnInitializedAsync()
-    {
-        InitOptions();
-        await base.OnInitializedAsync();
-    }
-    
-    private void InitOptions()
+
+    protected override void SetOptions(ApexChartOptions<OctopusPriceSlot> options)
     {
         var yAxis = new List<YAxis>();
 
@@ -111,27 +103,10 @@
                 Type = GradientType.Vertical
             }
         };
-        
 
-        options = new ApexChartOptions<OctopusPriceSlot>
-        {
-            Theme = new Theme
-            { 
-                Mode = DarkMode ? Mode.Dark : Mode.Light
-            },
-            Fill = fill,
-            Yaxis = yAxis,
-            Chart = new Chart
-            { 
-                Toolbar = new Toolbar
-                {
-                    Show = true,
-                    Tools = new Tools
-                    {
-                        Download = false
-                    }
-                }
-            },
-        };
+        options.Fill = fill;
+        options.Yaxis = yAxis;
+
     }
+
 }
