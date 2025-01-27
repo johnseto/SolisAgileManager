@@ -226,7 +226,6 @@ public class SolisAPI
     /// <summary>
     /// Get the historic graph data for the inverter
     /// </summary>
-    /// <param name="dayOffset"></param>
     /// <returns></returns>
     public async Task<InverterDayResponse?> GetInverterDay(int dayOffset = 0)
     {
@@ -235,11 +234,12 @@ public class SolisAPI
         
         if( memoryCache.TryGetValue(cacheKey, out InverterDayResponse? inverterDay))
             return inverterDay;
-        
+
         logger.LogInformation("Getting inverter stats for {D:dd-MMM-yyyy}...", dayToQuery);
-        
-        var result = await Post<InverterDayResponse>(1,"inverterDay", 
-            new { 
+
+        var result = await Post<InverterDayResponse>(1, "inverterDay",
+            new
+            {
                 sn = config.SolisInverterSerial,
                 money = "UKP",
                 time = $"{dayToQuery:yyyy-MM-dd}",
@@ -250,7 +250,7 @@ public class SolisAPI
             memoryCache.Set(cacheKey, result, _cacheOptions);
 
         // Max 3 calls every 5 seconds
-        await Task.Delay(2000);
+        await Task.Delay(1750);
 
         return result;
     }

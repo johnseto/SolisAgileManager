@@ -141,8 +141,7 @@ public class InverterManager(
 
             await Task.WhenAll(RefreshBatteryState(), octRatesTask, LoadExecutionHistory());
 
-            // TODO: When is best to do this?
-            await CalculateForecastWeightings();
+            await CalculateForecastWeightings(executionHistory);
 
             // Stamp the last time we did an update
             InverterState.TimeStamp = DateTime.UtcNow;
@@ -557,6 +556,15 @@ public class InverterManager(
         }
     }
 
+    public async Task UpdateInverterDayData()
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            // Call this to prime the cache with the last 7 days' inverter data
+            await solisApi.GetInverterDay(i);
+        }
+    }
+
     public Task<List<HistoryEntry>> GetHistory()
     {
         return Task.FromResult(executionHistory);
@@ -786,7 +794,7 @@ public class InverterManager(
         };
     }
 
-    public async Task CalculateForecastWeightings()
+    public async Task CalculateForecastWeightings(IEnumerable<HistoryEntry> forecastHistory)
     {
         // Not quite ready for this yet...
         if (!Debugger.IsAttached)
@@ -819,7 +827,28 @@ public class InverterManager(
                 
                 totals.day.Add(item);
                 // Add the power. Each entry is 5 minutes, so 1/12 of an hour
+                // TODO: Technically we should split the first and sixth one
+                // because they won't be a full 5-minutes. But in reality
+                // it isn't going to make much odds.
                 totals.totalPowerKWH += (item.pac / 12.0M) / 1000.0M;
+            }
+        }
+
+        // Now iterate through the historic forecasts, and compare them
+        var lastWeek = forecastHistory
+            .Where(x => x.Start > DateTime.UtcNow.AddDays(-7))
+            .DistinctBy(x => x.Start)
+            .ToDictionary(x => x.Start, x => x.ForecastKWH);
+
+        foreach (var kvp in dict)
+        {
+            if (lastWeek.TryGetValue(kvp.Key, out var forecast))
+            {
+                if (forecast == kvp.Value.totalPowerKWH)
+                    continue;
+
+                var percentage = forecast / kvp.Value.totalPowerKWH;
+                logger.LogInformation($"{kvp.Key:dd-MMM HH:mm}, forecast = {forecast:F2}kWh, actual = {kvp.Value.totalPowerKWH:F2}kWh, percentage = {percentage:P1}");
             }
         }
     }

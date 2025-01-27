@@ -140,7 +140,7 @@ public class Program
             .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 
         app.ConfigureAPIEndpoints();
-        
+
         // Get the solcast data at just after midnight, on the 13th minute,
         // because that reduces load (half of the world runs their solcast
         // ingestion on the hour). Don't run at first startup unless debugging.
@@ -166,12 +166,6 @@ public class Program
             .Schedule<SolcastExtraScheduler>()
             .Cron("13 6,12 * * *"));
         
-        // Refresh and apply the octopus rates every 30 mins
-        app.Services.UseScheduler(s => s
-            .Schedule<RatesScheduler>()
-            .Cron("0,30 * * * *")
-            .RunOnceAtStart());
-        
         // Update the battery every 5 minutes. Skip the 0 / 30
         // minute slots, because it gets updated when we refresh
         // rates anyway. Don't need to run at startup, for the 
@@ -192,6 +186,12 @@ public class Program
             .Cron("15 6,12,18 * * *")
             .RunAtStartupIfDebugging());
 
+        // Refresh and apply the octopus rates every 30 mins
+        app.Services.UseScheduler(s => s
+            .Schedule<RatesScheduler>()
+            .Cron("0,30 * * * *")
+            .RunOnceAtStart());
+        
         await app.RunAsync();
     }
 
