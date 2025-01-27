@@ -42,6 +42,8 @@
 @code {
     [Parameter]
     public IEnumerable<HistoryEntry>? HistoryData { get; set; }
+    
+    [CascadingParameter] public bool DarkMode { get; set; }
 
     private ApexChart<HistoryEntry>? chart;
     private ApexChartOptions<HistoryEntry>? options;
@@ -107,6 +109,10 @@
         
         options = new ApexChartOptions<HistoryEntry>
         {
+            Theme = new Theme
+            { 
+                Mode = DarkMode ? Mode.Dark : Mode.Light
+            },
             Yaxis = yAxis,
             Chart = new Chart
             { 

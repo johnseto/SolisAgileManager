@@ -41,6 +41,8 @@
     [Parameter]
     public string? SecondName { get; set; }
 
+    [CascadingParameter] public bool DarkMode { get; set; }
+
     private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
     private ApexChart<OctopusPriceSlot>? chart;
     private ApexChartOptions<OctopusPriceSlot>? options;
@@ -113,6 +115,10 @@
 
         options = new ApexChartOptions<OctopusPriceSlot>
         {
+            Theme = new Theme
+            { 
+                Mode = DarkMode ? Mode.Dark : Mode.Light
+            },
             Fill = fill,
             Yaxis = yAxis,
             Chart = new Chart
