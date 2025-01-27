@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
+@inject ILocalStorageService localStorage
 
-<MudThemeProvider />
+<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@DarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider/>
@@ -9,17 +10,29 @@
     @if (showSidebar)
     {
         <div class="sidebar">
-            <NavMenu/>
+            <NavMenu @bind-DarkMode="@DarkMode" @bind-DarkMode:after="DarkModeChanged"/>
         </div>
     }
 
-    <main>
-        <article class="content px-4">
-            <ConfigValidator @bind-ConfigIsValid="@showSidebar">
-                @Body
-            </ConfigValidator>
-        </article>
-    </main>
+    @if (!loading)
+    {
+        <CascadingValue Value="DarkMode">
+            <main>
+                <article class="content px-4">
+                    <ConfigValidator @bind-ConfigIsValid="@showSidebar">
+                        @Body
+                    </ConfigValidator>
+                </article>
+            </main>
+        </CascadingValue>
+    }
+    else
+    {
+        <div class="loading">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small"/>
+            <text>Initialising...</text>
+        </div>
+    }
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -30,4 +43,30 @@
 
 @code {
     private bool showSidebar = true;
+
+    private const string darkModeKey = "dark-mode";
+    private bool DarkMode = true;
+    private bool loading = true;
+    private MudThemeProvider _mudThemeProvider;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (await localStorage.ContainKeyAsync(darkModeKey))
+                DarkMode = await localStorage.GetItemAsync<bool>(darkModeKey);
+            else
+                DarkMode = await _mudThemeProvider.GetSystemPreference();
+            
+            loading = false;
+            StateHasChanged();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task DarkModeChanged()
+    {
+        await localStorage.SetItemAsync(darkModeKey, DarkMode);
+    }
 }

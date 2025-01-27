@@ -1,7 +1,9 @@
 @using ApexCharts
 @using Size = MudBlazor.Size
 
-@if (options != null && HistoryData != null)
+@inherits ChartBase<HistoryEntry>
+
+@if (Options != null && HistoryData != null)
 {
     <div class="chart-area">
         <GraphActionLegend ChartTitle="Charging History">
@@ -14,7 +16,7 @@
         <ApexChart @ref="chart"
                    TItem="HistoryEntry"
                    XAxisType="XAxisType.Datetime"
-                   Options="@options"
+                   Options="@Options"
                    Height="@("100%")"
                    FormatYAxisLabel="@FormatYAxisLabel">
 
@@ -42,11 +44,8 @@
 @code {
     [Parameter]
     public IEnumerable<HistoryEntry>? HistoryData { get; set; }
-
-    private ApexChart<HistoryEntry>? chart;
-    private ApexChartOptions<HistoryEntry>? options;
+    
     private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
-
     private string GetBatteryColor(HistoryEntry slot) => "darkred";
     private string GetColor(HistoryEntry slot) => slot.Action.GetActionColour();
 
@@ -70,14 +69,6 @@
         return null;
     }
     
-    protected override async Task OnParametersSetAsync()
-    {
-        if (chart != null)
-            await chart.UpdateSeriesAsync();
-        
-        await base.OnParametersSetAsync();
-    }
-
     protected async Task ZoomDays(DateTime start, DateTime end)
     {
         if (chart != null && HistoryData != null)
@@ -86,7 +77,7 @@
         }
     }
 
-    protected override async Task OnInitializedAsync()
+    protected override void SetOptions( ApexChartOptions<HistoryEntry> optionsToSet )
     {
         var yAxis = new List<YAxis>();
 
@@ -104,23 +95,7 @@
             DecimalsInFloat = 0,
             Opposite = true
         });
-        
-        options = new ApexChartOptions<HistoryEntry>
-        {
-            Yaxis = yAxis,
-            Chart = new Chart
-            { 
-                Toolbar = new Toolbar
-                {
-                    Show = true,
-                    Tools = new Tools
-                    {
-                        Download = false
-                    }
-                }
-            },
-        };
-        
-        await base.OnInitializedAsync();
+
+        optionsToSet.Yaxis = yAxis;
     }
 }

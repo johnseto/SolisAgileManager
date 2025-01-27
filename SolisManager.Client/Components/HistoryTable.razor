@@ -24,33 +24,26 @@ else
     }
     else
     {
-        <table class="table">
-            <thead>
-            <tr>
-                <th>Date</th>
-                <th>Period</th>
-                <th>Price (p/kWh)</th>
-                <th>Battery SOC</th>
-                <th>Forecast (kWh)</th>
-                <th>Action Taken</th>
-                <th>Explanation</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var entry in historyEntries.OrderByDescending(x => x.Start))
-            {
-                <tr>
-                    <td>@entry.Start.ToString("dd-MMM-yyyy")</td>
-                    <td>@entry.Start.ToString("HH:mm") - @entry.End.ToString("HH:mm")</td>
-                    <td>@Math.Round(entry.Price, 2)</td>
-                    <td>@Math.Round((decimal)entry.BatterySOC, 2)%</td>
-                    <td>@Math.Round(GetDampedForecast(entry), 2)</td>
-                    <td>@entry.Action.Humanize()</td>
-                    <td>@entry.Reason</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+        <MudTable Items="historyEntries.OrderByDescending(x => x.Start)" Dense="true">
+            <HeaderContent>
+                <MudTh>Date</MudTh>
+                <MudTh>Period</MudTh>
+                <MudTh>Price (p/kWh)</MudTh>
+                <MudTh>Battery SOC</MudTh>
+                <MudTh>Forecast (kWh)</MudTh>
+                <MudTh>Action Taken</MudTh>
+                <MudTh>Explanation</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Start.ToString("dd-MMM-yyyy")</MudTd>
+                <MudTd>@context.Start.ToString("HH:mm") - @context.End.ToString("HH:mm")</MudTd>
+                <MudTd>@Math.Round(context.Price, 2)</MudTd>
+                <MudTd>@Math.Round((decimal)context.BatterySOC, 2)%</MudTd>
+                <MudTd>@Math.Round(GetDampedForecast(context), 2)</MudTd>
+                <MudTd>@context.Action.Humanize()</MudTd>
+                <MudTd>@context.Reason</MudTd>
+            </RowTemplate>
+        </MudTable>
     }
 }
 
@@ -65,7 +58,7 @@ else
     {
         config = await clientInverterService.GetConfig();
         historyEntries = await clientInverterService.GetHistory();
-        
+
         await base.OnInitializedAsync();
     }
 }

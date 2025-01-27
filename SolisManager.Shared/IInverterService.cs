@@ -10,6 +10,9 @@ public interface IInverterService
     public Task<SolisManagerConfig> GetConfig();
     public Task<ConfigSaveResponse> SaveConfig(SolisManagerConfig config);
 
+    Task<TariffComparison> GetTariffComparisonData(string tariffA, string tariffB);
+
+
     public Task OverrideSlotAction(ChangeSlotActionRequest change);
     public Task TestCharge();
     public Task ChargeBattery();
@@ -19,6 +22,10 @@ public interface IInverterService
     public Task AdvanceSimulation();
     public Task ResetSimulation();
     public Task<NewVersionResponse> GetVersionInfo();
+
+    Task<OctopusProductResponse?> GetOctopusProducts();
+    Task<OctopusTariffResponse?> GetOctopusTariffs(string product);
+
 }
 
 public interface IInverterRefreshService
@@ -26,4 +33,5 @@ public interface IInverterRefreshService
     public Task RefreshBatteryState();
     public Task RefreshAgileRates();
     public Task RefreshTariff();
+    public Task UpdateInverterTime();
 }

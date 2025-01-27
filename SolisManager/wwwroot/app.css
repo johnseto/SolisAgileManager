@@ -58,3 +58,11 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+@media screen and (max-width: 900px) {
+    /* Tighten up the column width padding for dense mode */
+    .mud-table-dense * .mud-table-row .mud-table-cell {
+        padding-inline-start: 2px !important;
+        padding-inline-end: 2px !important;
+    }
+}

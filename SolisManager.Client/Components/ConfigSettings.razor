@@ -3,7 +3,7 @@
 @inject ISnackbar snackbar
 @inject NavigationManager navManager
 
-<div class="config-settings">
+<div class="config-settings @DarkModeStyle">
     <h2>Solis Manager Configuration</h2>
 
     @if (config != null)
@@ -13,6 +13,9 @@
             <MudTextField T="string" Label="Solis API Key" @bind-Value="@config.SolisAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
             <MudTextField T="string" Label="Solis API Secret" @bind-Value="@config.SolisAPISecret" Immediate="true" Variant="UIConstants.MudVariant"/>
             <MudTextField T="string" Label="Solis Inverter Serial Number" @bind-Value="@config.SolisInverterSerial" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <ConfigSettingHelp HelpText="Enabling this setting will automatically update the inverter's clock every day at 2am, to avoid time drift">
+                <MudCheckBox Label="Auto Update Inverter Time" LabelPosition="LabelPosition.End" @bind-Value="@config.AutoAdjustInverterTime"/>
+            </ConfigSettingHelp>
         </div>
         <div class="config-fields">
             <h5>Octopus Product</h5>
@@ -25,7 +28,7 @@
                 <ChildContent>
                     <MudRadioGroup @bind-Value="@manualProductKey">
                         <MudRadio Size="Size.Small" Value="@false">Use API Key (recommended)</MudRadio>
-                        <MudRadio Size="Size.Small" Value="@true">Manually Enter Product Code</MudRadio>
+                        <MudRadio Size="Size.Small" Value="@true">Select Octopus Tariff</MudRadio>
                     </MudRadioGroup>
                 </ChildContent>
             </ConfigSettingHelp>
@@ -36,16 +39,35 @@
             }
             else
             {
-                <MudTextField T="string" Label="Octopus Product" @bind-Value="@config.OctopusProduct" Immediate="true" Variant="UIConstants.MudVariant"/>
-                <MudTextField T="string" Label="Octopus Tariff Code" @bind-Value="@config.OctopusProductCode" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <OctopusProductSelector @bind-TariffCode="config.OctopusProductCode" Disabled="@AutomaticAccount"/>
+                @if (AutomaticAccount)
+                {
+                    <div class="tariff-tip">
+                        The Octopus Product has been set from your account. To set manually, clear the account/API settings.
+                    </div>
+                }
             }
         </div>
         <div class="config-fields">
             <h5>Solcast Settings</h5>
+            <ConfigSettingHelp HelpText="Specify up to two Solcast comma-separated site identifiers (one for each string)">
                 <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
-                <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <ConfigSettingHelp HelpText="Scale factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%)">
+            </ConfigSettingHelp>
+            <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <ConfigSettingHelp HelpText="Damping factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%). A value of 100% will use the raw solcast data">
                 <MudNumericField T="int" Label="Solcast Damping/Reduction %" @bind-Value="@DampingPercentageProxy" Min="0" Max="100" Variant="UIConstants.MudVariant"/>
+            </ConfigSettingHelp>
+            <ConfigSettingHelp>
+                <HelpContent>
+                    Solcast has an API rate-limit of 10 calls per day, so solcast data will only be pulled at just after
+                    midnight each day, and  then cached (in a file called <code>Solcast-latest.json</code>). <br/>
+                    If you want additional updates through the day (at 6am and midday) to update the solcast forecast as the 
+                    day progresses, check this option. However, note that if you are using Solcast elsewhere (e.g., in 
+                    Home Assistant) this may mean that you're more likely to hit your API rate limit.
+                </HelpContent>
+                <ChildContent>
+                    <MudCheckBox Label="Extra Solcast updates" LabelPosition="LabelPosition.End" @bind-Value="@config.SolcastExtraUpdates"/>
+                </ChildContent>
             </ConfigSettingHelp>
         </div>
         <div class="config-fields">
@@ -90,12 +112,16 @@
 </div>
 
 @code {
-    [Parameter]
-    public EventCallback OnSettingsChanged { get; set; }
+    [Parameter] public EventCallback OnSettingsChanged { get; set; }
+
+    [CascadingParameter] protected bool DarkMode { get; set; }
     
     private SolisManagerConfig? config;
     private bool manualProductKey = false;
+    private string DarkModeStyle => DarkMode ? "config-settings-dark" : string.Empty;
 
+    private bool AutomaticAccount => config != null && !string.IsNullOrEmpty(config.OctopusAccountNumber) && !string.IsNullOrEmpty(config.OctopusAPIKey);
+    
     private int PeakPercentageProxy
     {
         get => (int)(config!.PeakPeriodBatteryUse * 100);

@@ -17,10 +17,21 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
             InverterState = state;
     }
 
+    public async Task<TariffComparison> GetTariffComparisonData(string tariffA, string tariffB)
+    {
+        var url = $"inverter/tariffcomparison/{tariffA}/{tariffB}";
+        var result = await httpClient.GetFromJsonAsync<TariffComparison>(url);
+        if (result != null)
+            return result;
+
+        return new TariffComparison();
+    }
+
     public async Task OverrideSlotAction(ChangeSlotActionRequest request)
     {
         await httpClient.PostAsJsonAsync("inverter/overrideslotaction", request);
     }
+
     public async Task<List<HistoryEntry>> GetHistory()
     {
         var result = await httpClient.GetFromJsonAsync<List<HistoryEntry>>("inverter/history");
@@ -95,6 +106,18 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
     {
         var result = await httpClient.GetFromJsonAsync<NewVersionResponse>("inverter/versioninfo");
         ArgumentNullException.ThrowIfNull(result);
+        return result;
+    }
+
+    public async Task<OctopusProductResponse?> GetOctopusProducts()
+    {
+        var result = await httpClient.GetFromJsonAsync<OctopusProductResponse>("inverter/octopusproducts");
+        return result;
+    }
+
+    public async Task<OctopusTariffResponse?> GetOctopusTariffs(string product)
+    {
+        var result = await httpClient.GetFromJsonAsync<OctopusTariffResponse>($"inverter/octopustariffs/{product}");
         return result;
     }
 }

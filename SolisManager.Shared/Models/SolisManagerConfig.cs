@@ -12,7 +12,6 @@ public record SolisManagerConfig
     public string SolisInverterSerial { get; set; } = string.Empty;
     public string OctopusAccountNumber { get; set; } = string.Empty;
     public string OctopusAPIKey { get; set; } = string.Empty;
-    public string OctopusProduct { get; set; } = string.Empty;
     public string OctopusProductCode { get; set; } = String.Empty;
     public int SlotsForFullBatteryCharge { get; set; }
     public int AlwaysChargeBelowPrice { get; set; } = 10;
@@ -21,10 +20,14 @@ public record SolisManagerConfig
 
     public string SolcastAPIKey { get; set; } = string.Empty;  
     public string SolcastSiteIdentifier { get; set; } = string.Empty;
-    public decimal SolcastDampingFactor { get; set; } = 0.3M;
+    public decimal SolcastDampingFactor { get; set; } = 1M; // Default to 100% of the solcast value
+    public bool SolcastExtraUpdates { get; set; } = false;
 
     public decimal PeakPeriodBatteryUse { get; set; } = 0.5M;
     public bool Simulate { get; set; } = true;
+    public string? LastComparisonTariff { get; set; }
+
+    public bool AutoAdjustInverterTime { get; set; } = false;
 
     public async Task SaveToFile(string folder)
     {
@@ -62,8 +65,11 @@ public record SolisManagerConfig
         if (string.IsNullOrEmpty(SolisAPISecret)) return false;
         if (string.IsNullOrEmpty(SolisInverterSerial)) return false;
 
-        if (string.IsNullOrEmpty(OctopusProduct)) return false;
-        if (string.IsNullOrEmpty(OctopusProductCode)) return false;
+        if (string.IsNullOrEmpty(OctopusAPIKey) && string.IsNullOrEmpty(OctopusAccountNumber))
+        {
+            if (string.IsNullOrEmpty(OctopusProductCode)) return false;
+                return false;
+        }
 
         return true;
     }

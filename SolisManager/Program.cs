@@ -12,6 +12,7 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using SolisManager.Client.Constants;
+using SolisManager.Client.Services;
 using SolisManager.Extensions;
 using SolisManager.Services;
 using SolisManager.Shared;
@@ -78,9 +79,11 @@ public class Program
         builder.Services.AddSingleton<BatteryScheduler>();
         builder.Services.AddSingleton<RatesScheduler>();
         builder.Services.AddSingleton<SolcastScheduler>();
+        builder.Services.AddSingleton<SolcastExtraScheduler>();
         builder.Services.AddSingleton<VersionCheckScheduler>();
         builder.Services.AddSingleton<TariffScheduler>();
-
+        builder.Services.AddSingleton<InverterTimeAdjustScheduler>();
+        
         builder.Services.AddSingleton<SolisAPI>();
         builder.Services.AddSingleton<SolcastAPI>();
         builder.Services.AddSingleton<OctopusAPI>();
@@ -88,7 +91,8 @@ public class Program
         builder.Services.AddScheduler();
         builder.Services.AddMudServices();
         builder.Services.AddBlazoredLocalStorage();
-            
+        builder.Services.AddMemoryCache();
+        
         if (!Debugger.IsAttached)
         {
             // Use Kestrel options to set the port. Using .Urls.Add breaks WASM debugging.
@@ -108,7 +112,6 @@ public class Program
         var config = app.Services.GetRequiredService<SolisManagerConfig>();
         if (!config.ReadFromFile(ConfigFolder))
         {
-            config.OctopusProduct = "AGILE-24-10-01";
             config.OctopusProductCode = "E-1R-AGILE-24-10-01-J";
             config.SlotsForFullBatteryCharge = 6;
             config.AlwaysChargeBelowPrice = 10;
@@ -137,22 +140,31 @@ public class Program
             .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 
         app.ConfigureAPIEndpoints();
-        
-        // Get the solcast data at 2am, 6am and midday. Run it on the 
-        // 13th minute, because that reduces load (half of the world
-        // runs their solcast ingestion on the hour).
-        // Don't run at first startup. It means you won't get 
-        // data for a while, but that's probably okay.
+
+        // Get the solcast data at just after midnight, on the 13th minute,
+        // because that reduces load (half of the world runs their solcast
+        // ingestion on the hour). Don't run at first startup unless debugging.
+        // It means you won't get data for a while, but that's okay.
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
-            .Cron("13 2,6,12 * * *")
+            .Cron("13 0 * * *")
             .RunAtStartupIfDebugging());
 
-        // Refresh and apply the octopus rates every 30 mins
+        // Scheduler for updating the inverter date/time to avoid drift
+        // Once a day, at 2am
         app.Services.UseScheduler(s => s
-            .Schedule<RatesScheduler>()
-            .Cron("0,30 * * * *")
+            .Schedule<InverterTimeAdjustScheduler>()
+            .Cron("0 2 * * *")
             .RunOnceAtStart());
+
+        // An additional scheduler for a couple of extra solcast updates
+        // through the day (6am and midday). This will give better 
+        // forecasting accuracy, but at the cost of risking hitting the
+        // rate limit. So the execution of this scheduler depends on the
+        // config setting.
+        app.Services.UseScheduler(s => s
+            .Schedule<SolcastExtraScheduler>()
+            .Cron("13 6,12 * * *"));
         
         // Update the battery every 5 minutes. Skip the 0 / 30
         // minute slots, because it gets updated when we refresh
@@ -174,6 +186,12 @@ public class Program
             .Cron("15 6,12,18 * * *")
             .RunAtStartupIfDebugging());
 
+        // Refresh and apply the octopus rates every 30 mins
+        app.Services.UseScheduler(s => s
+            .Schedule<RatesScheduler>()
+            .Cron("0,30 * * * *")
+            .RunOnceAtStart());
+        
         await app.RunAsync();
     }
 

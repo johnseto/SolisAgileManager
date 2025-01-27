@@ -9,142 +9,147 @@
 
 <PageTitle>Solis Manager</PageTitle>
 
-<div class="title-bar">
-    <div class="title-and-nav">
-        <div class="title-text">
-            <h5>Prices &amp; Charging Plan</h5>
+<div class="strategy-table @DarkModeStyle">
+    <div class="title-bar">
+        <div class="title-and-nav">
+            <div class="title-text">
+                <h5>Prices &amp; Charging Plan</h5>
+            </div>
+            <ViewSelector @bind-SelectedView="selectedView" SettingName="plan-view"/>
         </div>
-        <ViewSelector @bind-SelectedView="selectedView" SettingName="plan-view"/>
-    </div>
-    @if (isSimulateMode)
-    {
-        <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
-            Simulation Mode
-            @if (inverterService.InverterState.Prices.Any())
-            {
-                <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext" Size="Size.Small">
-                    Advance
-                </MudIcon>
-            }
-            else
-            {
-                <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh" Size="Size.Small">
+        @if (isSimulateMode)
+        {
+            <div class="simulate-indicator" title="Simulation mode enabled - no changes will be applied to the inverter">
+                Simulation Mode
+                @if (inverterService.InverterState.Prices.Any())
+                {
+                    <MudIcon @onclick="@AdvanceSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.SkipNext" Size="Size.Small">
+                        Advance
+                    </MudIcon>
+                }
+                else
+                {
+                    <MudIcon @onclick="@ResetSimulation" Style="cursor:pointer;" Icon="@Icons.Material.Filled.Refresh" Size="Size.Small">
+                        Reset
+                    </MudIcon>
+                }
+            </div>
+        }
+        @if (manualOverridesExist)
+        {
+            <div title="Clear any manual overrides that are currently in effect">
+                <MudButton OnClick="@ClearOverrides" StartIcon="@Icons.Material.Filled.Cancel"
+                           Variant="UIConstants.MudVariant" Size="Size.Small">
                     Reset
-                </MudIcon>
-            }
-        </div>
-    }
-    @if (manualOverridesExist)
-    {
-        <div title="Clear any manual overrides that are currently in effect">
-            <MudButton OnClick="@ClearOverrides" StartIcon="@Icons.Material.Filled.Cancel"
-                       Variant="UIConstants.MudVariant" Size="Size.Small">
-                Clear Overrides
-            </MudButton>
-        </div>
-    }
+                </MudButton>
+            </div>
+        }
 
-    <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
-    <ValueChip Icon="@Icons.Material.Filled.House" Value="@inverterService.InverterState.HouseLoadkW"
-               Description="Current load being consumed by the house" Units="kW"/>
-    <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@inverterService.InverterState.CurrentPVkW"
-               Description="Current Solar PV generation" Units="kW"/>
-    <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@inverterService.InverterState.TodayPVkWh"
-               Description="Total Solar PV Generation today" Units="kWh"/>
-    <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@inverterService.InverterState.ForecastPVkWh"
-               Description="@($"Solar PV Forecast {inverterService.InverterState.ForecastDayLabel}")" Units="kWh"/>
+        <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
+        <ValueChip Icon="@Icons.Material.Filled.House" Value="@inverterService.InverterState.HouseLoadkW"
+                   Description="Current load being consumed by the house" Units="kW"/>
+        <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@inverterService.InverterState.CurrentPVkW"
+                   Description="Current Solar PV generation" Units="kW"/>
+        <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@inverterService.InverterState.TodayPVkWh"
+                   Description="Total Solar PV Generation today" Units="kWh"/>
+        <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@inverterService.InverterState.ForecastPVkWh"
+                   Description="@($"Solar PV Forecast {inverterService.InverterState.ForecastDayLabel}")" Units="kWh"/>
+    </div>
+    
+    <div class="table-chart">
+        @if (selectedView == ViewSelector.ViewType.Chart)
+        {
+            <PlanGraph ChartData="inverterService.InverterState.Prices"/>
+        }
+        else
+        {
+            <MudTable T="OctopusPriceSlot" Items="inverterService.InverterState.Prices" FixedHeader="true" 
+                      GroupBy="_groupDefinition" Dense="true" Breakpoint="Breakpoint.None" Height="100%">
+                <ColGroup>
+                    <col style="width:100px;"/>
+                    <col style="width:150px;"/>
+                    <col style="width:150px;"/>
+                    <col style="width:150px;"/>
+                    @if (hasSolcastData)
+                    {
+                        <col style="width:100px;"/>
+                    }
+                    <col/>
+                </ColGroup>
+                <HeaderContent>
+                    <MudTh>Period</MudTh>
+                    <MudTh>Price (p/kWh)</MudTh>
+                    <MudTh>Plan</MudTh>
+                    @if (hasSolcastData)
+                    {
+                        <MudTh>Forecast (kWh)</MudTh>
+                    }
+                    <MudTh>Manual Actions</MudTh>
+                </HeaderContent>
+                <GroupHeaderTemplate>
+                    <MudTh Class="mud-table-cell-custom-group date-row" colspan="@(hasSolcastData ? 5 : 6)">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
+                        @GroupTitle(context.Key)
+                    </MudTh>
+                </GroupHeaderTemplate>
+                <RowTemplate>
+                    <MudTd DataLabel="Period">
+                        <div class="valid-from">
+                            @context.valid_from.ToString("HH:mm")
+                            <div class="valid-to">&nbsp;- @context.valid_to.ToString("HH:mm")</div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Price (p/kWh)">
+                        <PriceIndicator Type="@context.PriceType" Price="@context.value_inc_vat"/>
+                    </MudTd>
+                    <MudTd DataLabel="Plan"><SlotPlan Slot="@context" OnOverrideCleared="ClearOverride"/></MudTd>
+                    @if (hasSolcastData)
+                    {
+                        <MudTd DataLabel="Forecast">@ForecastEstimate(context)</MudTd>
+                    }
+                    <MudTd DataLabel="Manual Action"><SlotActions Slot="@context" OnChangeSlotAction="ChangeSlotAction"/></MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </div>
+
+    <LastUpdateState InverterState="@inverterService.InverterState"/>
 </div>
 
-@if (selectedView == ViewSelector.ViewType.Chart)
-{
-    <PlanGraph ChartData="inverterService.InverterState.Prices"/>
-}
-else
-{
-    <table class="table">
-        <colgroup>
-            <col style="width:100px;"/>
-            <col style="width:150px;"/>
-            <col style="width:150px;"/>
-            <col style="width:150px;"/>
-            <col style="width:75px;"/>
-            @if (hasSolcastData)
-            {
-                <col style="width:100px;"/>
-            }
-            <col/>
-        </colgroup>
-        <thead>
-        <tr>
-            <th>Period</th>
-            <th>Price (p/kWh)</th>
-            <th>Plan</th>
-            @if (hasSolcastData)
-            {
-                <th>Forecast PV (kWh)</th>
-            }
-            <th>Manual Actions</th>
-        </tr>
-        </thead>
-        <tbody>
-        @(lastDate = null)
-        @foreach (var slot in inverterService.InverterState.Prices)
-        {
-            @DateHeader(slot)
-            <tr>
-                <td>
-                    <div class="valid-from">
-                        @slot.valid_from.ToString("HH:mm")
-                        <div class="valid-to">&nbsp;- @slot.valid_to.ToString("HH:mm")</div>
-                    </div>
-                </td>
-                <td style="@PriceStyle(slot)">
-                    <PriceIndicator Type="@slot.PriceType" Price="@slot.value_inc_vat"/>
-                </td>
-                <td><SlotPlan Slot="@slot" OnOverrideCleared="ClearOverride"/></td>
-                @if (hasSolcastData)
-                {
-                    <td style="text-align:center;">@ForecastEstimate(slot)</td>
-                }
-                <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
-            </tr>
-        }
-        </tbody>
-    </table>
-}
-
-<LastUpdateState InverterState="@inverterService.InverterState"/>
-
 @code {
+    [CascadingParameter] protected bool DarkMode { get; set; }
+
+    private string DarkModeStyle => DarkMode ? "table-dark" : string.Empty;
+    
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private CancellationTokenSource tokenSource = new();
 
-    private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? Math.Round(s.pv_est_kwh.Value, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
+    private string? GroupTitle(object? key)
+    {
+        var date = key as DateTime?;
+        return date?.DisplayDate();
+    }
+    
+    private TableGroupDefinition<OctopusPriceSlot> _groupDefinition = new()
+    {
+        GroupName = "Date",
+        Indentation = false,
+        Expandable = false,
+        IsInitiallyExpanded = true,
+        Selector = (e) => e.valid_from.Date
+    };
+    
+    private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? 
+                        Math.Round(s.pv_est_kwh.Value * forecastDamping, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
+
+    private string ForecastTooltip(OctopusPriceSlot s) => $"Solcast Power forecast: {s.pv_est_kwh}kW";
     private bool hasSolcastData = false;
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
-    private DateOnly? lastDate = null;
+    private decimal forecastDamping = 1M;
     private ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
-    private string PriceStyle(OctopusPriceSlot slot) => $"text-align:center; color: {(slot.value_inc_vat < 0 ? "darkred" : "black")};";
-
-    private RenderFragment? DateHeader(OctopusPriceSlot slot)
-    {
-        var date = DateOnly.FromDateTime(slot.valid_from.Date);
-
-        @if (lastDate == null || lastDate.Value != date)
-        {
-            lastDate = date;
-            return @<tr>
-                       <td colspan="6" class="date-row">
-                           <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
-                           @slot.valid_from.DisplayDate()
-                       </td>
-                   </tr>;
-        }
-
-        return null;
-    }
-
+    private string PriceStyle(OctopusPriceSlot slot) => $"text-align:center;";
+    
     private async Task ClearOverride(OctopusPriceSlot slot)
     {
         var req = new ChangeSlotActionRequest { SlotStart = slot.valid_from, NewAction = slot.PlanAction };
@@ -164,7 +169,6 @@ else
     {
         // Get the latest data
         await inverterService.RefreshInverterState();
-        lastDate = null;
         hasSolcastData = inverterService.InverterState.Prices.Any(x => x.pv_est_kwh != null);
         manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.ManualOverrideAction != null);
 
@@ -204,6 +208,7 @@ else
     {
         var config = await inverterService.GetConfig();
         isSimulateMode = config.Simulate;
+        forecastDamping = config.SolcastDampingFactor;
 
         await RefreshData();
         _ = RunTimer();

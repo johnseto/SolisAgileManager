@@ -8,8 +8,7 @@ on:
         required: false
 
 jobs:
-  relsease-solismanager:
-    if: github.ref == 'refs/heads/main'
+  build-solismanager:
     runs-on: ${{ matrix.os }}
     strategy: 
       matrix: 
@@ -54,7 +53,16 @@ jobs:
            zip -r ${{github.workspace}}/publish/SolisManager-${{matrix.target}}.zip . 
            popd
 
+    - name: Upload Dev artifacts
+      if: github.ref == 'refs/heads/develop'
+      uses: actions/upload-artifact@v4
+      with:
+        name: SolisManager-${{ matrix.target }}-1.0.${{ github.run_number }}-dev.zip
+        path: ${{github.workspace}}/publish/SolisManager-${{matrix.target}}.zip
+        retention-days: 5    
+
     - name: Create Release
+      if: github.ref == 'refs/heads/main'
       uses: softprops/action-gh-release@v2
       with:
         files: ${{github.workspace}}/publish/SolisManager-${{matrix.target}}.zip

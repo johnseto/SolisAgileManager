@@ -1,0 +1,51 @@
+@using ApexCharts
+@inject IInverterService inverterService
+
+<PageTitle>Solis Manager</PageTitle>
+
+<div class="title-bar">
+    <h5>Comparison vs Current Tariff</h5>
+
+    <div class="product-selector">
+        <OctopusProductSelector @bind-TariffCode="@selectedTariff" @bind-TariffCode:after="@RecalcNewComparison" 
+                            RegionCode="@currentTariff?.Last()" RegionClearable="false"/>
+    </div>
+</div>
+
+@if (comparison != null)
+{
+    <ComparisonChart FirstName="@($"Current Tariff ({currentTariff})")" FirstSeries="comparison.TariffAPrices"
+                     SecondName="@selectedTariff" SecondSeries="@comparison.TariffBPrices" />
+}
+
+@code {
+    Shared.Models.TariffComparison? comparison;
+    private string? selectedTariff;
+    private string? currentTariff;
+    
+    private async Task RecalcNewComparison()
+    {
+        if (! string.IsNullOrEmpty(currentTariff) && ! string.IsNullOrEmpty(selectedTariff))
+        {
+            var config = await inverterService.GetConfig();
+            config.LastComparisonTariff = selectedTariff;
+            await inverterService.SaveConfig(config);
+            
+            comparison = await inverterService.GetTariffComparisonData(currentTariff, selectedTariff);
+            
+            StateHasChanged();
+        }
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var config = await inverterService.GetConfig();
+        currentTariff = config.OctopusProductCode;
+        selectedTariff = config.LastComparisonTariff;
+
+        await RecalcNewComparison();
+        
+        await base.OnInitializedAsync();
+    }
+    
+}

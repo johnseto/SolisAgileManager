@@ -5,3 +5,7 @@
     margin-left: auto;
     margin-right: auto;
 }
+
+.update-text-dark {
+    color: rgba(200,200,200,0.8);
+}

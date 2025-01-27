@@ -295,7 +295,7 @@ PredBat, as it's a far superior product. At that point, I'll likely archive this
 Solcast API calls are rate-limited to 10 API calls per day - after which the call will fail and no data is
 returned. To avoid blowing through this limit the strategy is:
 
-1. Attempt to retrieve Solcast data from the API at 2am, 6am, and midday (because the forecast can change 
+1. Attempt to retrieve Solcast data from the API at midnight, 6am, and midday (because the forecast can change 
    through the day)
 2. If the API call succeeds, the results are written to a file `Solcast-latest.json` in the config folder.
 3. If you restart the app it reads from that file if it exists.

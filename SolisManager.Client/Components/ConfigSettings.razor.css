@@ -7,6 +7,11 @@
     margin: 20px;
 }
 
+.config-settings-dark {
+    background-color: rgb(40, 40, 40);
+    color: rgb(230, 230, 230);
+}
+
 .config-settings h5 {
     margin-top: 15px;    
 }
@@ -26,4 +31,8 @@
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
+}
+
+.tariff-tip {
+    font-size: 9pt;
 }

@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using Flurl;
 using Flurl.Http;
+using SolisManager.Services;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.APIWrappers;
@@ -15,17 +16,21 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 {
     private IEnumerable<SolarForecast>? lastForecastData;
     private DateTime? lastAPIUpdate = null;
-    
-    public async Task UpdateSolcastDataFromAPI()
+
+    private async Task DumpSolcastRawData(string siteId, SolcastResponse response)
     {
-        if (!config.SolcastValid())
-            return;
-        
-        logger.LogInformation("Executing scheduled update from Solcast API...");
-        
+        var file = Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.csv");
+        string[] lines = ["No data"];
+        if( response.forecasts != null )
+            lines = response.forecasts.Select(x => $"{x.period_end}, {x.pv_estimate}").ToArray();
+        await File.WriteAllLinesAsync(file, lines);
+    }
+
+    private async Task<SolcastResponse?> GetSolcastForecast(string siteIdentifier)
+    {
         var url = "https://api.solcast.com.au"
             .AppendPathSegment("rooftop_sites")
-            .AppendPathSegment(config.SolcastSiteIdentifier)
+            .AppendPathSegment(siteIdentifier)
             .AppendPathSegment("forecasts")
             .SetQueryParams(new
             {
@@ -35,27 +40,21 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
         try
         {
+            logger.LogInformation("Querying Solcast API for forecast (site ID: {ID}...", siteIdentifier);
+
             var responseData = await url.GetJsonAsync<SolcastResponse>();
 
-            if (responseData is { forecasts: not null })
+            if (responseData != null)
             {
-                lastAPIUpdate = DateTime.UtcNow;
-                
-                lastForecastData = responseData.forecasts.Select(x => new SolarForecast
-                {
-                    ForecastkWh = x.pv_estimate / 2, // 30 min slot, so divide kW by 2 to get kWh
-                    PeriodStart = x.period_end.AddMinutes(-30)
-                });
-
-                // And cache it locally
-                await WriteSolcastDataToFile();
+                await DumpSolcastRawData(siteIdentifier, responseData);
+                return responseData;
             }
         }
         catch (FlurlHttpException ex)
         {
             if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
             {
-                logger.LogWarning("Solcast API failed - too many requests. Will try again later");
+                logger.LogWarning("Solcast API failed - too many requests. Will try again at next scheduled update");
             }
             else
                 logger.LogError("HTTP Exception getting solcast data: {E}", ex);
@@ -63,6 +62,74 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         catch (Exception ex)
         {
             logger.LogError("Exception getting solcast data: {E}", ex);
+        }
+
+        return null;
+    }
+
+    public static string[] GetSolcastSites(string siteIdList)
+    {
+        string[] siteIdentifiers;
+
+        // We support up to 2 site IDs for people with multiple strings
+        if (siteIdList.Contains(','))
+            siteIdentifiers = siteIdList.Split(',',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        else
+            siteIdentifiers = [siteIdList];
+
+        return siteIdentifiers;
+    }
+    
+    public async Task UpdateSolcastDataFromAPI(bool overwrite)
+    {
+        if (!config.SolcastValid())
+            return;
+        
+        Dictionary<DateTime, SolarForecast> data = new();
+
+        var siteIdentifiers = GetSolcastSites(config.SolcastSiteIdentifier);
+
+        if(siteIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Count() != siteIdentifiers.Length)
+            logger.LogWarning("Same Solcast site ID specified twice in config. Ignoring the second one");
+
+        // Only ever take the first 2
+        foreach (var siteIdentifier in siteIdentifiers.Take(2))
+        {
+            var responseData = await GetSolcastForecast(siteIdentifier);
+
+            if (responseData is { forecasts: not null })
+            {
+                logger.LogInformation("{C} Solcast forecasts returned for site ID {ID}", responseData.forecasts.Count(), siteIdentifier);
+                
+                foreach (var forecast in responseData.forecasts)
+                {
+                    var start = forecast.period_end.AddMinutes(-30);
+
+                    if (!data.TryGetValue(start, out var existing))
+                    {
+                        existing = new SolarForecast { PeriodStart = start };
+                        data[start] = existing;
+                    }
+
+                    existing.ForecastkWh += forecast.pv_estimate;
+                }
+            }
+        }
+
+        if (data.Values.Count != 0)
+        {
+            if (lastForecastData != null && !overwrite)
+            {
+                var count = lastForecastData.Count(forecast => data.TryAdd(forecast.PeriodStart, forecast));
+                logger.LogInformation("Merged new forecasts with {C} existing ones", count);
+            }
+
+            lastAPIUpdate = DateTime.UtcNow;
+            lastForecastData = data.Values.OrderBy(x => x.PeriodStart).ToList();
+
+            // And cache it to disk
+            await WriteSolcastDataToFile();
         }
     }
 
@@ -91,6 +158,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
             {
                 logger.LogInformation("Loaded {N} forecasts from {F} to reduce API calls", fileForecasts.Count(), file);
                 lastForecastData = fileForecasts;
+                lastAPIUpdate = File.GetLastWriteTimeUtc(file);
                 return true;
             }
         }
@@ -112,7 +180,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
             {
                 if (!await LoadSolcastDataFromFile())
                 {
-                    await UpdateSolcastDataFromAPI();
+                    await UpdateSolcastDataFromAPI(false);
                 }
             }
 
@@ -122,7 +190,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         {
             if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
             {
-                logger.LogWarning("Solcast API failed - too many requests. Will try again later");
+                logger.LogWarning("Solcast API failed - too many requests. Will try again at next scheduled update");
             }
             else
                 logger.LogError("HTTP Exception getting solcast data: {E}", ex);

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Octokit;
 using SolisManager.APIWrappers;
 using SolisManager.Extensions;
@@ -30,14 +31,10 @@ public class InverterManager(
             return;
         
         InverterState.ForecastDayLabel = "today";
+        
+        // THe forecast is the sum of all slot forecasts for the day, offset by the damping factor
         var forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
-            .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
-        if (forecast == null || forecast.Value == 0)
-        { 
-            InverterState.ForecastDayLabel = "tomorrow";
-            forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today.AddDays(1))
-                .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
-        }
+                                                 .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
 
         InverterState.ForecastPVkWh = forecast;
         InverterState.SolcastTimeStamp = solcast.lastApiUpdate;
@@ -140,9 +137,11 @@ public class InverterManager(
             
             logger.LogTrace("Refreshing data...");
 
-            var octRatesTask = octopusAPI.GetOctopusRates();
+            var octRatesTask = octopusAPI.GetOctopusRates(config.OctopusProductCode);
 
             await Task.WhenAll(RefreshBatteryState(), octRatesTask, LoadExecutionHistory());
+
+            await CalculateForecastWeightings(executionHistory);
 
             // Stamp the last time we did an update
             InverterState.TimeStamp = DateTime.UtcNow;
@@ -529,17 +528,11 @@ public class InverterManager(
 
             if (!string.IsNullOrEmpty(productCode))
             {
-                var product = OctopusAPI.GetProductFromTariffCode(productCode);
+                if (theConfig.OctopusProductCode != productCode)
+                    logger.LogInformation("Octopus product code has changed: {Old} => {New}", theConfig.OctopusProductCode, productCode);
 
-                if (!string.IsNullOrEmpty(product))
-                {
-                    if (theConfig.OctopusProductCode != productCode)
-                        logger.LogInformation("Octopus product code has changed: {Old} => {New}", theConfig.OctopusProductCode, productCode);
-
-                    theConfig.OctopusProduct = product;
-                    theConfig.OctopusProductCode = productCode;
-                    return true;
-                }
+                theConfig.OctopusProductCode = productCode;
+                return true;
             }
         }
 
@@ -552,6 +545,23 @@ public class InverterManager(
         {
             logger.LogDebug("Executing Tariff Refresh scheduler");
             await UpdateConfigWithOctopusTariff(config);
+        }
+    }
+
+    public async Task UpdateInverterTime()
+    {
+        if (config.AutoAdjustInverterTime)
+        {
+            await solisApi.UpdateInverterTime();
+        }
+    }
+
+    public async Task UpdateInverterDayData()
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            // Call this to prime the cache with the last 7 days' inverter data
+            await solisApi.GetInverterDay(i);
         }
     }
 
@@ -569,6 +579,26 @@ public class InverterManager(
     {
         logger.LogInformation("Saving config to server...");
 
+        var siteIds = SolcastAPI.GetSolcastSites(newConfig.SolcastSiteIdentifier);
+
+        if (siteIds.Length > 2)
+        {
+            return new ConfigSaveResponse
+            {
+                Success = false,
+                Message = "A maximum of two Solcast site IDs can be specified"
+            };
+        }
+        
+        if (siteIds.Distinct(StringComparer.OrdinalIgnoreCase).Count() != siteIds.Length)
+        {
+            return new ConfigSaveResponse
+            {
+                Success = false,
+                Message = "Each specified Site ID must be unique"
+            };
+        }
+        
         if (!string.IsNullOrEmpty(newConfig.OctopusAPIKey) && !string.IsNullOrEmpty(newConfig.OctopusAccountNumber))
         {
             try
@@ -715,6 +745,16 @@ public class InverterManager(
         return Task.FromResult(appVersion);
     }
 
+    public async Task<OctopusProductResponse?> GetOctopusProducts()
+    {
+        return await octopusAPI.GetOctopusProducts();
+    }
+
+    public async Task<OctopusTariffResponse?> GetOctopusTariffs(string product)
+    {
+        return await octopusAPI.GetOctopusTariffs(product);
+    }
+
     public async Task CheckForNewVersion()
     {
         try
@@ -736,5 +776,87 @@ public class InverterManager(
         {
             logger.LogWarning("Unable to check GitHub for latest version: {E}", ex);
         }
+    }
+
+    public async Task<TariffComparison> GetTariffComparisonData(string tariffA, string tariffB)
+    {
+        logger.LogInformation("Running comparison for {A} vs {B}...", tariffA, tariffB);
+        
+        var ratesA = await octopusAPI.GetOctopusRates(tariffA);
+        var ratesB = await octopusAPI.GetOctopusRates(tariffB);
+
+        return new TariffComparison
+        {
+            TariffA = tariffA,
+            TariffAPrices = ratesA,
+            TariffB = tariffB,
+            TariffBPrices = ratesB
+        };
+    }
+
+    public async Task CalculateForecastWeightings(IEnumerable<HistoryEntry> forecastHistory)
+    {
+        // Not quite ready for this yet...
+        if (!Debugger.IsAttached)
+            return;
+        
+        var history = new List<InverterDayRecord>();
+
+        for (int i = 0; i < 7; i++)
+        {
+            var result = await solisApi.GetInverterDay(i);
+
+            if( result != null)
+                history.AddRange(result.data);
+        }
+
+        var dict = new Dictionary<DateTime, SlotTotals>();
+        
+        foreach (var item in history)
+        {
+            if (DateTime.TryParseExact(item.timeStr, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var date))
+            {
+                var rounded = date.RoundToHalfHour();
+
+                if (!dict.TryGetValue(rounded, out var totals))
+                {
+                    totals = new SlotTotals();
+                    dict.Add(rounded, totals);
+                }
+                
+                totals.day.Add(item);
+                // Add the power. Each entry is 5 minutes, so 1/12 of an hour
+                // TODO: Technically we should split the first and sixth one
+                // because they won't be a full 5-minutes. But in reality
+                // it isn't going to make much odds.
+                totals.totalPowerKWH += (item.pac / 12.0M) / 1000.0M;
+            }
+        }
+
+        // Now iterate through the historic forecasts, and compare them
+        var lastWeek = forecastHistory
+            .Where(x => x.Start > DateTime.UtcNow.AddDays(-7))
+            .DistinctBy(x => x.Start)
+            .ToDictionary(x => x.Start, x => x.ForecastKWH);
+
+        foreach (var kvp in dict)
+        {
+            if (lastWeek.TryGetValue(kvp.Key, out var forecast))
+            {
+                // Don't log ones where the output is tiny, or the same
+                if (forecast == kvp.Value.totalPowerKWH || forecast < 0.5M || kvp.Value.totalPowerKWH < 0.5M)
+                    continue;
+
+                var percentage =  kvp.Value.totalPowerKWH / forecast;
+                logger.LogInformation($"{kvp.Key:dd-MMM HH:mm}, forecast = {forecast:F2}kWh, actual = {kvp.Value.totalPowerKWH:F2}kWh, percentage = {percentage:P1}");
+            }
+        }
+    }
+
+    private record SlotTotals
+    {
+        public List<InverterDayRecord> day { get; init; } = new();
+        public decimal totalPowerKWH { get; set; }
     }
 }

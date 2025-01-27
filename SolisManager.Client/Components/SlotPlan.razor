@@ -3,7 +3,7 @@
 @if (Slot != null)
 {
     <div class="action-icon" title="@Slot.ActionReason">
-        <ActionIcon Action="Slot.ActionToExecute"/>
+        <ActionIcon Action="Slot.ActionToExecute" Pulse="@isCurrentSlot" />
         <div class="action-desc">
             @Slot.ActionToExecute.Description()
         </div>
@@ -23,6 +23,16 @@
     [Parameter]
     public EventCallback<OctopusPriceSlot> OnOverrideCleared { get; set; }
 
+    private bool isCurrentSlot = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if( Slot != null)
+            isCurrentSlot = Slot.valid_from < DateTime.Now && Slot.valid_to > DateTime.Now;
+        
+        await base.OnParametersSetAsync();
+    }
+    
     private async Task ClearOverride()
     {
         await OnOverrideCleared.InvokeAsync(Slot);

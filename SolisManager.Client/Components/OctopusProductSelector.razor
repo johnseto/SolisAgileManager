@@ -1,0 +1,144 @@
+@inject IInverterService service
+
+<div class="product-selector">
+    @if (products != null)
+    {
+        @if (selectedRegion == null && RegionCode != null && regions != null && string.IsNullOrEmpty(TariffCode))
+        {
+            <MudSelect T="OctopusRegion" @bind-Value="selectedRegion" Label="Region" Variant="UIConstants.MudVariant" Dense="true">
+                @foreach (var region in regions.Values)
+                {
+                    <MudSelectItem T="OctopusRegion" Value="@region">@region.fullName</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else if (selectedRegion != null)
+        {
+            <div class="region" title="@selectedRegion.fullName">
+                <img src="/united-kingdom.svg" width="auto" height="32px" alt="UK map icon"/>
+                @selectedRegion.shortName
+                @if (RegionClearable)
+                {
+                    <div class="clear-region">
+                        <MudIcon Icon="@Icons.Material.Filled.Clear" @onclick="ClearRegion" Size="Size.Small"/>
+                    </div>
+                }
+            </div>
+
+            <MudSelect T="OctopusProduct" @bind-Value="selectedProduct" @bind-Value:after="SelectedProductChanged"
+                       Label="Product" Variant="UIConstants.MudVariant" Dense="true" Disabled="@Disabled"
+                       Placeholder="Select product for comparison" Clearable="true">
+                @foreach (var product in products)
+                {
+                    <MudSelectItem T="OctopusProduct" Value="@product">@product.full_name</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    }
+    else
+    {
+        <MudText>Loading Octopus Products...</MudText>
+    }
+</div>
+
+@code {
+    [Parameter] public char? RegionCode { get; set; }
+
+    [Parameter] public string? TariffCode { get; set; }
+
+    [Parameter] public EventCallback<string?> TariffCodeChanged { get; set; }
+
+    [Parameter] public bool RegionClearable { get; set; } = true;
+
+    [Parameter] public bool Disabled { get; set; }
+
+    private IEnumerable<OctopusProduct>? products;
+    private OctopusTariffResponse? tariffs;
+
+    private OctopusProduct? selectedProduct;
+    private OctopusRegion? selectedRegion;
+
+    private Dictionary<char, OctopusRegion>? regions;
+    
+    private void ClearRegion()
+    {
+        selectedRegion = null;
+    }
+
+    private async Task SelectedProductChanged()
+    {
+        if (selectedProduct != null && selectedRegion != null)
+        {
+            tariffs = await service.GetOctopusTariffs(selectedProduct.code);
+
+            if (tariffs != null && tariffs.single_register_electricity_tariffs.TryGetValue($"_{selectedRegion.code}", out var tariff))
+            {
+                var newTariffCode = tariff.direct_debit_monthly.code;
+                if (newTariffCode != TariffCode)
+                {
+                    TariffCode = newTariffCode;
+                    await TariffCodeChanged.InvokeAsync(TariffCode);
+                }
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        selectedProduct = null;
+
+        if (RegionCode == null && !string.IsNullOrEmpty(TariffCode))
+            RegionCode = TariffCode.Last();
+
+        if( regions == null )
+            regions = InitialiseRegions();
+        
+        if (RegionCode.HasValue && regions.TryGetValue(RegionCode.Value, out selectedRegion))
+            StateHasChanged();
+
+        if (!string.IsNullOrEmpty(TariffCode))
+        {
+            var productCode = TariffCode.GetProductFromTariffCode();
+            selectedProduct = products?.FirstOrDefault(x => x.code == productCode);
+            await SelectedProductChanged();
+        }
+        
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Disabled)
+            RegionClearable = false;
+
+        var octProducts = await service.GetOctopusProducts();
+
+        if (octProducts != null)
+            products = octProducts.results.Where(x => x is { brand: "OCTOPUS_ENERGY", direction: "IMPORT" }).ToList();
+
+        await base.OnInitializedAsync();
+    }
+
+    private record OctopusRegion(string code, string shortName, string fullName);
+
+    private Dictionary<char, OctopusRegion> InitialiseRegions()
+    {
+        return new Dictionary<char, OctopusRegion>
+        {
+            { 'A', new OctopusRegion("A", "East", "Eastern England") },
+            { 'B', new OctopusRegion("B", "E Mids", "East Midlands") },
+            { 'C', new OctopusRegion("C", "Lon", "London") },
+            { 'D', new OctopusRegion("D", "N Wales", "North Wales, Merseyside and Cheshire") },
+            { 'E', new OctopusRegion("E", "W Mids", "West Midlands") },
+            { 'F', new OctopusRegion("F", "NE", "North East England") },
+            { 'G', new OctopusRegion("G", "NW", "North West England") },
+            { 'H', new OctopusRegion("H", "South", "Soutern England") },
+            { 'J', new OctopusRegion("J", "SE", "South East England") },
+            { 'K', new OctopusRegion("K", "S Wales", "South Wales") },
+            { 'L', new OctopusRegion("L", "SW", "South West England") },
+            { 'M', new OctopusRegion("M", "Yorks", "Yorkshire") },
+            { 'N', new OctopusRegion("N", "S Scot", "Southern Scotland") },
+            { 'P', new OctopusRegion("P", "Highlands", "Northern Scotland") },
+        };
+    }
+}
