@@ -13,6 +13,10 @@ and then apply an opinionated strategy to manage your battery based on the cheap
 
 <img width="1139" alt="ChartView" src="https://github.com/user-attachments/assets/41b313aa-0908-4ea8-9191-76946acdb54a" />
 
+#### Dark Mode 
+
+<img width="1195" alt="Screenshot 2025-01-27 at 22 26 00" src="https://github.com/user-attachments/assets/3f5baa4e-2415-46fe-b6f7-37c4236cd105" />
+
 ### Mobile: 
 
 <img src="https://github.com/user-attachments/assets/4ab0001e-1fa9-42d9-a5b1-c94e4cddcf8a" width=400 height=auto/>
@@ -164,6 +168,13 @@ inverter via the SolisCloud app. To do this:
 * Click 'Submit a ticket'
 * Submit a request to control your inverter from the SolisCloud App, filling in the details and selecting
   ticket type `API Request - Owner`. In the notes, ask for API access too.
+
+### Comparison Tool
+
+For people who like to tariff-hop to ensure they get the best price, the app now has a comparison tool that 
+will show a chart of upcoming prices for your current tariff, versus other Octopus products.
+
+<img width="1202" alt="Screenshot 2025-01-27 at 22 26 20" src="https://github.com/user-attachments/assets/6d4f8e32-bbc5-4423-9ba0-401816202c5c" />
 
 ### History Data
 
