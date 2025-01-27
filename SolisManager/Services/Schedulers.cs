@@ -46,17 +46,6 @@ public class SolcastExtraScheduler( SolcastAPI solcastService, IInverterService 
     }
 }
 
-
-
-public class TariffScheduler( IInverterRefreshService inverterRefresh, ILogger<SolcastScheduler> logger ) : IInvocable
-{
-    public async Task Invoke()
-    {
-        logger.LogDebug("Executing Tariff scheduler");
-        await inverterRefresh.RefreshTariff();
-    }
-}
-
 public class InverterTimeAdjustScheduler( IInverterRefreshService inverterRefresh, ILogger<SolcastScheduler> logger ) : IInvocable
 {
     public async Task Invoke()
@@ -65,7 +54,6 @@ public class InverterTimeAdjustScheduler( IInverterRefreshService inverterRefres
         await inverterRefresh.UpdateInverterTime();
     }
 }
-
 
 public class TariffScheduler( IInverterRefreshService inverterRefresh, ILogger<SolcastScheduler> logger ) : IInvocable
 {
