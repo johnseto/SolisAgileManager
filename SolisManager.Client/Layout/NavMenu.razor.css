@@ -25,6 +25,7 @@
 .dark-mode-toggle {
     margin: 20px;    
     cursor: pointer;
+    color: white;
 }
 
 .top-row {
