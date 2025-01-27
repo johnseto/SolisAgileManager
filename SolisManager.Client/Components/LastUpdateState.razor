@@ -1,7 +1,7 @@
 
 @if (InverterState != null)
 {
-    <div class="update-text">
+    <div class="@Style">
         Last update: @InverterState.TimeStamp.DisplayDateTime(), 
         last battery update: @InverterState.BatteryTimeStamp.DisplayDateTime(), 
         last Solcast update: @SolcastUpdate
@@ -11,5 +11,8 @@
 @code {
     [Parameter] public SolisManagerState? InverterState { get; set; }
     
+    [CascadingParameter] public bool DarkMode { get; set; }
+
+    private string Style => "update-text " + (DarkMode ? "update-text-dark" : string.Empty);
     private string SolcastUpdate => InverterState?.SolcastTimeStamp?.DisplayDateTime() ?? "never";
 }

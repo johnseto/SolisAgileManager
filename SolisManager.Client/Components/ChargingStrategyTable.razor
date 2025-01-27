@@ -55,7 +55,7 @@
         <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@inverterService.InverterState.ForecastPVkWh"
                    Description="@($"Solar PV Forecast {inverterService.InverterState.ForecastDayLabel}")" Units="kWh"/>
     </div>
-
+    
     <div class="table-chart">
         @if (selectedView == ViewSelector.ViewType.Chart)
         {
@@ -63,8 +63,9 @@
         }
         else
         {
-            <table class="table @DarkModeStyle">
-                <colgroup>
+            <MudTable T="OctopusPriceSlot" Items="inverterService.InverterState.Prices" FixedHeader="true" 
+                      GroupBy="_groupDefinition" Dense="true" Breakpoint="Breakpoint.None" Height="100%">
+                <ColGroup>
                     <col style="width:100px;"/>
                     <col style="width:150px;"/>
                     <col style="width:150px;"/>
@@ -74,45 +75,41 @@
                     {
                         <col style="width:100px;"/>
                     }
-                    <col/>
-                </colgroup>
-                <thead>
-                <tr>
-                    <th>Period</th>
-                    <th>Price (p/kWh)</th>
-                    <th>Plan</th>
+                </ColGroup>
+                <HeaderContent>
+                    <MudTh>Period</MudTh>
+                    <MudTh>Price (p/kWh)</MudTh>
+                    <MudTh>Plan</MudTh>
                     @if (hasSolcastData)
                     {
-                        <th>Forecast (kWh)</th>
+                        <MudTh>Forecast (kWh)</MudTh>
                     }
-                    <th>Manual Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                @(lastDate = null)
-                @foreach (var slot in inverterService.InverterState.Prices)
-                {
-                    @DateHeader(slot)
-                    <tr>
-                        <td>
-                            <div class="valid-from">
-                                @slot.valid_from.ToString("HH:mm")
-                                <div class="valid-to">&nbsp;- @slot.valid_to.ToString("HH:mm")</div>
-                            </div>
-                        </td>
-                        <td style="@PriceStyle(slot)">
-                            <PriceIndicator Type="@slot.PriceType" Price="@slot.value_inc_vat"/>
-                        </td>
-                        <td><SlotPlan Slot="@slot" OnOverrideCleared="ClearOverride"/></td>
-                        @if (hasSolcastData)
-                        {
-                            <td style="text-align:center;" title="@ForecastTooltip(slot)">@ForecastEstimate(slot)</td>
-                        }
-                        <td><SlotActions Slot="@slot" OnChangeSlotAction="ChangeSlotAction"/></td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+                    <MudTh>Manual Actions</MudTh>
+                </HeaderContent>
+                <GroupHeaderTemplate>
+                    <MudTh Class="mud-table-cell-custom-group date-row" colspan="@(hasSolcastData ? 5 : 6)">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
+                        @GroupTitle(context.Key)
+                    </MudTh>
+                </GroupHeaderTemplate>
+                <RowTemplate>
+                    <MudTd DataLabel="Period">
+                        <div class="valid-from">
+                            @context.valid_from.ToString("HH:mm")
+                            <div class="valid-to">&nbsp;- @context.valid_to.ToString("HH:mm")</div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Price (p/kWh)">
+                        <PriceIndicator Type="@context.PriceType" Price="@context.value_inc_vat"/>
+                    </MudTd>
+                    <MudTd DataLabel="Plan"><SlotPlan Slot="@context" OnOverrideCleared="ClearOverride"/></MudTd>
+                    @if (hasSolcastData)
+                    {
+                        <MudTd DataLabel="Forecast">@ForecastEstimate(context)</MudTd>
+                    }
+                    <MudTd DataLabel="Manual Action"><SlotActions Slot="@context" OnChangeSlotAction="ChangeSlotAction"/></MudTd>
+                </RowTemplate>
+            </MudTable>
         }
     </div>
 
@@ -127,6 +124,21 @@
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private CancellationTokenSource tokenSource = new();
 
+    private string? GroupTitle(object? key)
+    {
+        var date = key as DateTime?;
+        return date?.DisplayDate();
+    }
+    
+    private TableGroupDefinition<OctopusPriceSlot> _groupDefinition = new()
+    {
+        GroupName = "Date",
+        Indentation = false,
+        Expandable = false,
+        IsInitiallyExpanded = true,
+        Selector = (e) => e.valid_from.Date
+    };
+    
     private string ForecastEstimate(OctopusPriceSlot s) => s.pv_est_kwh != null ? 
                         Math.Round(s.pv_est_kwh.Value * forecastDamping, 2).ToString(CultureInfo.InvariantCulture) : string.Empty;
 
@@ -135,28 +147,9 @@
     private bool isSimulateMode = false;
     private bool manualOverridesExist = false;
     private decimal forecastDamping = 1M;
-    private DateOnly? lastDate = null;
     private ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
     private string PriceStyle(OctopusPriceSlot slot) => $"text-align:center;";
-
-    private RenderFragment? DateHeader(OctopusPriceSlot slot)
-    {
-        var date = DateOnly.FromDateTime(slot.valid_from.Date);
-
-        @if (lastDate == null || lastDate.Value != date)
-        {
-            lastDate = date;
-            return @<tr>
-                       <td colspan="@(hasSolcastData ? 5 : 4)" class="date-row">
-                           <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
-                           @slot.valid_from.DisplayDate()
-                       </td>
-                   </tr>;
-        }
-
-        return null;
-    }
-
+    
     private async Task ClearOverride(OctopusPriceSlot slot)
     {
         var req = new ChangeSlotActionRequest { SlotStart = slot.valid_from, NewAction = slot.PlanAction };
@@ -176,7 +169,6 @@
     {
         // Get the latest data
         await inverterService.RefreshInverterState();
-        lastDate = null;
         hasSolcastData = inverterService.InverterState.Prices.Any(x => x.pv_est_kwh != null);
         manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.ManualOverrideAction != null);
 
