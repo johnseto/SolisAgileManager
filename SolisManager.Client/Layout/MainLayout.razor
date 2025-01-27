@@ -14,15 +14,25 @@
         </div>
     }
 
-    <CascadingValue Value="DarkMode">
-        <main>
-            <article class="content px-4">
-                <ConfigValidator @bind-ConfigIsValid="@showSidebar">
-                    @Body
-                </ConfigValidator>
-            </article>
-        </main>
-    </CascadingValue>
+    @if (!loading)
+    {
+        <CascadingValue Value="DarkMode">
+            <main>
+                <article class="content px-4">
+                    <ConfigValidator @bind-ConfigIsValid="@showSidebar">
+                        @Body
+                    </ConfigValidator>
+                </article>
+            </main>
+        </CascadingValue>
+    }
+    else
+    {
+        <div class="loading">
+            <MudProgressCircular Indeterminate="true" Size="Size.Small"/>
+            <text>Initialising...</text>
+        </div>
+    }
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -36,6 +46,7 @@
 
     private const string darkModeKey = "dark-mode";
     private bool DarkMode = true;
+    private bool loading = true;
     private MudThemeProvider _mudThemeProvider;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -46,6 +57,9 @@
                 DarkMode = await localStorage.GetItemAsync<bool>(darkModeKey);
             else
                 DarkMode = await _mudThemeProvider.GetSystemPreference();
+            
+            loading = false;
+            StateHasChanged();
         }
 
         await base.OnAfterRenderAsync(firstRender);
