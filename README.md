@@ -147,6 +147,14 @@ You'll also need to set some other config settings that control the way the char
 * Simulate-only - if checked, the app will run and simulate what it _would have done_ without actually making
   any changes to the behaviour.
 
+### Avoiding Time Drift
+
+The application has a setting that will, every day at 2am, update the inverter time to match internet time.
+This can fix the natural time-drift of the inverter's clock, and ensure your charging happens at the right 
+times. 
+
+If you'd rather not have this feature, you can disable it in the config. 
+
 ### Getting Inverter Control Permission from Solis 
 
 **Note**: For this app to work, you'll need to have raised a ticket with Solis to get access to control the 
