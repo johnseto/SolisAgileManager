@@ -844,10 +844,11 @@ public class InverterManager(
         {
             if (lastWeek.TryGetValue(kvp.Key, out var forecast))
             {
-                if (forecast == kvp.Value.totalPowerKWH)
+                // Don't log ones where the output is tiny, or the same
+                if (forecast == kvp.Value.totalPowerKWH || forecast < 0.5M || kvp.Value.totalPowerKWH < 0.5M)
                     continue;
 
-                var percentage = forecast / kvp.Value.totalPowerKWH;
+                var percentage =  kvp.Value.totalPowerKWH / forecast;
                 logger.LogInformation($"{kvp.Key:dd-MMM HH:mm}, forecast = {forecast:F2}kWh, actual = {kvp.Value.totalPowerKWH:F2}kWh, percentage = {percentage:P1}");
             }
         }
