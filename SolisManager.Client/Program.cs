@@ -22,6 +22,7 @@ class Program
 
         builder.Services.AddScoped<ClientInverterService>();
         builder.Services.AddScoped<IInverterService>(x => x.GetRequiredService<ClientInverterService>());
+        
         builder.Services.AddMudServices();
         builder.Services.AddApexCharts();
         builder.Services.AddBlazoredLocalStorage();

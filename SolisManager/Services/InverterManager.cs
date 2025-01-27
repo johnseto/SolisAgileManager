@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Octokit;
 using SolisManager.APIWrappers;
 using SolisManager.Extensions;
@@ -139,6 +140,9 @@ public class InverterManager(
             var octRatesTask = octopusAPI.GetOctopusRates(config.OctopusProductCode);
 
             await Task.WhenAll(RefreshBatteryState(), octRatesTask, LoadExecutionHistory());
+
+            // TODO: When is best to do this?
+            await CalculateForecastWeightings();
 
             // Stamp the last time we did an update
             InverterState.TimeStamp = DateTime.UtcNow;
@@ -780,5 +784,49 @@ public class InverterManager(
             TariffB = tariffB,
             TariffBPrices = ratesB
         };
+    }
+
+    public async Task CalculateForecastWeightings()
+    {
+        // Not quite ready for this yet...
+        if (!Debugger.IsAttached)
+            return;
+        
+        var history = new List<InverterDayRecord>();
+
+        for (int i = 0; i < 7; i++)
+        {
+            var result = await solisApi.GetInverterDay(i);
+
+            if( result != null)
+                history.AddRange(result.data);
+        }
+
+        var dict = new Dictionary<DateTime, SlotTotals>();
+        
+        foreach (var item in history)
+        {
+            if (DateTime.TryParseExact(item.timeStr, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var date))
+            {
+                var rounded = date.RoundToHalfHour();
+
+                if (!dict.TryGetValue(rounded, out var totals))
+                {
+                    totals = new SlotTotals();
+                    dict.Add(rounded, totals);
+                }
+                
+                totals.day.Add(item);
+                // Add the power. Each entry is 5 minutes, so 1/12 of an hour
+                totals.totalPowerKWH += (item.pac / 12.0M) / 1000.0M;
+            }
+        }
+    }
+
+    private record SlotTotals
+    {
+        public List<InverterDayRecord> day { get; init; } = new();
+        public decimal totalPowerKWH { get; set; }
     }
 }

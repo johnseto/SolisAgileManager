@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.APIWrappers;
@@ -12,9 +13,15 @@ namespace SolisManager.APIWrappers;
 /// https://github.com/stevegal/solis-control
 public class SolisAPI
 {
+    private readonly MemoryCacheEntryOptions _cacheOptions =
+        new MemoryCacheEntryOptions()
+            .SetSize(1)
+            .SetAbsoluteExpiration(TimeSpan.FromDays(7));
+    
     private readonly HttpClient client = new();
     private readonly ILogger<SolisAPI> logger;
     private readonly SolisManagerConfig config;
+    private readonly IMemoryCache memoryCache;
 
     private string simulatedChargeState = string.Empty;
 
@@ -25,10 +32,11 @@ public class SolisAPI
         ReadChargeState = 4643
     }
     
-    public SolisAPI(SolisManagerConfig _config, ILogger<SolisAPI> _logger)
+    public SolisAPI(SolisManagerConfig _config, IMemoryCache _cache, ILogger<SolisAPI> _logger)
     {
         config = _config;
         logger = _logger;
+        memoryCache = _cache;
         client.BaseAddress = new Uri("https://www.soliscloud.com:13333");
     }
 
@@ -223,6 +231,13 @@ public class SolisAPI
     public async Task<InverterDayResponse?> GetInverterDay(int dayOffset = 0)
     {
         var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
+        var cacheKey = $"inverterDay-{dayToQuery:yyyyMMdd}";
+        
+        if( memoryCache.TryGetValue(cacheKey, out InverterDayResponse? inverterDay))
+            return inverterDay;
+        
+        logger.LogInformation("Getting inverter stats for {D:dd-MMM-yyyy}...", dayToQuery);
+        
         var result = await Post<InverterDayResponse>(1,"inverterDay", 
             new { 
                 sn = config.SolisInverterSerial,
@@ -230,6 +245,13 @@ public class SolisAPI
                 time = $"{dayToQuery:yyyy-MM-dd}",
                 timezone = 0
             });
+
+        if (result != null)
+            memoryCache.Set(cacheKey, result, _cacheOptions);
+
+        // Max 3 calls every 5 seconds
+        await Task.Delay(2000);
+
         return result;
     }
     
@@ -313,13 +335,13 @@ public class SolisAPI
 public record InverterDayRecord(
     string timeStr,
     string dataTimestamp,
-    string time,
     decimal batteryCapacitySoc, // Battery charge level
     decimal batteryPower, // Battery Charge power
     decimal pSum, // Current PV Output
     decimal familyLoadPower, // House load
     decimal homeLoadTodayEnergy, // Total house load today
     decimal pac, // PV output 
+    string pacStr,
     decimal eToday // Today PV total
 );
 
@@ -357,7 +379,13 @@ public record ChargeStateData( int chargeAmps, int dischargeAmps, string chargeT
 }
 
 public record InverterDetails(InverterData data);
-public record InverterData(IEnumerable<Battery> batteryList, decimal eToday, decimal pac, string stationId, decimal batteryPower, decimal psum);
+public record InverterData(IEnumerable<Battery> batteryList, 
+    decimal eToday, 
+    decimal pac, // Power
+    string stationId, 
+    decimal batteryPower, 
+    decimal psum);
+
 public record Battery(int batteryCapacitySoc);
 public record UserStation(string id, string installer, string installerId, double allEnergy1, double allIncome,
     double dayEnergy1, double dayIncome, double gridPurchasedTodayEnergy, double gridPurchasedTotalEnergy,

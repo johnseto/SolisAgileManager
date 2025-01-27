@@ -85,7 +85,14 @@
         {
             Title = new AxisTitle { Text = "Price (p/kWh)" },
             SeriesName = "Price",
-            DecimalsInFloat = 2
+            DecimalsInFloat = 2,
+            Labels = new YAxisLabels
+            { 
+                Style = new AxisLabelStyle()
+                {
+                    Colors = "white"
+                }
+            }
         });
         
         var fill = new Fill

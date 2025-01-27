@@ -12,6 +12,7 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using SolisManager.Client.Constants;
+using SolisManager.Client.Services;
 using SolisManager.Extensions;
 using SolisManager.Services;
 using SolisManager.Shared;
