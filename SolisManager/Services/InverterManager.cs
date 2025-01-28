@@ -782,16 +782,17 @@ public class InverterManager(
     {
         logger.LogInformation("Running comparison for {A} vs {B}...", tariffA, tariffB);
 
-        var todayMidnight = DateTime.UtcNow.Date;
-        var ratesA = await octopusAPI.GetOctopusRates(tariffA);
-        var ratesB = await octopusAPI.GetOctopusRates(tariffB);
+        var ratesATask = octopusAPI.GetOctopusRates(tariffA);
+        var ratesBTask = octopusAPI.GetOctopusRates(tariffB);
 
+        await Task.WhenAll(ratesATask, ratesBTask);
+        
         return new TariffComparison
         {
             TariffA = tariffA,
-            TariffAPrices = ratesA,
+            TariffAPrices = await ratesATask,
             TariffB = tariffB,
-            TariffBPrices = ratesB
+            TariffBPrices = await ratesBTask
         };
     }
 
