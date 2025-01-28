@@ -15,40 +15,52 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
                     .SetSize(1)
                     .SetAbsoluteExpiration(TimeSpan.FromDays(7));
 
-    public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates(string tariffCode)
+    public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates(string tariffCode, DateTime? startTime = null)
     {
-        var from = DateTime.UtcNow;
-        var to = DateTime.UtcNow.AddDays(5);
+        if (startTime == null)
+            startTime = DateTime.UtcNow;
+
+        var from = startTime.Value;
+        var to = startTime.Value.AddDays(5);
 
         var product = tariffCode.GetProductFromTariffCode();
         
         // https://api.octopus.energy/v1/products/AGILE-24-10-01/electricity-tariffs/E-1R-AGILE-24-10-01-A/standard-unit-rates/
-        
-        var result = await "https://api.octopus.energy"
-            .AppendPathSegment("/v1/products")
-            .AppendPathSegment(product)
-            .AppendPathSegment("electricity-tariffs")
-            .AppendPathSegment(tariffCode)
-            .AppendPathSegment("standard-unit-rates")
-            .SetQueryParams(new {
-                period_from = from,
-                period_to = to
-            }).GetJsonAsync<OctopusPrices?>();
-        
-        if (result != null)
-        {
-            if (result.count != 0 && result.results != null)
-            {
-                // Ensure they're in date order. Sometimes they come back in random order!!!
-                var orderedSlots = result.results!.OrderBy(x => x.valid_from).ToList();
-            
-                var first = result.results.FirstOrDefault()?.valid_from;
-                var last = result.results.LastOrDefault()?.valid_to;
-                logger.LogInformation("Retrieved {C} rates from Octopus ({S:dd-MMM-yyyy HH:mm} - {E:dd-MMM-yyyy HH:mm}) for product {Code}", 
-                    result.count, first, last, tariffCode);
 
-                return SplitToHalfHourSlots(orderedSlots);
+        try
+        {
+            var result = await "https://api.octopus.energy"
+                .AppendPathSegment("/v1/products")
+                .AppendPathSegment(product)
+                .AppendPathSegment("electricity-tariffs")
+                .AppendPathSegment(tariffCode)
+                .AppendPathSegment("standard-unit-rates")
+                .SetQueryParams(new
+                {
+                    period_from = from,
+                    period_to = to
+                }).GetJsonAsync<OctopusPrices?>();
+
+            if (result != null)
+            {
+                if (result.count != 0 && result.results != null)
+                {
+                    // Ensure they're in date order. Sometimes they come back in random order!!!
+                    var orderedSlots = result.results!.OrderBy(x => x.valid_from).ToList();
+
+                    var first = result.results.FirstOrDefault()?.valid_from;
+                    var last = result.results.LastOrDefault()?.valid_to;
+                    logger.LogInformation(
+                        "Retrieved {C} rates from Octopus ({S:dd-MMM-yyyy HH:mm} - {E:dd-MMM-yyyy HH:mm}) for product {Code}",
+                        result.count, first, last, tariffCode);
+
+                    return SplitToHalfHourSlots(orderedSlots);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error retrieving rates from Octopus");
         }
 
         return [];
@@ -76,10 +88,6 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
             var start = slot.valid_from;
             while (start < slot.valid_to)
             {
-                // We don't care about 30-minute slots in the past
-                if (slot.valid_to < DateTime.UtcNow)
-                    continue;
-                
                 var smallSlot = new OctopusPriceSlot
                 {
                     valid_from = start,

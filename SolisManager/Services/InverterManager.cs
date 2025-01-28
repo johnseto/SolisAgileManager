@@ -140,7 +140,7 @@ public class InverterManager(
             var octRatesTask = octopusAPI.GetOctopusRates(config.OctopusProductCode);
 
             await Task.WhenAll(RefreshBatteryState(), octRatesTask, LoadExecutionHistory());
-
+            
             await CalculateForecastWeightings(executionHistory);
 
             // Stamp the last time we did an update
@@ -781,7 +781,8 @@ public class InverterManager(
     public async Task<TariffComparison> GetTariffComparisonData(string tariffA, string tariffB)
     {
         logger.LogInformation("Running comparison for {A} vs {B}...", tariffA, tariffB);
-        
+
+        var todayMidnight = DateTime.UtcNow.Date;
         var ratesA = await octopusAPI.GetOctopusRates(tariffA);
         var ratesB = await octopusAPI.GetOctopusRates(tariffB);
 
