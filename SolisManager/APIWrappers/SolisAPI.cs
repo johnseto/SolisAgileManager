@@ -78,8 +78,20 @@ public class SolisAPI
 
         if (result != null && !string.IsNullOrEmpty(result.data.msg))
         {
-            simulatedChargeState = result.data.msg;
-            return ChargeStateData.FromChargeStateData(result.data.msg);
+            if (result.data.msg != "ERROR")
+            {
+                simulatedChargeState = result.data.msg;
+                try
+                {
+                    return ChargeStateData.FromChargeStateData(result.data.msg);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Error reading inverter charging state");
+                }
+            }
+            else
+                logger.LogError("ERROR returned when reading inverter charging state");
         }
 
         return null;
@@ -374,7 +386,7 @@ public record ChargeStateData( int chargeAmps, int dischargeAmps, string chargeT
                 parts[3]);
         }
 
-        throw new AggregateException("Unable to parse atRead response");
+        throw new AggregateException($"Unable to parse atRead response: {msg}");
     }
 }
 
