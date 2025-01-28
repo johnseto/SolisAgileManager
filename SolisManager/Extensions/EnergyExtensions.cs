@@ -5,17 +5,18 @@ public static class EnergyExtensions
     public static IEnumerable<(DateTime start, decimal energyKWH)> ConvertPowerDataTo30MinEnergy<T>(this IEnumerable<T> source,
         Func<T, (DateTime time, decimal powerKW)> GetDataFunc)
     {
-        if (source.Count() <= 1 )
+        var rawData = source.Select(GetDataFunc)
+            .OrderBy(x => x.time)
+            .ToList();
+
+        if (rawData.Count <= 1 )
             return [];
 
         var results = new Dictionary<DateTime, decimal>();
-        var prevForecast = source.First();
+        var prevData = rawData.First();
         
-        foreach (var item in source.Skip(1))
+        foreach (var data in rawData.Skip(1))
         {
-            var prevData = GetDataFunc(prevForecast);
-            var data = GetDataFunc(item);
-            
             var thirtyMinuteSlot = new DateTime(data.time.Year, data.time.Month, data.time.Day, data.time.Hour, 
                 data.time.Minute - (data.time.Minute % 30), 0);
 
@@ -31,7 +32,10 @@ public static class EnergyExtensions
             // Add it to the slot total
             results[thirtyMinuteSlot] += periodEnergyKWH;
 
-            prevForecast = item;
+            if( results[thirtyMinuteSlot] < 0 )
+                Console.WriteLine("WTAF");
+            
+            prevData = data;
         }
 
         var output = results.Select(x => (x.Key, x.Value))

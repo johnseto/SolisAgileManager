@@ -810,49 +810,46 @@ public class InverterManager(
             if( result != null)
                 history.AddRange(result.data);
         }
-        
-        // First, convert from kW power to kWh energy. 
 
-        var dict = new Dictionary<DateTime, SlotTotals>();
+        var processed = new List<(DateTime start, decimal powerKW)>();
         
-        foreach (var item in history)
+        foreach (var record in history)
         {
-            if (DateTime.TryParseExact(item.timeStr, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
+            if (DateTime.TryParseExact(record.timeStr, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
                     DateTimeStyles.None, out var date))
             {
-                var rounded = date.RoundToHalfHour();
-
-                if (!dict.TryGetValue(rounded, out var totals))
-                {
-                    totals = new SlotTotals();
-                    dict.Add(rounded, totals);
-                }
-                
-                totals.day.Add(item);
-                // Add the power. Each entry is 5 minutes, so 1/12 of an hour
-                // TODO: Technically we should split the first and sixth one
-                // because they won't be a full 5-minutes. But in reality
-                // it isn't going to make much odds.
-                totals.totalPowerKWH += (item.pac / 12.0M) / 1000.0M;
+                processed.Add( (date, record.pac / 1000));
             }
         }
+        
+        var powerSlots = processed.ConvertPowerDataTo30MinEnergy(x => (x.start, x.powerKW));
 
+        var powerPerDay = powerSlots.GroupBy(x => x.start.Date)
+                .Select(x => (x.Key, x.Sum(v => v.energyKWH)))
+                .ToList();
+
+        foreach( var d in powerPerDay )
+        {
+            logger.LogInformation("PV yield {D} = {Y:F2} kWh", d.Key, d.Item2);
+        }
+        
         // Now iterate through the historic forecasts, and compare them
-        var lastWeek = forecastHistory
+        var prevForecast = forecastHistory
             .Where(x => x.Start > DateTime.UtcNow.AddDays(-7))
             .DistinctBy(x => x.Start)
             .ToDictionary(x => x.Start, x => x.ForecastKWH);
 
-        foreach (var kvp in dict)
+        foreach (var kvp in powerPerDay)
         {
-            if (lastWeek.TryGetValue(kvp.Key, out var forecast))
+            if (prevForecast.TryGetValue(kvp.Key, out var forecast))
             {
                 // Don't log ones where the output is tiny, or the same
-                if (forecast == kvp.Value.totalPowerKWH || forecast < 0.5M || kvp.Value.totalPowerKWH < 0.5M)
+                if (forecast == kvp.Item2 || forecast < 0.2M || kvp.Item2 < 0.2M)
                     continue;
 
-                var percentage =  kvp.Value.totalPowerKWH / forecast;
-                logger.LogInformation($"{kvp.Key:dd-MMM HH:mm}, forecast = {forecast:F2}kWh, actual = {kvp.Value.totalPowerKWH:F2}kWh, percentage = {percentage:P1}");
+                var percentage =  kvp.Item2 / forecast;
+                logger.LogInformation("{D:dd-MMM HH:mm}, forecast = {F:F2}kWh, actual = {A:F2}kWh, percentage = {P:P1}",
+                                kvp.Key, forecast, kvp.Item2, percentage);
             }
         }
     }
