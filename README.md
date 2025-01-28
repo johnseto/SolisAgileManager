@@ -89,7 +89,9 @@ the binary bundle (see "Installing as a local app" above.
 The first time you load the UI, you'll be prompted to input basic information, such as your Solis API key and 
 secret, your inverter serial number, and the Octopus Product details of the current tariff you're on. 
 
-<img width="600" alt="SettingsScreenshot" src="https://github.com/user-attachments/assets/2346f008-10e4-408b-a0ac-97b1af6c0a1c" />
+<img width="636" alt="Settings" src="https://github.com/user-attachments/assets/d2dcf972-7676-4230-827d-01b36eefc02c" />
+
+<img width="633" alt="Settings2" src="https://github.com/user-attachments/assets/6d7d1cf2-8762-45a9-ae87-15cbd1e9cbd7" />
 
 #### Octopus Tariff Setup
 
