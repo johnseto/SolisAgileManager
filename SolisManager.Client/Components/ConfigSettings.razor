@@ -130,8 +130,8 @@
 
     private int DampingPercentageProxy
     {
-        get => (int)(config!.SolcastDampingFactor * 100);
-        set => config!.SolcastDampingFactor = value / 100.0M;
+        get => (int)(config!.SolcastDampFactor * 100);
+        set => config!.SolcastDampFactor = value / 100.0M;
     }
 
     protected override async Task OnInitializedAsync()

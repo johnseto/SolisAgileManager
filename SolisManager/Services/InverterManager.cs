@@ -34,7 +34,7 @@ public class InverterManager(
         
         // THe forecast is the sum of all slot forecasts for the day, offset by the damping factor
         var forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
-                                                 .Sum(x => x.ForecastkWh * config.SolcastDampingFactor);
+                                                 .Sum(x => x.ForecastkWh * config.SolcastDampFactor);
 
         InverterState.ForecastPVkWh = forecast;
         InverterState.SolcastTimeStamp = solcast.lastApiUpdate;
@@ -809,6 +809,8 @@ public class InverterManager(
             if( result != null)
                 history.AddRange(result.data);
         }
+        
+        // First, convert from kW power to kWh energy. 
 
         var dict = new Dictionary<DateTime, SlotTotals>();
         

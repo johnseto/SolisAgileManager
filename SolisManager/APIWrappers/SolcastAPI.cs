@@ -3,9 +3,8 @@ using System.Net;
 using System.Text.Json;
 using Flurl;
 using Flurl.Http;
-using SolisManager.Services;
 using SolisManager.Shared.Models;
-
+using static SolisManager.Extensions.EnergyExtensions;
 namespace SolisManager.APIWrappers;
 
 /// <summary>
@@ -17,36 +16,55 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
     private IEnumerable<SolarForecast>? lastForecastData;
     private DateTime? lastAPIUpdate = null;
 
-    private async Task DumpSolcastRawData(string siteId, SolcastResponse response)
+    private string GetDiskCachePath(string siteId) => Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.json");
+    
+    private async Task CacheSolcastDataToDisk(string siteId, SolcastResponse response)
     {
-        var file = Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.csv");
-        string[] lines = ["No data"];
-        if( response.forecasts != null )
-            lines = response.forecasts.Select(x => $"{x.period_end}, {x.pv_estimate}").ToArray();
-        await File.WriteAllLinesAsync(file, lines);
+        var file = GetDiskCachePath(siteId);
+        var json = JsonSerializer.Serialize(response);
+        await File.WriteAllTextAsync(file, json);
     }
 
-    private async Task<SolcastResponse?> GetSolcastForecast(string siteIdentifier)
+    private async Task<SolcastResponse?> ReadCachedSolcastDataFromDisk(string siteId)
     {
+        var file = GetDiskCachePath(siteId);
+
+        if (!File.Exists(file))
+            return null;
+
+        var json = await File.ReadAllTextAsync(file);
+        logger.LogInformation("Loaded cached Solcast data from {F}", file);
+        return JsonSerializer.Deserialize<SolcastResponse>(json);
+    }
+    
+    private async Task<SolcastResponse?> GetSolcastForecast(string siteIdentifier, bool useDiskCache)
+    {
+        if (useDiskCache)
+        {
+            var response = await ReadCachedSolcastDataFromDisk(siteIdentifier);
+            if( response != null)
+                return response;
+        }
+
         var url = "https://api.solcast.com.au"
-            .AppendPathSegment("rooftop_sites")
-            .AppendPathSegment(siteIdentifier)
-            .AppendPathSegment("forecasts")
-            .SetQueryParams(new
-            {
-                format = "json",
-                api_key = config.SolcastAPIKey
-            });
+                .AppendPathSegment("rooftop_sites")
+                .AppendPathSegment(siteIdentifier)
+                .AppendPathSegment("forecasts")
+                .SetQueryParams(new
+                {
+                    format = "json",
+                    api_key = config.SolcastAPIKey
+                });
 
         try
         {
-            logger.LogInformation("Querying Solcast API for forecast (site ID: {ID}...", siteIdentifier);
+            logger.LogInformation("Querying Solcast API for forecast (site ID: {ID})...", siteIdentifier);
 
             var responseData = await url.GetJsonAsync<SolcastResponse>();
 
             if (responseData != null)
             {
-                await DumpSolcastRawData(siteIdentifier, responseData);
+                await CacheSolcastDataToDisk(siteIdentifier, responseData);
                 return responseData;
             }
         }
@@ -54,7 +72,12 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         {
             if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
             {
-                logger.LogWarning("Solcast API failed - too many requests. Will try again at next scheduled update");
+                logger.LogWarning(
+                    "Solcast API failed - too many requests. Will try again at next scheduled update");
+
+                // If it's a 429 and we were told not to use the disk cache, use it anyway
+                if( ! useDiskCache )
+                    return await ReadCachedSolcastDataFromDisk(siteIdentifier);
             }
             else
                 logger.LogError("HTTP Exception getting solcast data: {E}", ex);
@@ -81,11 +104,11 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         return siteIdentifiers;
     }
     
-    public async Task UpdateSolcastDataFromAPI(bool overwrite)
+    public async Task UpdateSolcastDataFromAPI(bool useDiskCache, bool overwrite)
     {
         if (!config.SolcastValid())
             return;
-        
+
         Dictionary<DateTime, SolarForecast> data = new();
 
         var siteIdentifiers = GetSolcastSites(config.SolcastSiteIdentifier);
@@ -96,23 +119,25 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         // Only ever take the first 2
         foreach (var siteIdentifier in siteIdentifiers.Take(2))
         {
-            var responseData = await GetSolcastForecast(siteIdentifier);
+            // Hit the actual Solcast API (or use the cached data on disk)
+            var responseData = await GetSolcastForecast(siteIdentifier, useDiskCache);
 
             if (responseData is { forecasts: not null })
             {
                 logger.LogInformation("{C} Solcast forecasts returned for site ID {ID}", responseData.forecasts.Count(), siteIdentifier);
                 
-                foreach (var forecast in responseData.forecasts)
+                var power= responseData.forecasts.ConvertPowerDataTo30MinEnergy(
+                            x => (x.period_end.AddMinutes(-30), x.pv_estimate));
+
+                foreach (var x in power)
                 {
-                    var start = forecast.period_end.AddMinutes(-30);
-
-                    if (!data.TryGetValue(start, out var existing))
+                    if (!data.TryGetValue(x.start, out var forecast))
                     {
-                        existing = new SolarForecast { PeriodStart = start };
-                        data[start] = existing;
+                        forecast = new SolarForecast { PeriodStart = x.start };
+                        data[x.start] = forecast;
                     }
-
-                    existing.ForecastkWh += forecast.pv_estimate;
+                    
+                    forecast.ForecastkWh += x.energyKWH;
                 }
             }
         }
@@ -121,67 +146,24 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         {
             if (lastForecastData != null && !overwrite)
             {
+                // Call TryAdd, which will add any that don't already exist
                 var count = lastForecastData.Count(forecast => data.TryAdd(forecast.PeriodStart, forecast));
                 logger.LogInformation("Merged new forecasts with {C} existing ones", count);
             }
 
             lastAPIUpdate = DateTime.UtcNow;
             lastForecastData = data.Values.OrderBy(x => x.PeriodStart).ToList();
-
-            // And cache it to disk
-            await WriteSolcastDataToFile();
         }
     }
 
-    private async Task WriteSolcastDataToFile()
-    {
-        if (lastForecastData != null && lastForecastData.Any())
-        {
-            var file = LocalCacheFileName();
-            var json = JsonSerializer.Serialize(lastForecastData, new JsonSerializerOptions { WriteIndented = true });
-
-            logger.LogInformation("Retrieved {N} forecasts from Solcast API. Data will be cached to {F} to reduce API calls",
-                lastForecastData.Count(), file);
-            await File.WriteAllTextAsync(file, json);
-        }
-    }
-
-    private async Task<bool> LoadSolcastDataFromFile()
-    {
-        var file = LocalCacheFileName();
-
-        if (File.Exists(file))
-        {
-            var json = await File.ReadAllTextAsync(file);
-            var fileForecasts = JsonSerializer.Deserialize<IEnumerable<SolarForecast>>(json);
-            if (fileForecasts is not null)
-            {
-                logger.LogInformation("Loaded {N} forecasts from {F} to reduce API calls", fileForecasts.Count(), file);
-                lastForecastData = fileForecasts;
-                lastAPIUpdate = File.GetLastWriteTimeUtc(file);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private string LocalCacheFileName()
-    {
-        var cacheFile = Debugger.IsAttached ? $"Solcast-{DateTime.UtcNow:dd-MMM-yyyy}.json" : "Solcast-latest.json";
-        return Path.Combine(Program.ConfigFolder, cacheFile );
-    }
-
+    
     public async Task<(IEnumerable<SolarForecast>? forecasts, DateTime? lastApiUpdate)> GetSolcastForecast()
     {
         try
         {
             if (lastForecastData is null || !lastForecastData.Any())
             {
-                if (!await LoadSolcastDataFromFile())
-                {
-                    await UpdateSolcastDataFromAPI(false);
-                }
+                await UpdateSolcastDataFromAPI(true, false);
             }
 
             return (lastForecastData, lastAPIUpdate);

@@ -208,7 +208,7 @@
     {
         var config = await inverterService.GetConfig();
         isSimulateMode = config.Simulate;
-        forecastDamping = config.SolcastDampingFactor;
+        forecastDamping = config.SolcastDampFactor;
 
         await RefreshData();
         _ = RunTimer();

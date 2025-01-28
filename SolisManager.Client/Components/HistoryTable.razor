@@ -52,7 +52,7 @@ else
     ViewSelector.ViewType selectedView = ViewSelector.ViewType.Grid;
     SolisManagerConfig? config;
 
-    private decimal GetDampedForecast(HistoryEntry entry) => entry.ForecastKWH * (config?.SolcastDampingFactor ?? 1);
+    private decimal GetDampedForecast(HistoryEntry entry) => entry.ForecastKWH * (config?.SolcastDampFactor ?? 1);
 
     protected override async Task OnInitializedAsync()
     {
