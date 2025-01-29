@@ -21,7 +21,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
     private async Task CacheSolcastDataToDisk(string siteId, SolcastResponse response)
     {
         var file = GetDiskCachePath(siteId);
-        var json = JsonSerializer.Serialize(response);
+        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(file, json);
     }
 

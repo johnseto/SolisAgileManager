@@ -826,12 +826,12 @@ public class InverterManager(
         var powerSlots = processed.ConvertPowerDataTo30MinEnergy(x => (x.start, x.powerKW));
 
         var powerPerDay = powerSlots.GroupBy(x => x.start.Date)
-                .Select(x => (x.Key, x.Sum(v => v.energyKWH)))
+                .Select(x => new {Date =x.Key, Energy = x.Sum(v => v.energyKWH) })
                 .ToList();
 
         foreach( var d in powerPerDay )
         {
-            logger.LogInformation("PV yield {D} = {Y:F2} kWh", d.Key, d.Item2);
+            logger.LogInformation("PV yield {D:dd-MMM-yyyy} = {Y:F2} kWh", d.Date, d.Energy);
         }
         
         // Now iterate through the historic forecasts, and compare them
@@ -840,17 +840,16 @@ public class InverterManager(
             .DistinctBy(x => x.Start)
             .ToDictionary(x => x.Start, x => x.ForecastKWH);
 
-        foreach (var kvp in powerPerDay)
+        foreach (var day in powerPerDay)
         {
-            if (prevForecast.TryGetValue(kvp.Key, out var forecast))
+            if (prevForecast.TryGetValue(day.Date, out var forecast))
             {
-                // Don't log ones where the output is tiny, or the same
-                if (forecast == kvp.Item2 || forecast < 0.2M || kvp.Item2 < 0.2M)
+                if (forecast == 0)
                     continue;
-
-                var percentage =  kvp.Item2 / forecast;
+                
+                var percentage =  day.Energy / forecast;
                 logger.LogInformation("{D:dd-MMM HH:mm}, forecast = {F:F2}kWh, actual = {A:F2}kWh, percentage = {P:P1}",
-                                kvp.Key, forecast, kvp.Item2, percentage);
+                                day.Date, forecast, day.Energy, percentage);
             }
         }
     }
