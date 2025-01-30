@@ -535,6 +535,7 @@ public class InverterManager(
             InverterState.BatteryTimeStamp = DateTime.UtcNow;
             InverterState.CurrentPVkW = solisState.data.pac;
             InverterState.TodayPVkWh = solisState.data.eToday;
+            InverterState.TodayExportkWh = 0; // TODO
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
             

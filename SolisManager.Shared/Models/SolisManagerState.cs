@@ -6,6 +6,7 @@ public class SolisManagerState
     public IEnumerable<OctopusPriceSlot> Prices { get; set; } = [];
     public int BatterySOC { get; set; }
     public decimal TodayPVkWh { get; set; }
+    public decimal TodayExportkWh { get; set; }
     public decimal CurrentPVkW { get; set; }
     public decimal HouseLoadkW { get; set; }
     public decimal TodayForecastKWH { get; set; }

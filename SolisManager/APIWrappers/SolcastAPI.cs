@@ -91,6 +91,8 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
         var file = Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.json");
         if (File.Exists(file))
         {
+            logger.LogInformation("Reading legacy solcast cache data: {F}", file);
+            
             var json = await File.ReadAllTextAsync(file);
             var response = JsonSerializer.Deserialize<SolcastResponse>(json);
             if (response != null)
