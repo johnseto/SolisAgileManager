@@ -30,13 +30,6 @@ public class InverterManager(
         if (solcast.forecasts == null || !solcast.forecasts.Any())
             return;
         
-        InverterState.ForecastDayLabel = "today";
-        
-        // THe forecast is the sum of all slot forecasts for the day, offset by the damping factor
-        var forecast = solcast.forecasts?.Where(x => x.PeriodStart.Date == DateTime.Today)
-                                                 .Sum(x => x.ForecastkWh * config.SolcastDampFactor);
-
-        InverterState.ForecastPVkWh = forecast;
         InverterState.SolcastTimeStamp = solcast.lastApiUpdate;
 
         if (slots != null && slots.Any() && solcast.forecasts != null)
@@ -57,6 +50,12 @@ public class InverterManager(
                     slot.pv_est_kwh = null;
                 }
             }
+            
+            InverterState.TodayForecastKWH = solcast.forecasts.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date )
+                .Sum(x => x.ForecastkWh);
+            InverterState.TomorrowForecastKWH = solcast.forecasts.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date.AddDays(1) )
+                .Sum(x => x.ForecastkWh);
+                                                    
             
             if( ! matchedData )
                 logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
@@ -213,9 +212,6 @@ public class InverterManager(
 
         // Do this last, as it uses a lot of API calls
         await EnrichHistoryWithActualYield();
-        // And what to do with this?!
-        await CalculateForecastWeightings(executionHistory);
-
     }
 
     private IEnumerable<ChangeSlotActionRequest> GetExistingSlotOverrides()
@@ -542,9 +538,8 @@ public class InverterManager(
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
             
-            logger.LogInformation("Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast ({DL}): {F}",
-                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW, 
-                InverterState.ForecastDayLabel, InverterState.ForecastPVkWh != null ? $"{InverterState.ForecastPVkWh}kWh" : "n/a" );
+            logger.LogInformation("Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW",
+                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW );
         }
     }
     

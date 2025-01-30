@@ -8,8 +8,8 @@ public class SolisManagerState
     public decimal TodayPVkWh { get; set; }
     public decimal CurrentPVkW { get; set; }
     public decimal HouseLoadkW { get; set; }
-    public decimal? ForecastPVkWh { get; set; }
-    public string ForecastDayLabel { get; set; } = "today";
+    public decimal TodayForecastKWH { get; set; }
+    public decimal TomorrowForecastKWH { get; set; }
     public string StationId { get; set; } = string.Empty;
     public DateTime BatteryTimeStamp { get; set; }
     public DateTime? SolcastTimeStamp { get; set; }

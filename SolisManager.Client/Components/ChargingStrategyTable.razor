@@ -84,6 +84,9 @@
                     }
                     <MudTh>Manual Actions</MudTh>
                 </HeaderContent>
+                <FooterContent>
+                    @FooterSummary()
+                </FooterContent>
                 <GroupHeaderTemplate>
                     <MudTh Class="mud-table-cell-custom-group date-row" colspan="@(hasSolcastData ? 5 : 6)">
                         @SummaryRow(context)
@@ -121,22 +124,52 @@
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private CancellationTokenSource tokenSource = new();
 
+    private RenderFragment? FooterSummary()
+    {
+        if (inverterService.InverterState.Prices.Any(x => x.valid_from.Date == DateTime.UtcNow.AddDays(1).Date))
+            return null;
+
+        // If there aren't any slots for tomorrow, add a summary row with tomorrow's forecast.
+        return @<MudTh Class="mud-table-cell-custom-group date-row" colspan="@(hasSolcastData ? 5 : 6)">
+                @SummaryEntry(DateTime.UtcNow.Date.AddDays(1), inverterService.InverterState.TomorrowForecastKWH)
+            </MudTh>;
+    }
+    
     private RenderFragment SummaryRow(TableGroupData<object, OctopusPriceSlot> groupData)
     {
         var date = groupData.Key as DateTime?;
         var forecastTotal = groupData.Items.Sum(x => x.pv_est_kwh);
-        var ForcastDescription = forecastTotal != null ? $"Forecast PV for {date:dd-MMM}: {Math.Round(forecastTotal.Value, 2)}kWh" : string.Empty;
+
+        return SummaryEntry(date, forecastTotal);
+    }
+    
+    private RenderFragment SummaryEntry(DateTime? date, decimal? forecastTotal)
+    {
+        if (date != null && date.Value.Date == DateTime.UtcNow.Date)
+        {
+            // Get the *whole* forecast for today, not the partial one.
+            forecastTotal = inverterService.InverterState.TodayForecastKWH;
+        }
+
+        RenderFragment? forecastFragment = null;
+        if (forecastTotal != null)
+        {
+            var dampedForecast = Math.Round(forecastTotal.Value * forecastDamping, 2);
+            var ForcastDescription = $"Forecast PV for {date:dd-MMM}: {dampedForecast}kWh";
+
+            forecastFragment = @<ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@dampedForecast"
+                                           Description="@ForcastDescription" Units="kWh"/>;
+        }
 
         return @<div class="summary-row">
-                   <div>
-                       <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
-                       @date?.DisplayDate()
-                   </div>
-                   <div>
-                       <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@forecastTotal"
-                                  Description="@ForcastDescription" Units="kWh"/>
-                   </div>
-               </div>;
+            <div>
+                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
+                @date?.DisplayDate()
+            </div>
+            <div>
+                @forecastFragment
+            </div>
+        </div>;
     }
     
     private TableGroupDefinition<OctopusPriceSlot> _groupDefinition = new()
@@ -216,8 +249,13 @@
     protected override async Task OnInitializedAsync()
     {
         var config = await inverterService.GetConfig();
-        isSimulateMode = config.Simulate;
-        forecastDamping = config.SolcastDampFactor;
+
+        if (config.Simulate != isSimulateMode || config.SolcastDampFactor != forecastDamping)
+        {
+            isSimulateMode = config.Simulate;
+            forecastDamping = config.SolcastDampFactor;
+            StateHasChanged();
+        }
 
         await RefreshData();
         _ = RunTimer();

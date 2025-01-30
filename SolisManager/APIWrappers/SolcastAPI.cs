@@ -135,9 +135,14 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
                         forecast = new SolarForecast { PeriodStart = start };
                         data[start] = forecast;
                     }
-                    
+
+                    // No idea why, but it seems that the pv_estimate is about twice
+                    // what it should be, all the time. So half it. Maybe we can
+                    // figure out why sometime in future. :)
+                    const decimal mysteryFactor = 0.5M;
+
                     // Divide the kW figure by 2 to get the power
-                    forecast.ForecastkWh += x.pv_estimate / 2.0M;
+                    forecast.ForecastkWh += (x.pv_estimate / 2.0M) * mysteryFactor;
                 }
             }
         }
