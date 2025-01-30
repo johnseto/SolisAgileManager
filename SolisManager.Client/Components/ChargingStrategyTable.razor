@@ -52,6 +52,10 @@
                    Description="Current Solar PV generation" Units="kW"/>
         <ValueChip Icon="@Icons.Material.Filled.WbSunny" Value="@inverterService.InverterState.TodayPVkWh"
                    Description="Total Solar PV Generation today" Units="kWh"/>
+        <ValueChip Icon="@Icons.Material.Filled.ExitToApp" Value="@inverterService.InverterState.TodayImportkWh"
+                   Description="Grid Import Today" Units="kWh"/>
+        <ValueChip Icon="@Icons.Material.Filled.Output" Value="@inverterService.InverterState.TodayExportkWh"
+                   Description="Grid Export Today" Units="kWh"/>
     </div>
     
     <div class="table-chart">

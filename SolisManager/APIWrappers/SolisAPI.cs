@@ -489,7 +489,10 @@ public record InverterData(IEnumerable<Battery> batteryList,
     decimal eToday, 
     decimal pac, // Power
     string stationId, 
-    decimal batteryPower, 
+    decimal batteryPower,
+    decimal gridSellEnergy, // Today export KWH
+    decimal homeLoadEnergy, // Today load KWH
+    decimal gridPurchasedEnergy, // Today import KWH
     decimal psum);
 
 public record Battery(int batteryCapacitySoc);
