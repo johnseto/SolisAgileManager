@@ -147,8 +147,16 @@ public class Program
         // It means you won't get data for a while, but that's okay.
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
-            .Cron("13 0 * * *")
+            .Cron("13 0,9 * * *")
             .RunAtStartupIfDebugging());
+
+        // An additional scheduler for a midday solcast updated. This will
+        // give better forecasting accuracy, but at the cost of risking
+        // hitting the rate limit. So the execution of this scheduler
+        // depends on the config setting.
+        app.Services.UseScheduler(s => s
+            .Schedule<SolcastExtraScheduler>()
+            .Cron("13 12 * * *"));
 
         // Scheduler for updating the inverter date/time to avoid drift
         // Once a day, at 2am
@@ -156,15 +164,6 @@ public class Program
             .Schedule<InverterTimeAdjustScheduler>()
             .Cron("0 2 * * *")
             .RunOnceAtStart());
-
-        // An additional scheduler for a couple of extra solcast updates
-        // through the day (6am and midday). This will give better 
-        // forecasting accuracy, but at the cost of risking hitting the
-        // rate limit. So the execution of this scheduler depends on the
-        // config setting.
-        app.Services.UseScheduler(s => s
-            .Schedule<SolcastExtraScheduler>()
-            .Cron("13 6,12 * * *"));
         
         // Update the battery every 5 minutes. Skip the 0 / 30
         // minute slots, because it gets updated when we refresh
