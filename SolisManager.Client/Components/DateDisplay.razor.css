@@ -1,0 +1,12 @@
+
+.date-display {
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+    align-items: center;
+}
+
+.date-text {
+    font-size: 15px;
+    margin-top: 2px;
+}

@@ -1,0 +1,8 @@
+<div class="date-display">
+    <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
+    <span class="date-text">@Date?.DisplayDate()</span>
+</div>
+
+@code {
+    [Parameter] public DateTime? Date { get; set; }
+}

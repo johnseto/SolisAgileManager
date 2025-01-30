@@ -166,10 +166,9 @@
         }
 
         return @<div class="summary-row">
-            <div>
-                <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" Size="Size.Small"/>
-                @date?.DisplayDate()
-            </div>
+           <div>
+               <DateDisplay Date="@date"/>
+           </div>
             <div>
                 @forecastFragment
             </div>
