@@ -47,7 +47,7 @@
     private const string darkModeKey = "dark-mode";
     private bool DarkMode = true;
     private bool loading = true;
-    private MudThemeProvider _mudThemeProvider;
+    private MudThemeProvider? _mudThemeProvider;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -55,7 +55,7 @@
         {
             if (await localStorage.ContainKeyAsync(darkModeKey))
                 DarkMode = await localStorage.GetItemAsync<bool>(darkModeKey);
-            else
+            else if( _mudThemeProvider != null)
                 DarkMode = await _mudThemeProvider.GetSystemPreference();
             
             loading = false;

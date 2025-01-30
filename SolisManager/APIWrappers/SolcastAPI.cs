@@ -11,50 +11,110 @@ namespace SolisManager.APIWrappers;
 /// https://docs.solcast.com.au/#api-authentication
 /// https://docs.solcast.com.au/#155071c9-3457-47ea-a689-88fa894b0f51
 /// </summary>
-public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
+public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
 {
     private IEnumerable<SolarForecast>? lastForecastData;
     private DateTime? lastAPIUpdate = null;
+    private SolcastResponseCache? responseCache = null;
 
-    private string GetDiskCachePath(string siteId) => Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.json");
+    private string DiskCachePath => Path.Combine(Program.ConfigFolder, $"Solcast-cache.json");
     
-    private async Task CacheSolcastDataToDisk(string siteId, SolcastResponse response)
+    private async Task LoadCachedSolcastDataFromDisk(string siteId)
     {
-        var file = GetDiskCachePath(siteId);
-        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions { WriteIndented = true });
-        await File.WriteAllTextAsync(file, json);
-    }
-
-    private async Task<SolcastResponse?> ReadCachedSolcastDataFromDisk(string siteId)
-    {
-        var file = GetDiskCachePath(siteId);
-
-        if (!File.Exists(file))
-            return null;
-
-        var json = await File.ReadAllTextAsync(file);
-        logger.LogInformation("Loaded cached Solcast data from {F}", file);
-        return JsonSerializer.Deserialize<SolcastResponse>(json);
-    }
-    
-    private async Task<SolcastResponse?> GetSolcastForecast(string siteIdentifier, bool useDiskCache)
-    {
-        if (useDiskCache)
+        if (responseCache == null)
         {
-            var response = await ReadCachedSolcastDataFromDisk(siteIdentifier);
-            if( response != null)
-                return response;
+            var file = DiskCachePath;
+
+            if (File.Exists(file))
+            {
+                var json = await File.ReadAllTextAsync(file);
+                logger.LogInformation("Loaded cached Solcast data from {F}", file);
+                
+                responseCache = JsonSerializer.Deserialize<SolcastResponseCache>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+                if (responseCache == null || responseCache.date != today)
+                {
+                    // New day, discard the old data
+                    responseCache = new SolcastResponseCache{ date = today };
+                }
+            }
+
         }
 
+        responseCache ??= new();
+    }
+
+    private async Task CacheSolcastResponse(string siteId, SolcastResponse response)
+    {
+        ArgumentNullException.ThrowIfNull(responseCache);
+        
+        var site = responseCache.sites.FirstOrDefault(x => x.siteId == siteId);
+        if (site == null)
+        {
+            site = new SolcastResponseCacheEntry { siteId = siteId };
+            responseCache.sites.Add(site);
+        }
+
+        if (!site.updates.Exists(x => x.lastUpdate == response.lastUpdate))
+        {
+            // Save the response
+            site.updates.Add(response);
+            // Update the date
+            responseCache.date = DateOnly.FromDateTime(response.lastUpdate);
+        }
+
+        if (site.updates.Count > 3)
+            logger.LogError("Unexpected response count of {C}", site.updates.Count);
+
+        var json = JsonSerializer.Serialize(responseCache, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(DiskCachePath, json);
+    }
+    
+    public async Task GetNewSolcastForecasts()
+    {
+        var siteIdentifiers = GetSolcastSites(config.SolcastSiteIdentifier);
+
+        if (siteIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Count() != siteIdentifiers.Length)
+            logger.LogWarning("Same Solcast site ID specified twice in config. Ignoring the second one");
+
+        // Only ever take the first 2
+        foreach (var siteIdentifier in siteIdentifiers.Take(2))
+        {
+            // Use WhenAll here?
+            await GetNewSolcastForecast(siteIdentifier);
+        }
+    }
+
+    private async Task ReadLegacySolcastFile(string siteId)
+    {
+        var file = Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.json");
+        if (File.Exists(file))
+        {
+            var json = await File.ReadAllTextAsync(file);
+            var response = JsonSerializer.Deserialize<SolcastResponse>(json);
+            if (response != null)
+            {
+                response.lastUpdate = File.GetLastWriteTimeUtc(file);
+                await CacheSolcastResponse(siteId, response);
+            }
+        }
+    }
+    
+    private async Task GetNewSolcastForecast(string siteIdentifier)
+    {
+        // First, check we've got the cache initialised
+        await LoadCachedSolcastDataFromDisk(siteIdentifier);
+        
         var url = "https://api.solcast.com.au"
-                .AppendPathSegment("rooftop_sites")
-                .AppendPathSegment(siteIdentifier)
-                .AppendPathSegment("forecasts")
-                .SetQueryParams(new
-                {
-                    format = "json",
-                    api_key = config.SolcastAPIKey
-                });
+            .AppendPathSegment("rooftop_sites")
+            .AppendPathSegment(siteIdentifier)
+            .AppendPathSegment("forecasts")
+            .SetQueryParams(new
+            {
+                format = "json",
+                api_key = config.SolcastAPIKey
+            });
 
         try
         {
@@ -64,20 +124,18 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
             if (responseData != null)
             {
-                await CacheSolcastDataToDisk(siteIdentifier, responseData);
-                return responseData;
+                // We got one. Add it to the cache
+                await CacheSolcastResponse(siteIdentifier, responseData);
             }
         }
         catch (FlurlHttpException ex)
         {
             if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
             {
+                await ReadLegacySolcastFile(siteIdentifier);
+                
                 logger.LogWarning(
                     "Solcast API failed - too many requests. Will try again at next scheduled update");
-
-                // If it's a 429 and we were told not to use the disk cache, use it anyway
-                if( ! useDiskCache )
-                    return await ReadCachedSolcastDataFromDisk(siteIdentifier);
             }
             else
                 logger.LogError("HTTP Exception getting solcast data: {E}", ex);
@@ -86,8 +144,6 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
         {
             logger.LogError("Exception getting solcast data: {E}", ex);
         }
-
-        return null;
     }
 
     public static string[] GetSolcastSites(string siteIdList)
@@ -103,72 +159,77 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
         return siteIdentifiers;
     }
-    
-    public async Task UpdateSolcastDataFromAPI(bool useDiskCache, bool overwrite)
+
+    public void UpdateSolcastDataFromAPI()
     {
-        if (!config.SolcastValid())
+        if (!config.SolcastValid() || responseCache == null)
             return;
 
-        Dictionary<DateTime, SolarForecast> data = new();
+        Dictionary<DateTime, decimal> data = new();
 
-        var siteIdentifiers = GetSolcastSites(config.SolcastSiteIdentifier);
-
-        if(siteIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Count() != siteIdentifiers.Length)
-            logger.LogWarning("Same Solcast site ID specified twice in config. Ignoring the second one");
-
-        // Only ever take the first 2
-        foreach (var siteIdentifier in siteIdentifiers.Take(2))
+        foreach (var site in responseCache.sites)
         {
-            // Hit the actual Solcast API (or use the cached data on disk)
-            var responseData = await GetSolcastForecast(siteIdentifier, useDiskCache);
+            var siteData = AggregateSiteData(site);
 
-            if (responseData is { forecasts: not null })
+            // Add it to the overall total
+            foreach (var pair in siteData)
             {
-                logger.LogInformation("{C} Solcast forecasts returned for site ID {ID}", responseData.forecasts.Count(), siteIdentifier);
-                
-                foreach (var x in responseData.forecasts)
-                {
-                    var start = x.period_end.AddMinutes(-30);
-                    
-                    if (!data.TryGetValue(start, out var forecast))
-                    {
-                        forecast = new SolarForecast { PeriodStart = start };
-                        data[start] = forecast;
-                    }
-
-                    // No idea why, but it seems that the pv_estimate is about twice
-                    // what it should be, all the time. So half it. Maybe we can
-                    // figure out why sometime in future. :)
-                    const decimal mysteryFactor = 0.5M;
-
-                    // Divide the kW figure by 2 to get the power
-                    forecast.ForecastkWh += (x.pv_estimate / 2.0M) * mysteryFactor;
-                }
+                if( ! data.ContainsKey(pair.Start))
+                    data[pair.Start] = pair.energy;
+                else
+                    data[pair.Start] += pair.energy;
             }
         }
 
         if (data.Values.Count != 0)
         {
-            if (lastForecastData != null && !overwrite)
-            {
-                // Call TryAdd, which will add any that don't already exist
-                var count = lastForecastData.Count(forecast => data.TryAdd(forecast.PeriodStart, forecast));
-                logger.LogInformation("Merged new forecasts with {C} existing ones", count);
-            }
-
-            lastAPIUpdate = DateTime.UtcNow;
-            lastForecastData = data.Values.OrderBy(x => x.PeriodStart).ToList();
+            lastForecastData = data.Select( x => new SolarForecast
+            {  
+                PeriodStart = x.Key, 
+                ForecastkWh = x.Value
+            }).OrderBy(x => x.PeriodStart)
+                .ToList();
         }
     }
 
-    
-    public async Task<(IEnumerable<SolarForecast>? forecasts, DateTime? lastApiUpdate)> GetSolcastForecast()
+    private List<(DateTime Start, decimal energy)> AggregateSiteData(SolcastResponseCacheEntry siteData)
+    {
+        Dictionary<DateTime, decimal> data = new();
+
+        foreach (var update in siteData.updates)
+        {
+            if (update.forecasts == null)
+                continue;
+            
+            lastAPIUpdate = update.lastUpdate;
+
+            foreach (var datapoint in update.forecasts)
+            {
+                var start = datapoint.period_end.AddMinutes(-30);
+                
+                // No idea why, but it seems that the pv_estimate is about twice
+                // what it should be, all the time. So half it. Maybe we can
+                // figure out why sometime in future. :)
+                const decimal mysteryFactor = 0.5M;
+
+                // Divide the kW figure by 2 to get the power, and save into 
+                // the dict, overwriting anything that came before.
+                data[start] = (datapoint.pv_estimate / 2.0M) * mysteryFactor;
+            }
+        }
+        
+        return data.Select(x => (x.Key, x.Value))
+            .OrderBy(x => x.Key)
+            .ToList();
+    }
+
+    public (IEnumerable<SolarForecast>? forecasts, DateTime? lastApiUpdate) GetSolcastForecast()
     {
         try
         {
             if (lastForecastData is null || !lastForecastData.Any())
-            {
-                await UpdateSolcastDataFromAPI(true, false);
+            { 
+                UpdateSolcastDataFromAPI();
             }
 
             return (lastForecastData, lastAPIUpdate);
@@ -189,11 +250,22 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
         return (null, null);
     }
-
     
+    private record SolcastResponseCache
+    {
+        public DateOnly? date { get; set; }
+        public List<SolcastResponseCacheEntry> sites { get; init; } = [];
+    };
+
+    private record SolcastResponseCacheEntry
+    {
+        public string siteId { get; set; } = string.Empty;
+        public List<SolcastResponse> updates { get; init; } = [];
+    };
+
     private record SolcastResponse
     {
-        public DateTime lastUpdate { get; } = DateTime.UtcNow;
+        public DateTime lastUpdate { get; set; } = DateTime.UtcNow;
         public IEnumerable<SolcastForecast>? forecasts { get; set; } = [];
     }
     

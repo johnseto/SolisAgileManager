@@ -23,9 +23,9 @@ public class InverterManager(
     private List<OctopusPriceSlot>? simulationData;
     
     
-    private async Task EnrichWithSolcastData(IEnumerable<OctopusPriceSlot>? slots)
+    private void EnrichWithSolcastData(IEnumerable<OctopusPriceSlot>? slots)
     {
-        var solcast = await solcastApi.GetSolcastForecast();
+        var solcast = solcastApi.GetSolcastForecast();
         
         if (solcast.forecasts == null || !solcast.forecasts.Any())
             return;
@@ -101,7 +101,7 @@ public class InverterManager(
                 // At 48 slots per day, we store 180 days or 6 months of data
                 var entries = lines.TakeLast(180 * 48)
                     .Select(x => HistoryEntry.TryParse(x))
-                    .DistinctBy(x => x.Start)
+                    .DistinctBy(x => x?.Start)
                     .Where(x => x != null)
                     .Select(x => x!)
                     .ToList();
@@ -198,7 +198,7 @@ public class InverterManager(
         // Now reapply
         ApplyPreviousOverrides(slots, overrides);
         
-        await EnrichWithSolcastData(slots);
+        EnrichWithSolcastData(slots);
         
         var processedSlots = EvaluateSlotActions(slots.ToArray());
 
