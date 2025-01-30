@@ -10,7 +10,7 @@ public class SolarForecast
     
     public override string ToString()
     {
-        return $"{PeriodStart} - {ForecastkWh}kWh";
+        return $"{PeriodStart} = {ForecastkWh}kWh";
     }
 
 }

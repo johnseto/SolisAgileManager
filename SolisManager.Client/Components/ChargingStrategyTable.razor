@@ -121,11 +121,11 @@
     private readonly PeriodicTimer timer = new(TimeSpan.FromMinutes(1));
     private CancellationTokenSource tokenSource = new();
 
-    private RenderFragment? SummaryRow(TableGroupData<object, OctopusPriceSlot> groupData)
+    private RenderFragment SummaryRow(TableGroupData<object, OctopusPriceSlot> groupData)
     {
         var date = groupData.Key as DateTime?;
         var forecastTotal = groupData.Items.Sum(x => x.pv_est_kwh);
-        var forecastDisplay = forecastTotal != null ? $"Forecast: {Math.Round(forecastTotal.Value, 2)}kWh" : string.Empty;
+        var ForcastDescription = forecastTotal != null ? $"Forecast PV for {date:dd-MMM}: {Math.Round(forecastTotal.Value, 2)}kWh" : string.Empty;
 
         return @<div class="summary-row">
                    <div>
@@ -133,8 +133,8 @@
                        @date?.DisplayDate()
                    </div>
                    <div>
-                       <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Small"/>
-                      @forecastDisplay
+                       <ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@forecastTotal"
+                                  Description="@ForcastDescription" Units="kWh"/>
                    </div>
                </div>;
     }

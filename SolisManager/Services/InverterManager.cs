@@ -108,8 +108,6 @@ public class InverterManager(
                     .ToList();
 
                 executionHistory.AddRange(entries);
-                
-                await EnrichHistoryWithActualYield(entries);
             }
         }
         catch (Exception ex)
@@ -118,9 +116,9 @@ public class InverterManager(
         }
     }
 
-    private async Task EnrichHistoryWithActualYield(List<HistoryEntry> entries)
+    private async Task EnrichHistoryWithActualYield()
     {
-        var blankDays = entries.GroupBy(x => x.Start.Date)
+        var blankDays = executionHistory.GroupBy(x => x.Start.Date)
             .Where(x => x.Sum(record => record.ActualKWH) == 0)
             .Select(x => x.Key)
             .OrderDescending()
@@ -128,7 +126,7 @@ public class InverterManager(
         
         logger.LogInformation("Enriching history with PV yield for {D} days", blankDays.Count());
 
-        var lookup = entries.ToDictionary(x => x.Start);
+        var lookup = executionHistory.ToDictionary(x => x.Start);
         
         foreach (var day in blankDays)
         {
@@ -173,8 +171,6 @@ public class InverterManager(
 
             await Task.WhenAll(RefreshBatteryState(), octRatesTask, LoadExecutionHistory());
             
-            await CalculateForecastWeightings(executionHistory);
-
             // Stamp the last time we did an update
             InverterState.TimeStamp = DateTime.UtcNow;
 
@@ -214,6 +210,12 @@ public class InverterManager(
         
         if( config.Simulate && simulationData == null )
             simulationData = InverterState.Prices.ToList();
+
+        // Do this last, as it uses a lot of API calls
+        await EnrichHistoryWithActualYield();
+        // And what to do with this?!
+        await CalculateForecastWeightings(executionHistory);
+
     }
 
     private IEnumerable<ChangeSlotActionRequest> GetExistingSlotOverrides()

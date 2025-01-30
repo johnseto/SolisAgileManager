@@ -201,7 +201,7 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
 
         public override string ToString()
         {
-            return $"{period_end} - {pv_estimate}kWh";
+            return $"{period_end} = {pv_estimate}kW";
         }
     }
 }
