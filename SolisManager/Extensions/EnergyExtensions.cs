@@ -2,6 +2,13 @@ namespace SolisManager.Extensions;
 
 public static class EnergyExtensions
 {
+    public static DateTime GetRoundedToMinutes(this DateTime d, int numberOfMinutes)
+    {
+        var rounded = (d.Minute / numberOfMinutes) * numberOfMinutes;
+        var result = new DateTime(d.Year, d.Month, d.Day, d.Hour, rounded, 0);
+        return result;
+    }
+    
     public static IEnumerable<(DateTime start, decimal energyKWH)> ConvertPowerDataTo30MinEnergy<T>(this IEnumerable<T> source,
         Func<T, (DateTime startTime, decimal powerKW)> GetDataFunc)
     {
@@ -30,7 +37,8 @@ public static class EnergyExtensions
             var averagePowerkW = (start.powerKW + end.powerKW) / 2.0M;
             var periodEnergyKWH = averagePowerkW * hourRatio;
 
-            // TODO: If the data crosses the boundary of a 30-minute slot, we need to:
+            // If any individual item of data crosses the boundary of a 30-minute slot,
+            // we need to:
             //   a) Reduce the number of minutes by the number that fall before the
             //      start of the 30-minute slot
             //   b) Carry-over the energy for the overlap that falls after the end of

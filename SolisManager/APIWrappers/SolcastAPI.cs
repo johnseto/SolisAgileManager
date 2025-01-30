@@ -126,18 +126,18 @@ public class SolcastAPI( SolisManagerConfig config, ILogger<SolcastAPI> logger )
             {
                 logger.LogInformation("{C} Solcast forecasts returned for site ID {ID}", responseData.forecasts.Count(), siteIdentifier);
                 
-                var power= responseData.forecasts.ConvertPowerDataTo30MinEnergy(
-                            x => (x.period_end.AddMinutes(-30), x.pv_estimate));
-
-                foreach (var x in power)
+                foreach (var x in responseData.forecasts)
                 {
-                    if (!data.TryGetValue(x.start, out var forecast))
+                    var start = x.period_end.AddMinutes(-30);
+                    
+                    if (!data.TryGetValue(start, out var forecast))
                     {
-                        forecast = new SolarForecast { PeriodStart = x.start };
-                        data[x.start] = forecast;
+                        forecast = new SolarForecast { PeriodStart = start };
+                        data[start] = forecast;
                     }
                     
-                    forecast.ForecastkWh += x.energyKWH;
+                    // Divide the kW figure by 2 to get the power
+                    forecast.ForecastkWh += x.pv_estimate / 2.0M;
                 }
             }
         }

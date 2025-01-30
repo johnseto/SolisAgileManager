@@ -102,16 +102,48 @@ public class InverterManager(
                 // At 48 slots per day, we store 180 days or 6 months of data
                 var entries = lines.TakeLast(180 * 48)
                     .Select(x => HistoryEntry.TryParse(x))
+                    .DistinctBy(x => x.Start)
                     .Where(x => x != null)
                     .Select(x => x!)
                     .ToList();
 
                 executionHistory.AddRange(entries);
+                
+                await EnrichHistoryWithActualYield(entries);
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to load execution history");
+        }
+    }
+
+    private async Task EnrichHistoryWithActualYield(List<HistoryEntry> entries)
+    {
+        var blankDays = entries.GroupBy(x => x.Start.Date)
+            .Where(x => x.Sum(record => record.ActualKWH) == 0)
+            .Select(x => x.Key)
+            .OrderDescending()
+            .ToList();
+        
+        logger.LogInformation("Enriching history with PV yield for {D} days", blankDays.Count());
+
+        var lookup = entries.ToDictionary(x => x.Start);
+        
+        foreach (var day in blankDays)
+        {
+            var dayData = await solisApi.GetInverterDay(day);
+
+            if (dayData != null)
+            {
+                foreach (var entry in dayData)
+                {
+                    if (lookup.TryGetValue(entry.Start, out var historyEntry))
+                    {
+                        historyEntry.ActualKWH = 0; // entry.PVYieldKWH;
+                    }
+                }
+            }
         }
     }
 
@@ -562,6 +594,8 @@ public class InverterManager(
         {
             // Call this to prime the cache with the last 7 days' inverter data
             await solisApi.GetInverterDay(i);
+            // Max 3 calls every 5 seconds
+            await Task.Delay(1750);
         }
     }
 
@@ -802,55 +836,68 @@ public class InverterManager(
         if (!Debugger.IsAttached)
             return;
         
-        var history = new List<InverterDayRecord>();
+        var powerReadings = new List<(DateTime start, InverterDayEntry record)>();
 
         for (int i = 0; i < 7; i++)
         {
             var result = await solisApi.GetInverterDay(i);
 
-            if( result != null)
-                history.AddRange(result.data);
-        }
-
-        var processed = new List<(DateTime start, decimal powerKW)>();
-        
-        foreach (var record in history)
-        {
-            if (DateTime.TryParseExact(record.timeStr, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
-                    DateTimeStyles.None, out var date))
+            if (result != null)
             {
-                processed.Add( (date, record.pac / 1000));
+                foreach (var datapoint in result)
+                {
+                    powerReadings.Add( (datapoint.Start, datapoint));
+                }
             }
         }
-        
-        var powerSlots = processed.ConvertPowerDataTo30MinEnergy(x => (x.start, x.powerKW));
 
-        var powerPerDay = powerSlots.GroupBy(x => x.start.Date)
-                .Select(x => new {Date =x.Key, Energy = x.Sum(v => v.energyKWH) })
-                .ToList();
+        var avgThirtyMinActualPower = powerReadings
+            .GroupBy(x => x.start.GetRoundedToMinutes(30))
+            .Select( x => new { Start = x.Key, AvgPowerKW = Math.Round(x.Average(x => x.record.CurrentPVYieldKW / 1000.0M), 4)})
+            .ToList();
 
-        foreach( var d in powerPerDay )
-        {
-            logger.LogInformation("PV yield {D:dd-MMM-yyyy} = {Y:F2} kWh", d.Date, d.Energy);
-        }
-        
         // Now iterate through the historic forecasts, and compare them
         var prevForecast = forecastHistory
             .Where(x => x.Start > DateTime.UtcNow.AddDays(-7))
             .DistinctBy(x => x.Start)
-            .ToDictionary(x => x.Start, x => x.ForecastKWH);
+            // Convert the forecast back from kWh to power (kW)
+            .ToDictionary(x => x.Start, x => x.ForecastKWH * 2.0M);
 
-        foreach (var day in powerPerDay)
+        foreach (var actual in avgThirtyMinActualPower)
         {
-            if (prevForecast.TryGetValue(day.Date, out var forecast))
+            if (prevForecast.TryGetValue(actual.Start, out var forecastAvgKw))
             {
-                if (forecast == 0)
+                if (forecastAvgKw == 0)
                     continue;
                 
-                var percentage =  day.Energy / forecast;
-                logger.LogInformation("{D:dd-MMM HH:mm}, forecast = {F:F2}kWh, actual = {A:F2}kWh, percentage = {P:P1}",
-                                day.Date, forecast, day.Energy, percentage);
+                var percentage =  Math.Abs(actual.AvgPowerKW - forecastAvgKw) / actual.AvgPowerKW;
+                logger.LogInformation("{D:dd-MMM HH:mm}, forecast = {F:F2}kW, actual = {A:F2}kW, percentage = {P:P1}",
+                                actual.Start, forecastAvgKw, actual.AvgPowerKW, percentage);
             }
+        }
+        
+        var avgPowerPerDay = avgThirtyMinActualPower
+            .Where( x => x.AvgPowerKW > 0 )
+            .GroupBy(x => x.Start.Date)
+            .Select(x => new {Date =x.Key, Energy = x.Average(v => v.AvgPowerKW) })
+            .OrderBy(x => x.Date)
+            .ToList();
+
+        foreach( var d in avgPowerPerDay )
+        {
+            logger.LogInformation("PV average power {D:dd-MMM-yyyy} = {Y:F2} kW", d.Date, d.Energy);
+        }
+        
+        var avgForecastPowerPerDay = prevForecast
+                .Where( x => x.Value != 0)
+                .GroupBy( x => x.Key.Date )
+                .Select(x => new {Date =x.Key, Energy = x.Average( v => v.Value ) })
+                .OrderBy(x => x.Date)
+                .ToList();
+
+        foreach( var d in avgForecastPowerPerDay )
+        {
+            logger.LogInformation("PV forecast power {D:dd-MMM-yyyy} = {Y:F2} kW", d.Date, d.Energy);
         }
     }
 

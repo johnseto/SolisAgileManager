@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -234,21 +235,67 @@ public class SolisAPI
                                                 chargePower, dischargePower, chargeTimes, dischargeTimes);
         }
     }
+
+    public async Task<IEnumerable<InverterDayEntry>?> GetInverterDay(int dayOffset = 0)
+    {
+        var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
+        return await GetInverterDay(dayToQuery);
+    }
+
+    public async Task<IEnumerable<InverterDayEntry>?> GetInverterDay(DateTime dayToQuery)
+    {
+        var cacheKey = $"inverterDay-{dayToQuery:yyyyMMdd}";
+
+        if (DateTime.UtcNow.Date != dayToQuery.Date)
+        {
+            // For previous days, see if we already have it cached. We don't cache for today
+            // because as we move through the day it's going to change. :)
+            if (memoryCache.TryGetValue(cacheKey, out IEnumerable<InverterDayEntry>? inverterDay))
+                return inverterDay;
+        }
+
+        var rawData = await GetInverterDayInternal(dayToQuery);
+
+        var result = new List<InverterDayEntry>();
+        
+        if (rawData != null)
+        {
+            var lastYieldTotal = 0M;
+            var lastHouseTotal = 0M;
+
+            foreach (var entry in rawData.data)
+            {
+                if (DateTime.TryParseExact(entry.timeStr, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out var date))
+                {
+                    result.Add(new InverterDayEntry(date,
+                        entry.batteryCapacitySoc,
+                        entry.batteryPower,
+                        entry.pSum / 1000M,
+                        entry.familyLoadPower,
+                        entry.homeLoadTodayEnergy - lastHouseTotal,
+                        entry.eToday - lastYieldTotal
+                    ));
+
+                    lastYieldTotal = entry.eToday;
+                    lastHouseTotal = entry.homeLoadTodayEnergy;
+                }
+            }
+        }
+        
+        if (result.Any())
+            memoryCache.Set(cacheKey, result, _cacheOptions);
+
+        return result;
+    }
     
+
     /// <summary>
     /// Get the historic graph data for the inverter
     /// </summary>
     /// <returns></returns>
-    public async Task<InverterDayResponse?> GetInverterDay(int dayOffset = 0)
+    private async Task<InverterDayResponse?> GetInverterDayInternal(DateTime dayToQuery)
     {
-        var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
-        var cacheKey = $"inverterDay-{dayToQuery:yyyyMMdd}";
-        
-        if( memoryCache.TryGetValue(cacheKey, out InverterDayResponse? inverterDay))
-            return inverterDay;
-
-        logger.LogInformation("Getting inverter stats for {D:dd-MMM-yyyy}...", dayToQuery);
-
         var result = await Post<InverterDayResponse>(1, "inverterDay",
             new
             {
@@ -258,11 +305,36 @@ public class SolisAPI
                 timezone = 0
             });
 
+        if( result != null)
+            logger.LogInformation("Retrieved {C} inverter stats for {D:dd-MMM-yyyy}", result.data.Count(), dayToQuery);
+
+        return result;
+    }
+    
+    /// <summary>
+    /// Get the historic graph data for the inverter
+    /// </summary>
+    /// <returns></returns>
+    public async Task<StationEnergyDayResponse?> GetStationEnergyDay(int dayOffset = 0)
+    {
+        var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
+        var cacheKey = $"stationDayEnergyList-{dayToQuery:yyyyMMdd}";
+        
+        if( memoryCache.TryGetValue(cacheKey, out StationEnergyDayResponse? inverterDay))
+            return inverterDay;
+
+        logger.LogInformation("Getting inverter stats for {D:dd-MMM-yyyy}...", dayToQuery);
+
+        var result = await Post<StationEnergyDayResponse>(1, "stationDayEnergyList",
+            new
+            {
+                pageNo = 0,
+                pageSize = 100,
+                time = $"{dayToQuery:yyyy-MM-dd}",
+            });
+
         if (result != null)
             memoryCache.Set(cacheKey, result, _cacheOptions);
-
-        // Max 3 calls every 5 seconds
-        await Task.Delay(1750);
 
         return result;
     }
@@ -343,6 +415,28 @@ public class SolisAPI
         return string.Empty;
     }
 }
+
+
+public record StationEnergyRecord(
+    decimal energy,
+    string date,
+    decimal gridPurchasedEnergy,
+    decimal gridSellEnergy
+);
+
+public record StationEnergyDayResponse(string msg, StationEnergyDayRecords data);
+
+public record StationEnergyDayRecords(IEnumerable<StationEnergyRecord> recordss);
+
+public record InverterDayEntry(
+    DateTime Start,
+    decimal BatterySOC,
+    decimal BatteryChargePowerKW,
+    decimal CurrentPVYieldKW,
+    decimal CurrentHouseLoadKW,
+    decimal HomeLoadKWH,
+    decimal PVYieldKWH
+);
 
 public record InverterDayRecord(
     string timeStr,
