@@ -60,7 +60,7 @@
     display: flex;
     flex: 1;
     flex-direction: row;
-    column-gap: 5px;
+    column-gap: 15px;
     flex-wrap: nowrap;
     align-items: flex-start;
 }
@@ -70,6 +70,10 @@
 }
 
 @media screen and (max-width: 900px) {
+    .title-and-nav {
+        column-gap: 5px;
+    }
+
     .table {
         width: auto;
     }
