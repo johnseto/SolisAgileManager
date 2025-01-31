@@ -14,21 +14,27 @@ public class HistoryEntry
     public SlotAction Action { get; set; }
     public string Reason { get; set; } = string.Empty;
     public decimal ForecastKWH { get; set; }    
-    public decimal ActualKWH { get; set; }    
+
+    // The next 3 are cumulative totals - to find the per-slot
+    // value you'll need to subtract the previous slot's value
+    public decimal ActualKWH { get; set; }
+    public decimal ImportedKWH { get; set; }
+    public decimal ExportedKWH { get; set; }
+    public decimal HouseLoadKWH { get; set; }
+    
 
     public HistoryEntry() { }
 
-    public HistoryEntry(OctopusPriceSlot slot, int batterySOC)
+    public HistoryEntry(OctopusPriceSlot slot, SolisManagerState state)
     {
         Start = slot.valid_from;
         End = slot.valid_to;
         Price = slot.value_inc_vat;
-        BatterySOC = batterySOC;
         Type = slot.PriceType;
         Action = slot.ActionToExecute;
-        ActualKWH = 0; // Todo
         ForecastKWH = slot.pv_est_kwh ?? 0;
         Reason = slot.ActionReason;
+        BatterySOC = state.BatterySOC;
     }
 
     public override string ToString()

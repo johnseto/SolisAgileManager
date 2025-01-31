@@ -68,7 +68,7 @@ public class InverterManager(
         {
             var historyFilePath = Path.Combine(Program.ConfigFolder, executionHistoryFile);
 
-            var newEntry = new HistoryEntry(slot, InverterState.BatterySOC);
+            var newEntry = new HistoryEntry(slot, InverterState);
             var lastEntry = executionHistory.LastOrDefault();
 
             if (lastEntry == null || lastEntry.Start != newEntry.Start)
@@ -115,10 +115,13 @@ public class InverterManager(
         }
     }
 
-    private async Task EnrichHistoryWithActualYield()
+    private async Task EnrichHistoryWithInverterData()
     {
         var blankDays = executionHistory.GroupBy(x => x.Start.Date)
-            .Where(x => x.Sum(record => record.ActualKWH) == 0)
+            .Where(x => x.Sum(r => r.ActualKWH) == 0 ||
+                                                   x.Sum(r => r.ImportedKWH) == 0 ||
+                                                   x.Sum(r => r.ExportedKWH) == 0 ||
+                                                   x.Sum(r => r.HouseLoadKWH) == 0)
             .Select(x => x.Key)
             .OrderDescending()
             .ToList();
@@ -131,13 +134,16 @@ public class InverterManager(
         {
             var dayData = await solisApi.GetInverterDay(day);
 
-            if (dayData != null)
+            if (dayData != null && dayData.Any())
             {
                 foreach (var entry in dayData)
                 {
                     if (lookup.TryGetValue(entry.Start, out var historyEntry))
                     {
-                        historyEntry.ActualKWH = 0; // entry.PVYieldKWH;
+                        historyEntry.ActualKWH = entry.PVYieldKWH;
+                        historyEntry.ImportedKWH = entry.ImportKWH;
+                        historyEntry.ExportedKWH = entry.ExportKWH;
+                        historyEntry.HouseLoadKWH = entry.HomeLoadKWH;
                     }
                 }
             }
@@ -211,7 +217,7 @@ public class InverterManager(
             simulationData = InverterState.Prices.ToList();
 
         // Do this last, as it uses a lot of API calls
-        await EnrichHistoryWithActualYield();
+        await EnrichHistoryWithInverterData();
     }
 
     private IEnumerable<ChangeSlotActionRequest> GetExistingSlotOverrides()

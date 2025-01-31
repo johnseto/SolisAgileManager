@@ -262,6 +262,8 @@ public class SolisAPI
         {
             var lastYieldTotal = 0M;
             var lastHouseTotal = 0M;
+            var lastImportTotal = 0M;
+            var lastExportTotal = 0M;
 
             foreach (var entry in rawData.data)
             {
@@ -274,11 +276,15 @@ public class SolisAPI
                         entry.pSum / 1000M,
                         entry.familyLoadPower,
                         entry.homeLoadTodayEnergy - lastHouseTotal,
-                        entry.eToday - lastYieldTotal
+                        entry.eToday - lastYieldTotal,
+                        entry.gridPurchasedTodayEnergy - lastImportTotal,
+                        entry.gridSellTodayEnergy - lastExportTotal
                     ));
 
                     lastYieldTotal = entry.eToday;
                     lastHouseTotal = entry.homeLoadTodayEnergy;
+                    lastImportTotal = entry.gridPurchasedTodayEnergy;
+                    lastExportTotal = entry.gridSellTodayEnergy;
                 }
             }
         }
@@ -435,7 +441,9 @@ public record InverterDayEntry(
     decimal CurrentPVYieldKW,
     decimal CurrentHouseLoadKW,
     decimal HomeLoadKWH,
-    decimal PVYieldKWH
+    decimal PVYieldKWH,
+    decimal ImportKWH,
+    decimal ExportKWH
 );
 
 public record InverterDayRecord(
@@ -446,6 +454,8 @@ public record InverterDayRecord(
     decimal pSum, // Current PV Output
     decimal familyLoadPower, // House load
     decimal homeLoadTodayEnergy, // Total house load today
+    decimal gridPurchasedTodayEnergy, // Cumulative import kwh
+    decimal gridSellTodayEnergy, // Cumulative export kwh
     decimal pac, // PV output 
     string pacStr,
     decimal eToday // Today PV total

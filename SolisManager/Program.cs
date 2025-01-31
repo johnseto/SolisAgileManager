@@ -148,7 +148,7 @@ public class Program
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
             .Cron("13 0,9 * * *")
-            .RunAtStartupIfDebugging());
+            .RunOnceAtStart());
 
         // An additional scheduler for a midday solcast updated. This will
         // give better forecasting accuracy, but at the cost of risking

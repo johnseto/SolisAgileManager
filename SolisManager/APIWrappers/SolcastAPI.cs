@@ -31,13 +31,6 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
                 logger.LogInformation("Loaded cached Solcast data from {F}", file);
                 
                 responseCache = JsonSerializer.Deserialize<SolcastResponseCache>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-                if (responseCache == null || responseCache.date != today)
-                {
-                    // New day, discard the old data
-                    responseCache = new SolcastResponseCache{ date = today };
-                }
             }
 
         }
@@ -47,7 +40,19 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
 
     private async Task CacheSolcastResponse(string siteId, SolcastResponse response)
     {
-        ArgumentNullException.ThrowIfNull(responseCache);
+        // Check we have an active cache object. 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        
+        if (responseCache == null || responseCache.date != today)
+        {
+            if( responseCache != null)
+                logger.LogInformation("New day - discarding solcast cache for {D}", responseCache.date);
+            
+            // If we didn't have one, or today is a different date to the date in the
+            // existing cache, then throw everything away and start again. It's a new
+            // day, it's a new dawn, etc etc.
+            responseCache = new SolcastResponseCache{ date = today };
+        }
         
         var site = responseCache.sites.FirstOrDefault(x => x.siteId == siteId);
         if (site == null)
@@ -58,11 +63,15 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
 
         if (!site.updates.Exists(x => x.lastUpdate == response.lastUpdate))
         {
+            logger.LogInformation("Caching Solcast Response with {E} entries", response.forecasts?.Count() ?? 0);
+            
             // Save the response
             site.updates.Add(response);
             // Update the date
             responseCache.date = DateOnly.FromDateTime(response.lastUpdate);
         }
+        else
+            logger.LogInformation("No new forecast entries received from Solcast");
 
         if (site.updates.Count > 3)
             logger.LogError("Unexpected response count of {C}", site.updates.Count);
@@ -83,23 +92,6 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
         {
             // Use WhenAll here?
             await GetNewSolcastForecast(siteIdentifier);
-        }
-    }
-
-    private async Task ReadLegacySolcastFile(string siteId)
-    {
-        var file = Path.Combine(Program.ConfigFolder, $"Solcast-raw-{siteId}.json");
-        if (File.Exists(file))
-        {
-            logger.LogInformation("Reading legacy solcast cache data: {F}", file);
-            
-            var json = await File.ReadAllTextAsync(file);
-            var response = JsonSerializer.Deserialize<SolcastResponse>(json);
-            if (response != null)
-            {
-                response.lastUpdate = File.GetLastWriteTimeUtc(file);
-                await CacheSolcastResponse(siteId, response);
-            }
         }
     }
     
@@ -126,6 +118,9 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
 
             if (responseData != null)
             {
+                if( responseData.forecasts != null && responseData.forecasts.Any() )
+                    logger.LogInformation("Solcast API succeeded: {F} forecasts retrieved", responseData.forecasts.Count());
+
                 // We got one. Add it to the cache
                 await CacheSolcastResponse(siteIdentifier, responseData);
             }
@@ -134,8 +129,6 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
         {
             if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
             {
-                await ReadLegacySolcastFile(siteIdentifier);
-                
                 logger.LogWarning(
                     "Solcast API failed - too many requests. Will try again at next scheduled update");
             }
