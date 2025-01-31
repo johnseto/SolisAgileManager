@@ -224,7 +224,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
 
                 // Divide the kW figure by 2 to get the power, and save into 
                 // the dict, overwriting anything that came before.
-                data[start] = (datapoint.pv_estimate / 2.0M) * mysteryFactor;
+                data[start] = (datapoint.pv_estimate / 2.0M); //* mysteryFactor;
             }
         }
         
