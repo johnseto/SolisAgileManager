@@ -18,8 +18,23 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
     private SolcastResponseCache? responseCache = null;
 
     private string DiskCachePath => Path.Combine(Program.ConfigFolder, $"Solcast-cache.json");
+
+    public async Task InitialiseSolcastCache()
+    {
+        // Not set up yet
+        if (!config.SolcastValid())
+            return;
+        
+        await LoadCachedSolcastDataFromDisk();
+
+        if (responseCache == null || !responseCache.sites.SelectMany(x => x.updates).Any())
+        {
+            logger.LogInformation("Solcast startup - no cache available so running one-off update...");
+            await GetNewSolcastForecasts();
+        }
+    }
     
-    private async Task LoadCachedSolcastDataFromDisk(string siteId)
+    private async Task LoadCachedSolcastDataFromDisk()
     {
         if (responseCache == null)
         {
@@ -45,7 +60,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
         
         if (responseCache == null || responseCache.date != today)
         {
-            if( responseCache != null)
+            if( responseCache != null && responseCache.date != null)
                 logger.LogInformation("New day - discarding solcast cache for {D}", responseCache.date);
             
             // If we didn't have one, or today is a different date to the date in the
@@ -74,7 +89,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
             logger.LogInformation("No new forecast entries received from Solcast");
 
         if (site.updates.Count > 3)
-            logger.LogError("Unexpected response count of {C}", site.updates.Count);
+            logger.LogError("Unexpected solcast response cache count = {C}", site.updates.Count);
 
         var json = JsonSerializer.Serialize(responseCache, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(DiskCachePath, json);
@@ -98,7 +113,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
     private async Task GetNewSolcastForecast(string siteIdentifier)
     {
         // First, check we've got the cache initialised
-        await LoadCachedSolcastDataFromDisk(siteIdentifier);
+        await LoadCachedSolcastDataFromDisk();
         
         var url = "https://api.solcast.com.au"
             .AppendPathSegment("rooftop_sites")

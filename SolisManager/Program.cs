@@ -190,7 +190,10 @@ public class Program
             .Schedule<RatesScheduler>()
             .Cron("0,30 * * * *")
             .RunOnceAtStart());
-        
+
+        var solcastAPI = app.Services.GetRequiredService<SolcastAPI>();
+        await solcastAPI.InitialiseSolcastCache();
+            
         await app.RunAsync();
     }
 
