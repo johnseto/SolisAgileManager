@@ -19,6 +19,23 @@
                    Options="@Options"
                    Height="@("100%")"
                    FormatYAxisLabel="@FormatYAxisLabel">
+            
+            <ApexPointSeries TItem="HistoryEntry"
+                             Items="FilteredHistoryData"
+                             Name="PV Yield (kWh)"
+                             XValue="@(e => e.Start)"
+                             YValue="@(e => e.ActualKWH)"
+                             SeriesType="SeriesType.Area"
+                             Color="darkkhaki"/>
+
+            <ApexPointSeries TItem="HistoryEntry"
+                             Items="FilteredHistoryData"
+                             Name="PV Forecast (kWh)"
+                             XValue="@(e => e.Start)"
+                             YValue="@(e => e.ForecastKWH)"
+                             SeriesType="SeriesType.Line"
+                             Color="khaki"
+                             Stroke="@(new SeriesStroke { Color = "khaki", Width = 3 })"/>
 
             <ApexPointSeries TItem="HistoryEntry"
                              Items="FilteredHistoryData"
@@ -37,24 +54,6 @@
                              SeriesType="SeriesType.Line"
                              Color="red"
                              Stroke="@(new SeriesStroke { Color = "red", Width = 3 })"/>
-
-            <ApexPointSeries TItem="HistoryEntry"
-                             Items="FilteredHistoryData"
-                             Name="PV Yield (kWh)"
-                             XValue="@(e => e.Start)"
-                             YValue="@(e => e.ActualKWH)"
-                             SeriesType="SeriesType.Area"
-                             Color="brown"
-                             Stroke="@(new SeriesStroke { Color = "brown", Width = 3 })"/>
-
-            <ApexPointSeries TItem="HistoryEntry"
-                             Items="FilteredHistoryData"
-                             Name="PV Forecast (kWh)"
-                             XValue="@(e => e.Start)"
-                             YValue="@(e => e.ForecastKWH)"
-                             SeriesType="SeriesType.Line"
-                             Color="darkkhaki"
-                             Stroke="@(new SeriesStroke { Color = "darkkhaki", Width = 3 })"/>
         </ApexChart>
     </div>
 }
@@ -122,6 +121,11 @@
             SeriesName = "SOC (%)",
             DecimalsInFloat = 0,
             Opposite = true, 
+        });
+
+        yAxis.Add(new YAxis
+        {
+            SeriesName = ["PV Yield (kWh)", "PV Forecast (kWh)"]
         });
 
         optionsToSet.Yaxis = yAxis;
