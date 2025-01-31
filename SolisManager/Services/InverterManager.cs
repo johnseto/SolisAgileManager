@@ -124,20 +124,26 @@ public class InverterManager(
 
     private async Task EnrichHistoryWithInverterData()
     {
-        var blankDays = executionHistory.GroupBy(x => x.Start.Date)
+        // Find any days where there's no data, and add them to the list to backfill.
+        // Ignore export, because there's some days when we won't export anything
+        var daysToProcess = executionHistory.GroupBy(x => x.Start.Date)
             .Where(x => x.Sum(r => r.ActualKWH) == 0 ||
                                                    x.Sum(r => r.ImportedKWH) == 0 ||
-                                                   x.Sum(r => r.ExportedKWH) == 0 ||
                                                    x.Sum(r => r.HouseLoadKWH) == 0)
             .Select(x => x.Key)
             .OrderDescending()
             .ToList();
         
-        logger.LogInformation("Enriching history with PV yield for {D} days", blankDays.Count());
+        var today = DateTime.UtcNow.Date;
+        
+        if( ! daysToProcess.Exists(x => x == today))
+            daysToProcess.Insert(0, today);
+        
+        logger.LogInformation("Enriching history with PV yield for {D} days", daysToProcess.Count());
 
         var allData = new List<InverterFiveMinData>();
 
-        foreach (var day in blankDays)
+        foreach (var day in daysToProcess)
         {
             var data = await solisApi.GetInverterDay(day);
 
