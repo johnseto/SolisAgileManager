@@ -47,10 +47,14 @@
 
 @media screen and (max-width: 900px) {
     .full-block {
-        width: 3px;
+        width: 2px;
     }
     
     .empty-block{
-        width: 3px;
+        width: 2px;
+    }
+
+    .battery-box {
+        column-gap: 0px;
     }
 }
