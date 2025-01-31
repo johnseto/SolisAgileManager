@@ -1,4 +1,5 @@
 @using ApexCharts
+@using Color = MudBlazor.Color
 @using Size = MudBlazor.Size
 
 @inherits ChartBase<HistoryEntry>
@@ -7,7 +8,6 @@
 {
     <div class="chart-area">
         <GraphActionLegend ChartTitle="Charging History">
-            @ZoomButton("All")
             @ZoomButton("1 day", 1)
             @ZoomButton("3 days", 3)
             @ZoomButton("1 week", 7)
@@ -82,7 +82,11 @@
 
             if (days == null || (end - rangeStart).TotalDays < (end - start).TotalDays)
             {
-                return @<MudButton OnClick="@(() => ZoomDays(days))" Variant="UIConstants.MudVariant" Size="Size.Small">@text</MudButton>;
+                var color = Color.Surface;
+                if (days == defaultDays)
+                    color = Color.Primary;
+                
+                return @<MudButton OnClick="@(() => ZoomDays(days))" Variant="UIConstants.MudVariant" Color="@color" Size="Size.Small">@text</MudButton>;
             }
         }
 
