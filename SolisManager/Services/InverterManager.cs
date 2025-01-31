@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Xml.Serialization;
 using Octokit;
 using SolisManager.APIWrappers;
 using SolisManager.Extensions;
@@ -66,8 +67,6 @@ public class InverterManager(
     {
         try
         {
-            var historyFilePath = Path.Combine(Program.ConfigFolder, executionHistoryFile);
-
             var newEntry = new HistoryEntry(slot, InverterState);
             var lastEntry = executionHistory.LastOrDefault();
 
@@ -77,7 +76,7 @@ public class InverterManager(
                 executionHistory.Add(newEntry);
 
                 // And write
-                await File.WriteAllLinesAsync(historyFilePath, executionHistory.Select(x => x.GetAsCSV()));
+                await WriteExecutionHistory();
             }
         }
         catch (Exception ex)
@@ -86,6 +85,14 @@ public class InverterManager(
         }
     }
 
+    private async Task WriteExecutionHistory()
+    {
+        var historyFilePath = Path.Combine(Program.ConfigFolder, executionHistoryFile);
+
+        // And write
+        await File.WriteAllLinesAsync(historyFilePath, executionHistory.Select(x => x.GetAsCSV()));
+    }
+    
     private async Task LoadExecutionHistory()
     {
         try
@@ -100,7 +107,7 @@ public class InverterManager(
 
                 // At 48 slots per day, we store 180 days or 6 months of data
                 var entries = lines.TakeLast(180 * 48)
-                    .Select(x => HistoryEntry.TryParse(x))
+                    .Select(HistoryEntry.TryParse)
                     .DistinctBy(x => x?.Start)
                     .Where(x => x != null)
                     .Select(x => x!)
@@ -128,28 +135,54 @@ public class InverterManager(
         
         logger.LogInformation("Enriching history with PV yield for {D} days", blankDays.Count());
 
-        var lookup = executionHistory.ToDictionary(x => x.Start);
-        
+        var allData = new List<InverterFiveMinData>();
+
         foreach (var day in blankDays)
         {
-            var dayData = await solisApi.GetInverterDay(day);
+            var data = await solisApi.GetInverterDay(day);
 
-            if (dayData != null && dayData.Any())
+            if (data != null && data.Any())
+                allData.AddRange(data);
+        }
+
+        var oneMinuteData = new List<(DateTime start, decimal actual, decimal import, decimal export, decimal load)>();
+
+        foreach (var datapoint in allData)
+        {
+            // Split into minute sections
+            foreach (var min in Enumerable.Range(0, 4))
             {
-                foreach (var entry in dayData)
-                {
-                    if (lookup.TryGetValue(entry.Start, out var historyEntry))
-                    {
-                        historyEntry.ActualKWH = entry.PVYieldKWH;
-                        historyEntry.ImportedKWH = entry.ImportKWH;
-                        historyEntry.ExportedKWH = entry.ExportKWH;
-                        historyEntry.HouseLoadKWH = entry.HomeLoadKWH;
-                    }
-                }
+                oneMinuteData.Add( (datapoint.Start.AddMinutes(min), 
+                            datapoint.PVYieldKWH / 5.0M,
+                            datapoint.ImportKWH / 5.0M,
+                            datapoint.ExportKWH / 5.0M,
+                            datapoint.HomeLoadKWH / 5.0M
+                            ));
             }
         }
-    }
 
+        var lookup = executionHistory.ToDictionary(x => x.Start);
+        var batches = oneMinuteData.GroupBy(x => x.start.GetRoundedToMinutes(30))
+            .ToList();
+
+        bool changes = false;
+        
+        foreach (var batch in batches)
+        {
+            if (lookup.TryGetValue(batch.Key, out var historyEntry))
+            {
+                historyEntry.ActualKWH = batch.Sum(x => x.actual);
+                historyEntry.ImportedKWH = batch.Sum(x => x.import);
+                historyEntry.ExportedKWH = batch.Sum(x => x.export);
+                historyEntry.HouseLoadKWH = batch.Sum(x => x.load);
+                changes = true;
+            }
+        }
+        
+        if( changes )
+            await WriteExecutionHistory();
+    }
+    
     private async Task RefreshData()
     {
         // Don't even attempt this if there's no config
@@ -841,7 +874,7 @@ public class InverterManager(
         if (!Debugger.IsAttached)
             return;
         
-        var powerReadings = new List<(DateTime start, InverterDayEntry record)>();
+        var powerReadings = new List<(DateTime start, InverterFiveMinData record)>();
 
         for (int i = 0; i < 7; i++)
         {

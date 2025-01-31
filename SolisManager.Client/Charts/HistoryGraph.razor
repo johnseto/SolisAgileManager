@@ -21,7 +21,7 @@
                    FormatYAxisLabel="@FormatYAxisLabel">
 
             <ApexPointSeries TItem="HistoryEntry"
-                             Items="HistoryData"
+                             Items="FilteredHistoryData"
                              Name="Price"
                              XValue="@(e => e.Start)"
                              YValue="@(e => e.Price)"
@@ -30,13 +30,31 @@
                              Stroke="@(new SeriesStroke { Color = "lightgray", Width = 1 })"/>
             
             <ApexPointSeries TItem="HistoryEntry"
-                             Items="HistoryData"
+                             Items="FilteredHistoryData"
                              Name="SOC (%)"
                              XValue="@(e => e.Start)"
                              YValue="@(e => e.BatterySOC)"
                              SeriesType="SeriesType.Line"
                              Color="red"
                              Stroke="@(new SeriesStroke { Color = "red", Width = 3 })"/>
+
+            <ApexPointSeries TItem="HistoryEntry"
+                             Items="FilteredHistoryData"
+                             Name="PV Yield (kWh)"
+                             XValue="@(e => e.Start)"
+                             YValue="@(e => e.ActualKWH)"
+                             SeriesType="SeriesType.Area"
+                             Color="brown"
+                             Stroke="@(new SeriesStroke { Color = "brown", Width = 3 })"/>
+
+            <ApexPointSeries TItem="HistoryEntry"
+                             Items="FilteredHistoryData"
+                             Name="PV Forecast (kWh)"
+                             XValue="@(e => e.Start)"
+                             YValue="@(e => e.ForecastKWH)"
+                             SeriesType="SeriesType.Line"
+                             Color="darkkhaki"
+                             Stroke="@(new SeriesStroke { Color = "darkkhaki", Width = 3 })"/>
         </ApexChart>
     </div>
 }
@@ -44,6 +62,9 @@
 @code {
     [Parameter]
     public IEnumerable<HistoryEntry>? HistoryData { get; set; }
+    
+    private int? defaultDays = 3;
+    private IEnumerable<HistoryEntry>? FilteredHistoryData => HistoryData?.Where(x => x.Start > DateTime.UtcNow.AddDays(-1 * (defaultDays ?? 7)));
     
     private string FormatYAxisLabel(decimal val) => val == (int)val ? $"{val:F0}" : $"{val:F2}";
     private string GetBatteryColor(HistoryEntry slot) => "darkred";
@@ -62,11 +83,18 @@
 
             if (days == null || (end - rangeStart).TotalDays < (end - start).TotalDays)
             {
-                return @<MudButton OnClick="@(() => ZoomDays(rangeStart, end))" Variant="UIConstants.MudVariant" Size="Size.Small">@text</MudButton>;
+                return @<MudButton OnClick="@(() => ZoomDays(days))" Variant="UIConstants.MudVariant" Size="Size.Small">@text</MudButton>;
             }
         }
 
         return null;
+    }
+
+    private async Task ZoomDays(int? days)
+    {
+        defaultDays = days ?? 7;
+        StateHasChanged();
+        await GraphStateChanged();
     }
     
     protected async Task ZoomDays(DateTime start, DateTime end)
@@ -93,7 +121,7 @@
             Title = new AxisTitle { Text = "Battery SOC (%)" },
             SeriesName = "SOC (%)",
             DecimalsInFloat = 0,
-            Opposite = true
+            Opposite = true, 
         });
 
         optionsToSet.Yaxis = yAxis;

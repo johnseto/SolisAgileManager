@@ -30,12 +30,18 @@ public abstract class ChartBase<T> : ComponentBase where T : class
                 await chart.UpdateOptionsAsync(false, false, false);
             }
 
-            await chart.UpdateSeriesAsync();
+            await GraphStateChanged();
         }
 
         await base.OnParametersSetAsync();
     }
 
+    protected async Task GraphStateChanged()
+    {
+        if( chart != null )
+            await chart.UpdateSeriesAsync();
+    }
+    
     protected abstract void SetOptions(ApexChartOptions<T> options);
     
     private void InitOptions() 

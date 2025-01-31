@@ -39,7 +39,7 @@ public class HistoryEntry
 
     public override string ToString()
     {
-        return $"{Start:dd-MMM HH:mm]} - {Price}p/kWh, Battery: {BatterySOC:P}";
+        return $"{Start:dd-MMM HH:mm]}: {Price}p/kWh, PV: {ActualKWH}kWh, In: {ImportedKWH}kWh, Out: {ExportedKWH}kWh, Fore: {ForecastKWH}kWh, Battery: {BatterySOC:P}";
     }
 
     private static void ReadCoreValues(HistoryEntry entry, string[] parts)
@@ -77,6 +77,20 @@ public class HistoryEntry
             entry.Reason = parts[8].Trim('\"');
             return entry;
         }
+        
+        parts = logLine.Split(",", 12, StringSplitOptions.TrimEntries);
+
+        if (parts.Last().StartsWith('\"'))
+        {
+            // Version 3 had the Actual/Forecast parts.
+            entry.ActualKWH = decimal.Parse(parts[6], CultureInfo.InvariantCulture);
+            entry.ForecastKWH = decimal.Parse(parts[7], CultureInfo.InvariantCulture);
+            entry.ImportedKWH = decimal.Parse(parts[8], CultureInfo.InvariantCulture);
+            entry.ExportedKWH = decimal.Parse(parts[9], CultureInfo.InvariantCulture);
+            entry.HouseLoadKWH = decimal.Parse(parts[10], CultureInfo.InvariantCulture);
+            entry.Reason = parts[11].Trim('\"');
+            return entry;
+        }
 
         return null;
     }
@@ -92,6 +106,9 @@ public class HistoryEntry
             BatterySOC.ToString() + '%',
             ActualKWH.ToString("0.00"),
             ForecastKWH.ToString("0.00"),
+            ImportedKWH.ToString("0.00"),
+            ImportedKWH.ToString("0.00"),
+            HouseLoadKWH.ToString("0.00"),
             $"\"{Reason}\""
         );
     }

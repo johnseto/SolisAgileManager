@@ -236,13 +236,13 @@ public class SolisAPI
         }
     }
 
-    public async Task<IEnumerable<InverterDayEntry>?> GetInverterDay(int dayOffset = 0)
+    public async Task<IEnumerable<InverterFiveMinData>?> GetInverterDay(int dayOffset = 0)
     {
         var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
         return await GetInverterDay(dayToQuery);
     }
 
-    public async Task<IEnumerable<InverterDayEntry>?> GetInverterDay(DateTime dayToQuery)
+    public async Task<IEnumerable<InverterFiveMinData>?> GetInverterDay(DateTime dayToQuery)
     {
         var cacheKey = $"inverterDay-{dayToQuery:yyyyMMdd}";
 
@@ -250,13 +250,13 @@ public class SolisAPI
         {
             // For previous days, see if we already have it cached. We don't cache for today
             // because as we move through the day it's going to change. :)
-            if (memoryCache.TryGetValue(cacheKey, out IEnumerable<InverterDayEntry>? inverterDay))
+            if (memoryCache.TryGetValue(cacheKey, out IEnumerable<InverterFiveMinData>? inverterDay))
                 return inverterDay;
         }
 
         var rawData = await GetInverterDayInternal(dayToQuery);
 
-        var result = new List<InverterDayEntry>();
+        var result = new List<InverterFiveMinData>();
         
         if (rawData != null)
         {
@@ -270,7 +270,7 @@ public class SolisAPI
                 if (DateTime.TryParseExact(entry.timeStr, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
                         DateTimeStyles.None, out var date))
                 {
-                    result.Add(new InverterDayEntry(date,
+                    result.Add(new InverterFiveMinData(date,
                         entry.batteryCapacitySoc,
                         entry.batteryPower,
                         entry.pSum / 1000M,
@@ -434,7 +434,7 @@ public record StationEnergyDayResponse(string msg, StationEnergyDayRecords data)
 
 public record StationEnergyDayRecords(IEnumerable<StationEnergyRecord> recordss);
 
-public record InverterDayEntry(
+public record InverterFiveMinData(
     DateTime Start,
     decimal BatterySOC,
     decimal BatteryChargePowerKW,
