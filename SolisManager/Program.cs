@@ -143,12 +143,10 @@ public class Program
 
         // Get the solcast data at just after midnight, on the 13th minute,
         // because that reduces load (half of the world runs their solcast
-        // ingestion on the hour). Don't run at first startup unless debugging.
-        // It means you won't get data for a while, but that's okay.
+        // ingestion on the hour). Don't run at first startup.
         app.Services.UseScheduler(s => s
             .Schedule<SolcastScheduler>()
-            .Cron("13 0,9 * * *")
-            .RunOnceAtStart());
+            .Cron("13 0,9 * * *"));
 
         // An additional scheduler for a midday solcast updated. This will
         // give better forecasting accuracy, but at the cost of risking
