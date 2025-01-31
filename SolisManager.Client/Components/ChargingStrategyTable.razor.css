@@ -47,6 +47,7 @@
     flex-direction: row;
     align-items: center;
     column-gap: 15px;
+    row-gap: 5px;
     white-space: nowrap;
     flex-wrap: wrap;
     justify-content: space-between;
@@ -59,22 +60,13 @@
     display: flex;
     flex: 1;
     flex-direction: row;
-    column-gap: 15px;
-    flex-wrap: wrap;
+    column-gap: 5px;
+    flex-wrap: nowrap;
     align-items: flex-start;
 }
 
 .title-text {
     margin-top: 5px;
-}
-.extra-info {
-    display: flex;
-    flex-direction: row;
-    row-gap: 10px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 10px;
 }
 
 @media screen and (max-width: 900px) {

@@ -9,3 +9,14 @@
     color: black;
     border-radius: 5px;
 }
+
+
+@media screen and (max-width: 900px) {
+    .value-chip {
+        font-family: "Arial Narrow", sans-serif;
+    }
+    
+    ::deep .mud-icon-size-medium {
+        font-size: 1.1rem;
+    }
+}
