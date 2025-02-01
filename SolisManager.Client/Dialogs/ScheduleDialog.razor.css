@@ -1,0 +1,8 @@
+.time-selection { 
+    display: flex;
+    flex-direction: row;
+    column-gap: 15px;
+    align-items: center;
+    min-width: 400px;
+    justify-content: space-evenly;
+}

@@ -1,0 +1,30 @@
+@using System.Reflection
+@inject IDialogService dialogService
+
+@if (ShowScheduler)
+{
+    <div>
+        <h3>Schedule Manager</h3>
+        <MudButton OnClick="OpenScheduleDialog">Schedule</MudButton>
+    </div>
+}
+
+@code {
+    private bool ShowScheduler = false;
+    
+    protected override void OnInitialized()
+    {
+        if (Assembly.GetExecutingAssembly().GetName().Version.Build == 0)
+            ShowScheduler = true;
+        
+        base.OnInitialized();
+    }
+
+    private async Task OpenScheduleDialog()
+    {
+        ScheduledAction action = new();
+        var parameters = new DialogParameters { { "ScheduledAction", action } };
+        var dialog = dialogService.Show<ScheduleDialog>("Scheduled Action", parameters);
+        var result = await dialog.Result;
+    }
+}

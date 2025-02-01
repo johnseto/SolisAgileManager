@@ -1,0 +1,39 @@
+
+<MudSelect T="TimeSpan?" @bind-Value="SlotTime" @bind-Value:after="SlotValueChanged" Label="@Label">
+    @foreach (var slot in slots)
+    {
+        <MudSelectItem T="TimeSpan?" Value="@slot">@TimeString(slot)</MudSelectItem>
+    }
+</MudSelect>
+
+@code {
+    [Parameter]
+    public TimeSpan? SlotTime { get; set; }
+    
+    [Parameter]
+    public EventCallback<TimeSpan?> SlotTimeChanged { get; set; }
+    
+    [Parameter]
+    public string? Label { get; set; }
+
+    private string TimeString(TimeSpan t) => $"{t.Hours:D2}:{t.Minutes:D2}";
+    private readonly List<TimeSpan> slots = new();
+
+    private async Task SlotValueChanged()
+    {
+        await SlotTimeChanged.InvokeAsync(SlotTime);
+    }
+    
+    protected override void OnInitialized()
+    {
+        var midnight = new TimeSpan(0, 0, 0);
+        foreach (var slot in Enumerable.Range(0, 48))
+        {
+            slots.Add(midnight);
+            midnight = midnight.Add(new TimeSpan(0, 30, 0));
+        }
+
+        base.OnInitialized();
+    }
+
+}
