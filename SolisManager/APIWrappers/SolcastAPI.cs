@@ -206,6 +206,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
     {
         Dictionary<DateTime, decimal> data = new();
 
+        // Iterate through the updates, starting oldest first
         foreach (var update in siteData.updates.OrderBy(x => x.lastUpdate))
         {
             if (update.forecasts == null)
