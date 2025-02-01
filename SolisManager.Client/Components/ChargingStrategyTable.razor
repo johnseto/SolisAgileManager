@@ -162,7 +162,7 @@
             var ForcastDescription = $"Forecast PV for {date:dd-MMM}: {dampedForecast}kWh";
 
             forecastFragment = @<ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@dampedForecast"
-                                           Description="@ForcastDescription" Units="kWh"/>;
+                                           Description="@ForcastDescription" Units="kWh" Decimals="2"/>;
         }
 
         return @<div class="summary-row">
