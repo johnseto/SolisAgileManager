@@ -14,7 +14,7 @@ namespace SolisManager.APIWrappers;
 public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
 {
     private IEnumerable<SolarForecast>? lastForecastData;
-    private DateTime? lastAPIUpdate = null;
+    public DateTime? lastAPIUpdate => responseCache?.sites.SelectMany(x => x.updates).Max(x => x.lastUpdate);
     private SolcastResponseCache? responseCache = null;
 
     private string DiskCachePath => Path.Combine(Program.ConfigFolder, $"Solcast-cache.json");
@@ -27,7 +27,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
         
         await LoadCachedSolcastDataFromDisk();
 
-        if (responseCache == null || !responseCache.sites.SelectMany(x => x.updates).Any())
+        if (responseCache == null || !responseCache.sites.SelectMany(x => x.updates).Any() || lastAPIUpdate?.Date != DateTime.Now.Date)
         {
             logger.LogInformation("Solcast startup - no cache available so running one-off update...");
             await GetNewSolcastForecasts();
@@ -211,9 +211,6 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
             if (update.forecasts == null)
                 continue;
             
-            if( update.lastUpdate > lastAPIUpdate )
-                lastAPIUpdate = update.lastUpdate;
-
             foreach (var datapoint in update.forecasts)
             {
                 var start = datapoint.period_end.AddMinutes(-30);
@@ -229,7 +226,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
             .ToList();
     }
 
-    public (IEnumerable<SolarForecast>? forecasts, DateTime? lastApiUpdate) GetSolcastForecast()
+    public IEnumerable<SolarForecast>? GetSolcastForecast()
     {
         try
         {
@@ -238,7 +235,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
                 UpdateSolcastDataFromAPI();
             }
 
-            return (lastForecastData, lastAPIUpdate);
+            return lastForecastData;
         }
         catch (FlurlHttpException ex)
         {
@@ -254,7 +251,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
             logger.LogError("Exception getting solcast data: {E}", ex);
         }
 
-        return (null, null);
+        return null;
     }
     
     private record SolcastResponseCache

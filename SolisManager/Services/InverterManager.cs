@@ -26,14 +26,14 @@ public class InverterManager(
     {
         var solcast = solcastApi.GetSolcastForecast();
         
-        if (solcast.forecasts == null || !solcast.forecasts.Any())
+        if (solcast == null || !solcast.Any())
             return;
         
-        InverterState.SolcastTimeStamp = solcast.lastApiUpdate;
+        InverterState.SolcastTimeStamp = solcastApi.lastAPIUpdate;
 
-        if (slots != null && slots.Any() && solcast.forecasts != null)
+        if (slots != null && slots.Any() && solcast != null)
         {
-            var lookup = solcast.forecasts.ToDictionary(x => x.PeriodStart);
+            var lookup = solcast.ToDictionary(x => x.PeriodStart);
 
             var matchedData = false;
             foreach (var slot in slots)
@@ -50,9 +50,9 @@ public class InverterManager(
                 }
             }
             
-            InverterState.TodayForecastKWH = solcast.forecasts.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date )
+            InverterState.TodayForecastKWH = solcast.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date )
                 .Sum(x => x.ForecastkWh);
-            InverterState.TomorrowForecastKWH = solcast.forecasts.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date.AddDays(1) )
+            InverterState.TomorrowForecastKWH = solcast.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date.AddDays(1) )
                 .Sum(x => x.ForecastkWh);
                                                     
             
