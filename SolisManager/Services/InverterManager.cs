@@ -500,6 +500,18 @@ public class InverterManager(
                 }
             }
             
+            // For any slots that are set to "charge if low battery", update them to 'charge' if the 
+            // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
+            if (InverterState.BatterySOC < config.AlwaysChargeBelowSOC)
+            {
+                var firstSlot = slots.FirstOrDefault();
+                if (firstSlot != null)
+                {
+                    firstSlot.PlanAction = SlotAction.Charge;
+                    firstSlot.ActionReason = $"Battery SOC % is below minimum threshold of {config.AlwaysChargeBelowSOC}%.";
+                }
+            }
+            
             // Now it gets interesting. Find the groups of slots that have negative prices. So we
             // might end up with 3 negative prices, and another group of 7 negative prices. For any
             // groups that are long enough to charge the battery fully, discharge the battery for 

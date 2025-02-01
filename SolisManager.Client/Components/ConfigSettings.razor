@@ -96,6 +96,9 @@
                 <ConfigSettingHelp HelpText="Ensures that if the battery falls below a certain threshold, it will be charged regardless of price">
                     <MudNumericField T="int" Label="Always charge below (p/kWh)" @bind-Value="@config.AlwaysChargeBelowPrice" Min="-10" Max="100" Variant="UIConstants.MudVariant"/>
                 </ConfigSettingHelp>
+                <ConfigSettingHelp HelpText="If the battery is below the specified SOC, will charge regardless of price">
+                    <MudNumericField T="int?" Label="Charge if battery is below SOC (%)" @bind-Value="@config.AlwaysChargeBelowSOC" Min="0" Max="100" Clearable="true" Variant="UIConstants.MudVariant"/>
+                </ConfigSettingHelp>
                 <ConfigSettingHelp HelpText="If slots are available with below-average prices, they will be used to boost-charge the battery if the SOC is below this value">
                     <MudNumericField T="int" Label="Battery Boost Threshold (%)" @bind-Value="@config.LowBatteryPercentage" Min="1" Max="95" Variant="UIConstants.MudVariant"/>
                 </ConfigSettingHelp>

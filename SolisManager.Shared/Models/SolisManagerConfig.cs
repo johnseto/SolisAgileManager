@@ -15,6 +15,7 @@ public record SolisManagerConfig
     public string OctopusProductCode { get; set; } = String.Empty;
     public int SlotsForFullBatteryCharge { get; set; }
     public int AlwaysChargeBelowPrice { get; set; } = 10;
+    public int? AlwaysChargeBelowSOC { get; set; } = null;
     public int LowBatteryPercentage { get; set; } = 25;
     public int MaxChargeRateAmps { get; set; } = 50;
 
