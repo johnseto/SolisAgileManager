@@ -211,20 +211,16 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
             if (update.forecasts == null)
                 continue;
             
-            lastAPIUpdate = update.lastUpdate;
+            if( update.lastUpdate > lastAPIUpdate )
+                lastAPIUpdate = update.lastUpdate;
 
             foreach (var datapoint in update.forecasts)
             {
                 var start = datapoint.period_end.AddMinutes(-30);
-                
-                // No idea why, but it seems that the pv_estimate is about twice
-                // what it should be, all the time. So half it. Maybe we can
-                // figure out why sometime in future. :)
-                const decimal mysteryFactor = 0.5M;
 
                 // Divide the kW figure by 2 to get the power, and save into 
                 // the dict, overwriting anything that came before.
-                data[start] = (datapoint.pv_estimate / 2.0M); //* mysteryFactor;
+                data[start] = (datapoint.pv_estimate / 2.0M); 
             }
         }
         
