@@ -12,6 +12,12 @@
 @code {
     private bool ShowScheduler = false;
     
+    [Parameter]
+    public List<ScheduledAction>? Actions { get; set; }
+    
+    [Parameter]
+    public EventCallback<List<ScheduledAction>> ActionsChanged { get; set; }
+    
     protected override void OnInitialized()
     {
         if (Assembly.GetExecutingAssembly().GetName().Version.Build == 0)
@@ -22,9 +28,16 @@
 
     private async Task OpenScheduleDialog()
     {
-        ScheduledAction action = new();
-        var parameters = new DialogParameters { { "ScheduledAction", action } };
-        var dialog = dialogService.Show<ScheduleDialog>("Scheduled Action", parameters);
+        if (Actions == null)
+            Actions = new();
+        
+        var parameters = new DialogParameters { { "ScheduledActions", Actions } };
+        var dialog = await dialogService.ShowAsync<ScheduleDialog>("Scheduled Action", parameters);
         var result = await dialog.Result;
+
+        if (result != null)
+        {
+            await ActionsChanged.InvokeAsync(Actions);
+        }
     }
 }

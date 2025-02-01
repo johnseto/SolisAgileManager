@@ -4,23 +4,37 @@
         <MudText Typo="Typo.h6">Scheduled Item </MudText>
     </TitleContent>
     <DialogContent>
-        <div class="time-selection">
-            <SlotPicker @bind-SlotTime="ScheduledAction.StartTime" Label="Start"/>
-            <SlotPicker @bind-SlotTime="ScheduledAction.EndTime" Label="End"/>
-        </div>
-        <MudSelect @bind-Value="ScheduledAction.Action" Label="Action">
-            <MudSelectItem Value="@SlotAction.Charge">Charge</MudSelectItem>
-            <MudSelectItem Value="@SlotAction.Discharge">Discharge</MudSelectItem>
-            <MudSelectItem Value="@SlotAction.ChargeIfLowBattery">Charge If Low Battery</MudSelectItem>
-        </MudSelect>
-        @if( !string.IsNullOrEmpty(errorMsg) )
+        @if (ScheduledActions != null)
+        {
+            @foreach (var scheduledAction in ScheduledActions)
+            {
+                <div class="time-selection">
+                    <SlotPicker @bind-SlotTime="scheduledAction.StartTime" Label="Start"/>
+                    <MudSelect @bind-Value="scheduledAction.Action" Label="Action">
+                        <MudSelectItem Value="@SlotAction.DoNothing">No Action</MudSelectItem>
+                        <MudSelectItem Value="@SlotAction.Charge">Charge</MudSelectItem>
+                        <MudSelectItem Value="@SlotAction.Discharge">Discharge</MudSelectItem>
+                        <MudSelectItem Value="@SlotAction.ChargeIfLowBattery">Charge If Low Battery</MudSelectItem>
+                    </MudSelect>
+                    <MudIcon Icon="@Icons.Material.Filled.Delete" @onclick="@(() => DeleteEntry(scheduledAction))"/>
+                </div>
+            }
+        }
+        @if (!string.IsNullOrEmpty(errorMsg))
         {
             <p>@errorMsg</p>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Save">Save</MudButton>
+        <div class="button-bar">
+            <div>
+                <MudButton StartIcon="@Icons.Material.Filled.Add" OnClick="AddEntry">Add Action</MudButton>
+            </div>
+            <div>
+                <MudButton OnClick="Cancel">Cancel</MudButton>
+                <MudButton Color="Color.Primary" OnClick="Save">Save</MudButton>
+            </div>
+        </div>
     </DialogActions>
 </MudDialog>
 
@@ -28,11 +42,11 @@
 
     [CascadingParameter] MudDialogInstance? MudDialog { get; set; }
 
-    [Parameter] public ScheduledAction ScheduledAction { get; set; } = new();
+    [Parameter] public List<ScheduledAction>? ScheduledActions { get; set; }
 
     private void Save()
     {
-        MudDialog?.Close(DialogResult.Ok(true));
+        MudDialog?.Close(DialogResult.Ok(ScheduledActions));
         StateHasChanged();
     }
 
@@ -49,4 +63,13 @@
         MudDialog?.Cancel();
     }
 
+    private void DeleteEntry(ScheduledAction scheduledAction)
+    {
+        ScheduledActions?.Remove(scheduledAction);
+    }
+
+    private void AddEntry()
+    {
+        ScheduledActions?.Add( new());
+    }
 }

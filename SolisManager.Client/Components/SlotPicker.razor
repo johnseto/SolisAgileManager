@@ -16,7 +16,12 @@
     [Parameter]
     public string? Label { get; set; }
 
-    private string TimeString(TimeSpan t) => $"{t.Hours:D2}:{t.Minutes:D2}";
+    private string TimeString(TimeSpan t)
+    {
+        var end = t + new TimeSpan(0, 0, 30, 0);
+        return $"{t.Hours:D2}:{t.Minutes:D2} - {end.Hours:D2}:{end.Minutes:D2}";
+    }
+
     private readonly List<TimeSpan> slots = new();
 
     private async Task SlotValueChanged()

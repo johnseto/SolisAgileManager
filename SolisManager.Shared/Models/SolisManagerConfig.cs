@@ -30,6 +30,8 @@ public record SolisManagerConfig
 
     public bool AutoAdjustInverterTime { get; set; } = false;
 
+    public List<ScheduledAction>? ScheduledActions { get; set; } = null;
+
     public async Task SaveToFile(string folder)
     {
         var configPath = Path.Combine(folder, settingsFileName);
