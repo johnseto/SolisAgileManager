@@ -9,7 +9,7 @@
             @foreach (var scheduledAction in ScheduledActions)
             {
                 <div class="time-selection">
-                    <SlotPicker @bind-SlotTime="scheduledAction.StartTime" Label="Start"/>
+                    <SlotPicker @bind-SlotTime="scheduledAction.StartTime" Label="Start" Exclude="UsedDates"/>
                     <MudSelect @bind-Value="scheduledAction.Action" Label="Action">
                         <MudSelectItem Value="@SlotAction.DoNothing">No Action</MudSelectItem>
                         <MudSelectItem Value="@SlotAction.Charge">Charge</MudSelectItem>
@@ -43,6 +43,8 @@
     [CascadingParameter] MudDialogInstance? MudDialog { get; set; }
 
     [Parameter] public List<ScheduledAction>? ScheduledActions { get; set; }
+
+    private IEnumerable<TimeSpan?>? UsedDates => ScheduledActions?.Select(x => x.StartTime);
 
     private void Save()
     {

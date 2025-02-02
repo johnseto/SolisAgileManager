@@ -97,14 +97,17 @@
                     <MudNumericField T="int" Label="Always charge below (p/kWh)" @bind-Value="@config.AlwaysChargeBelowPrice" Min="-10" Max="100" Variant="UIConstants.MudVariant"/>
                 </ConfigSettingHelp>
                 <ConfigSettingHelp HelpText="If the battery is below the specified SOC, will charge regardless of price">
-                    <MudNumericField T="int?" Label="Charge if battery is below SOC (%)" @bind-Value="@config.AlwaysChargeBelowSOC" Min="0" Max="100" Clearable="true" Variant="UIConstants.MudVariant"/>
+                    <MudNumericField T="int?" Label="Charge if SOC (%) Below" @bind-Value="@config.AlwaysChargeBelowSOC" Min="0" Max="100" Clearable="true" Variant="UIConstants.MudVariant"/>
                 </ConfigSettingHelp>
                 <ConfigSettingHelp HelpText="If slots are available with below-average prices, they will be used to boost-charge the battery if the SOC is below this value">
                     <MudNumericField T="int" Label="Battery Boost Threshold (%)" @bind-Value="@config.LowBatteryPercentage" Min="1" Max="95" Variant="UIConstants.MudVariant"/>
                 </ConfigSettingHelp>
                 <MudCheckBox Label="Simulate (no inverter changes)" LabelPosition="LabelPosition.End" @bind-Value="@config.Simulate"/>
             </div>
-            <ScheduleManager @bind-Actions="@config.ScheduledActions"/>
+            <div class="config-fields">
+                <h5>Scheduled Actions</h5>
+                <ScheduleManager @bind-Actions="@config.ScheduledActions"/>
+            </div>
         </div>
         <div class="button-bar">
             <MudButton OnClick="SaveConfig" Variant="UIConstants.MudVariant" Color="Color.Primary" Disabled="@(!config.IsValid())">Save Settings</MudButton>

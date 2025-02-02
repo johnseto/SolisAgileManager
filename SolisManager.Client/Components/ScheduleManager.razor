@@ -1,31 +1,17 @@
 @using System.Reflection
 @inject IDialogService dialogService
 
-@if (ShowScheduler)
-{
-    <div>
-        <h3>Schedule Manager</h3>
-        <MudButton OnClick="OpenScheduleDialog">Schedule</MudButton>
-    </div>
-}
+<div>
+    <MudButton OnClick="OpenScheduleDialog" Variant="UIConstants.MudVariant">Manage Schedule</MudButton>
+</div>
 
 @code {
-    private bool ShowScheduler = false;
-    
     [Parameter]
     public List<ScheduledAction>? Actions { get; set; }
     
     [Parameter]
     public EventCallback<List<ScheduledAction>> ActionsChanged { get; set; }
     
-    protected override void OnInitialized()
-    {
-        if (Assembly.GetExecutingAssembly().GetName().Version.Build == 0)
-            ShowScheduler = true;
-        
-        base.OnInitialized();
-    }
-
     private async Task OpenScheduleDialog()
     {
         if (Actions == null)

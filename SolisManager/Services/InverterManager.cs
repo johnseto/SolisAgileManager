@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Humanizer;
 using Octokit;
 using SolisManager.APIWrappers;
 using SolisManager.Extensions;
@@ -54,7 +55,6 @@ public class InverterManager(
                 .Sum(x => x.ForecastkWh);
             InverterState.TomorrowForecastKWH = solcast.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date.AddDays(1) )
                 .Sum(x => x.ForecastkWh);
-                                                    
             
             if( ! matchedData )
                 logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
@@ -499,19 +499,34 @@ public class InverterManager(
                         $"Upcoming slot is set to charge if low battery; battery is currently at {InverterState.BatterySOC}%";
                 }
             }
-            
-            // For any slots that are set to "charge if low battery", update them to 'charge' if the 
-            // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
-            if (InverterState.BatterySOC < config.AlwaysChargeBelowSOC)
+
+            var firstSlot = slots.FirstOrDefault();
+
+            if (firstSlot != null)
             {
-                var firstSlot = slots.FirstOrDefault();
-                if (firstSlot != null)
+
+                if (config.ScheduledActions != null && config.ScheduledActions.Any())
                 {
-                    firstSlot.PlanAction = SlotAction.Charge;
-                    firstSlot.ActionReason = $"Battery SOC % is below minimum threshold of {config.AlwaysChargeBelowSOC}%.";
+                    var appliedSchedule = config.ScheduledActions.FirstOrDefault(x => x.StartTime == firstSlot.valid_from.TimeOfDay);
+
+                    if (appliedSchedule != null)
+                    {
+                        var time = appliedSchedule.StartTime?.ToString(@"hh\:mm");
+                        firstSlot.PlanAction = appliedSchedule.Action;
+                        firstSlot.ActionReason = $"Scheduled action specified: {appliedSchedule.Action.Humanize()} at {time}";
+                    }
+                }
+
+                // For any slots that are set to "charge if low battery", update them to 'charge' if the 
+                // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
+                if (InverterState.BatterySOC < config.AlwaysChargeBelowSOC)
+                {
+                   firstSlot.PlanAction = SlotAction.Charge;
+                   firstSlot.ActionReason =
+                        $"Battery SOC % is below minimum threshold of {config.AlwaysChargeBelowSOC}%.";
                 }
             }
-            
+
             // Now it gets interesting. Find the groups of slots that have negative prices. So we
             // might end up with 3 negative prices, and another group of 7 negative prices. For any
             // groups that are long enough to charge the battery fully, discharge the battery for 
@@ -595,8 +610,9 @@ public class InverterManager(
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
             
-            logger.LogInformation("Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW",
-                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW );
+            logger.LogInformation("Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast today: {F}kWh, tomorrow: {T}kWh",
+                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW,
+                InverterState.TodayForecastKWH, InverterState.TomorrowForecastKWH );
         }
     }
     
