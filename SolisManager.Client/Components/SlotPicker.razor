@@ -1,10 +1,12 @@
 
-<MudSelect T="TimeSpan?" @bind-Value="SlotTime" @bind-Value:after="SlotValueChanged" Label="@Label">
-    @foreach (var slot in slots.Where(x => Exclude == null || !Exclude.Contains(x)))
-    {
-        <MudSelectItem T="TimeSpan?" Value="@slot">@TimeString(slot)</MudSelectItem>
-    }
-</MudSelect>
+<div class="slot-picker">
+    <MudSelect T="TimeSpan?" @bind-Value="SlotTime" @bind-Value:after="SlotValueChanged" Label="@Label">
+        @foreach (var slot in slots)
+        {
+            <MudSelectItem T="TimeSpan?" Value="@slot">@TimeString(slot)</MudSelectItem>
+        }
+    </MudSelect>
+</div>
 
 @code {
     [Parameter]
@@ -16,9 +18,6 @@
     [Parameter]
     public string? Label { get; set; }
 
-    [Parameter]
-    public IEnumerable<TimeSpan?>? Exclude { get; set; }
-    
     private string TimeString(TimeSpan t)
     {
         var end = t + new TimeSpan(0, 0, 30, 0);

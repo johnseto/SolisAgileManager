@@ -27,12 +27,12 @@ public class InverterManager(
     {
         var solcast = solcastApi.GetSolcastForecast();
         
-        if (solcast == null || !solcast.Any())
+        if (slots == null || solcast == null || !solcast.Any())
             return;
         
         InverterState.SolcastTimeStamp = solcastApi.lastAPIUpdate;
 
-        if (slots != null && slots.Any() && solcast != null)
+        if (slots.Any())
         {
             var lookup = solcast.ToDictionary(x => x.PeriodStart);
 
@@ -194,7 +194,7 @@ public class InverterManager(
             return;
 
         // Save the overrides
-        var overrides = GetExistingSlotOverrides();
+        var overrides = GetExistingManualSlotOverrides();
         
         // Our working set
         IEnumerable<OctopusPriceSlot> slots;
@@ -239,7 +239,7 @@ public class InverterManager(
         }
 
         // Now reapply
-        ApplyPreviousOverrides(slots, overrides);
+        ApplyPreviouManualOverrides(slots, overrides);
         
         EnrichWithSolcastData(slots);
         
@@ -257,26 +257,32 @@ public class InverterManager(
         await EnrichHistoryWithInverterData();
     }
 
-    private IEnumerable<ChangeSlotActionRequest> GetExistingSlotOverrides()
+    private IEnumerable<ChangeSlotActionRequest> GetExistingManualSlotOverrides()
     {
         return InverterState.Prices
-            .Where(x => x.ManualOverrideAction != null)
+            .Where(x => x.OverrideAction != null && x.OverrideType == OctopusPriceSlot.SlotOverrideType.Manual)
             .Select(x => new ChangeSlotActionRequest
             {
                 SlotStart = x.valid_from,
-                NewAction = x.ManualOverrideAction!.Value
+                NewAction = x.OverrideAction!.Value
             });
     }
 
-    private void ApplyPreviousOverrides(IEnumerable<OctopusPriceSlot> slots, IEnumerable<ChangeSlotActionRequest> overrides)
+    private void ApplyPreviouManualOverrides(IEnumerable<OctopusPriceSlot> slots, IEnumerable<ChangeSlotActionRequest> overrides)
     {
         var lookup = overrides.ToDictionary(x => x.SlotStart);
         foreach (var slot in slots)
         {
             if (lookup.TryGetValue(slot.valid_from, out var overRide))
-                slot.ManualOverrideAction = overRide.NewAction;
+            {
+                slot.OverrideAction = overRide.NewAction;
+                slot.OverrideType = OctopusPriceSlot.SlotOverrideType.Manual;
+            }
             else
-                slot.ManualOverrideAction = null;
+            {
+                slot.OverrideAction = null;
+                slot.OverrideType = OctopusPriceSlot.SlotOverrideType.None;
+            }
         }
     }
     
@@ -500,23 +506,31 @@ public class InverterManager(
                 }
             }
 
+            // Now apply any scheduled actions to the slots for the next 24-48 hours. 
+            if (config.ScheduledActions != null && config.ScheduledActions.Any())
+            {
+                foreach (var slot in slots)
+                {
+                    foreach (var scheduledAction in config.ScheduledActions)
+                    {
+                        if (scheduledAction.StartTime != null)
+                        {
+                            var actionTime = scheduledAction.StartTime.Value;
+                            if (slot.valid_from.TimeOfDay == actionTime)
+                            {
+                                var timeStr = actionTime.ToString(@"hh\:mm");
+                                slot.OverrideAction = scheduledAction.Action;
+                                slot.OverrideType = OctopusPriceSlot.SlotOverrideType.Scheduled;
+                            }
+                        }
+                    }
+                }
+            }
+
             var firstSlot = slots.FirstOrDefault();
 
             if (firstSlot != null)
             {
-
-                if (config.ScheduledActions != null && config.ScheduledActions.Any())
-                {
-                    var appliedSchedule = config.ScheduledActions.FirstOrDefault(x => x.StartTime == firstSlot.valid_from.TimeOfDay);
-
-                    if (appliedSchedule != null)
-                    {
-                        var time = appliedSchedule.StartTime?.ToString(@"hh\:mm");
-                        firstSlot.PlanAction = appliedSchedule.Action;
-                        firstSlot.ActionReason = $"Scheduled action specified: {appliedSchedule.Action.Humanize()} at {time}";
-                    }
-                }
-
                 // For any slots that are set to "charge if low battery", update them to 'charge' if the 
                 // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
                 if (InverterState.BatterySOC < config.AlwaysChargeBelowSOC)
@@ -544,6 +558,8 @@ public class InverterManager(
                     dischargeSlots.ForEach(x =>
                     {
                         x.PlanAction = SlotAction.Discharge;
+                        x.OverrideAction = SlotAction.Discharge;
+                        x.OverrideType = OctopusPriceSlot.SlotOverrideType.NegativePrices; 
                         x.ActionReason =
                             "Contiguous negative slots allow the battery to be discharged and charged again.";
                     });
@@ -805,13 +821,15 @@ public class InverterManager(
                 if (slot.PlanAction == overRide.NewAction)
                 {
                     // Clear the existing override
-                    slot.ManualOverrideAction = null;
+                    slot.OverrideAction = null;
+                    slot.OverrideType = OctopusPriceSlot.SlotOverrideType.None;
                     logger.LogInformation("Cleared override: {S}", overRide);
                     continue;
                 }
 
                 // Set the override
-                slot.ManualOverrideAction = overRide.NewAction;
+                slot.OverrideAction = overRide.NewAction;
+                slot.OverrideType = OctopusPriceSlot.SlotOverrideType.Manual;
                 logger.LogInformation("Set override: {S}", overRide);
             }
         }
@@ -819,10 +837,14 @@ public class InverterManager(
         await RefreshData();
     }
     
-    public async Task ClearOverrides()
+    public async Task ClearManualOverrides()
     {
-        foreach( var slot in InverterState.Prices)
-            slot.ManualOverrideAction = null;
+        foreach (var slot in InverterState.Prices.Where(x => 
+                     x is { OverrideAction: not null, OverrideType: OctopusPriceSlot.SlotOverrideType.Manual }))
+        {
+            slot.OverrideAction = null;
+            slot.OverrideType = OctopusPriceSlot.SlotOverrideType.None;
+        }
         await RefreshData();
     }
 

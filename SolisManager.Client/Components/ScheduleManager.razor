@@ -2,7 +2,7 @@
 @inject IDialogService dialogService
 
 <div>
-    <MudButton OnClick="OpenScheduleDialog" Variant="UIConstants.MudVariant">Manage Schedule</MudButton>
+    <MudButton OnClick="OpenScheduleDialog" Variant="UIConstants.MudVariant">@ButtonLabel</MudButton>
 </div>
 
 @code {
@@ -11,7 +11,8 @@
     
     [Parameter]
     public EventCallback<List<ScheduledAction>> ActionsChanged { get; set; }
-    
+
+    private string ButtonLabel => Actions == null || Actions.Count == 0 ? "Add Scheduled Actions" : $"Edit {Actions.Count} Scheduled Actions";
     private async Task OpenScheduleDialog()
     {
         if (Actions == null)

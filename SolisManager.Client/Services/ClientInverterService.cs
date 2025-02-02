@@ -67,7 +67,7 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
         return new ConfigSaveResponse { Success = false, Message = "Unknown error saving config." };
     }
 
-    public async Task ClearOverrides()
+    public async Task ClearManualOverrides()
     {
         await httpClient.GetAsync("inverter/clearoverrides");
     }

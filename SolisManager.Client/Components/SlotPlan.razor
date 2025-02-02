@@ -7,11 +7,21 @@
         <div class="action-desc">
             @Slot.ActionToExecute.Description()
         </div>
-        @if (Slot.ManualOverrideAction != null)
+        
+        @if (Slot.OverrideAction != null)
         {
-            <div class="override-icon" title="The slot action has been manually overriden - click to cancel override">
-                <MudIcon Icon="@Icons.Material.Filled.Person" Title="Manual override" @onclick="ClearOverride" Style="cursor:pointer;"/>
-            </div>
+            @if (Slot.OverrideType == OctopusPriceSlot.SlotOverrideType.Manual)
+            {
+                <div class="override-icon" title="The slot action has been manually overriden - click to cancel override">
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Title="Manual override" @onclick="ClearOverride" Style="cursor:pointer;"/>
+                </div>
+            }
+            else if (Slot.OverrideType == OctopusPriceSlot.SlotOverrideType.Scheduled)
+            {
+                <div class="override-icon" title="The slot action has been overriden via a scheduled action">
+                    <MudIcon Icon="@Icons.Material.Filled.AccessTime" Title="Scheduled override" />
+                </div>
+            }
         }
     </div>
 }

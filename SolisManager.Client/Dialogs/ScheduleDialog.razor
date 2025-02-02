@@ -4,25 +4,33 @@
         <MudText Typo="Typo.h6">Scheduled Item </MudText>
     </TitleContent>
     <DialogContent>
-        @if (ScheduledActions != null)
+        <div class="action-list">
+        @if (ScheduledActions != null && ScheduledActions.Any())
         {
             @foreach (var scheduledAction in ScheduledActions)
             {
                 <div class="time-selection">
-                    <SlotPicker @bind-SlotTime="scheduledAction.StartTime" Label="Start" Exclude="UsedDates"/>
+                    <SlotPicker @bind-SlotTime="scheduledAction.StartTime" Label="Start"/>
                     <MudSelect @bind-Value="scheduledAction.Action" Label="Action">
                         <MudSelectItem Value="@SlotAction.DoNothing">No Action</MudSelectItem>
                         <MudSelectItem Value="@SlotAction.Charge">Charge</MudSelectItem>
                         <MudSelectItem Value="@SlotAction.Discharge">Discharge</MudSelectItem>
                         <MudSelectItem Value="@SlotAction.ChargeIfLowBattery">Charge If Low Battery</MudSelectItem>
                     </MudSelect>
-                    <MudIcon Icon="@Icons.Material.Filled.Delete" @onclick="@(() => DeleteEntry(scheduledAction))"/>
+                    <MudIcon Icon="@Icons.Material.Filled.Delete" Title="Remove this scheduled Action" @onclick="@(() => DeleteEntry(scheduledAction))" Style="cursor: pointer;"/>
                 </div>
             }
         }
+        else
+        {
+            <div class="time-selection">
+                You have no configured scheduled actions.
+            </div>
+        }
+        </div>
         @if (!string.IsNullOrEmpty(errorMsg))
         {
-            <p>@errorMsg</p>
+            <div class="error-msg">@errorMsg</div>
         }
     </DialogContent>
     <DialogActions>
@@ -32,7 +40,7 @@
             </div>
             <div>
                 <MudButton OnClick="Cancel">Cancel</MudButton>
-                <MudButton Color="Color.Primary" OnClick="Save">Save</MudButton>
+                <MudButton Color="Color.Primary" OnClick="Save">Update</MudButton>
             </div>
         </div>
     </DialogActions>
@@ -48,6 +56,15 @@
 
     private void Save()
     {
+        if (ScheduledActions != null)
+        {
+            if (ScheduledActions.Count() != ScheduledActions.DistinctBy(x => x.StartTime).Count())
+            {
+                DisplayError("Two or more of your scheduled actions are set for the same time!");
+                return;
+            }
+        }
+
         MudDialog?.Close(DialogResult.Ok(ScheduledActions));
         StateHasChanged();
     }

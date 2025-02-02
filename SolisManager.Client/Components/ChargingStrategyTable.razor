@@ -38,7 +38,7 @@
         @if (manualOverridesExist)
         {
             <div title="Clear any manual overrides that are currently in effect">
-                <MudButton OnClick="@ClearOverrides" StartIcon="@Icons.Material.Filled.Cancel"
+                <MudButton OnClick="@ClearManualOverrides" StartIcon="@Icons.Material.Filled.Cancel"
                            Variant="UIConstants.MudVariant" Size="Size.Small">
                     Reset
                 </MudButton>
@@ -215,14 +215,14 @@
         // Get the latest data
         await inverterService.RefreshInverterState();
         hasSolcastData = inverterService.InverterState.Prices.Any(x => x.pv_est_kwh != null);
-        manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.ManualOverrideAction != null);
+        manualOverridesExist = inverterService.InverterState.Prices.Any(x => x.OverrideAction != null && x.OverrideType == OctopusPriceSlot.SlotOverrideType.Manual);
 
         StateHasChanged();
     }
 
-    private async Task ClearOverrides()
+    private async Task ClearManualOverrides()
     {
-        await inverterService.ClearOverrides();
+        await inverterService.ClearManualOverrides();
         await RefreshData();
     }
 

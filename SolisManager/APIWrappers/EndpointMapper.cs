@@ -108,7 +108,7 @@ public static class EndpointMapper
         group.MapGet("clearoverrides",
             async  ([FromServices] IInverterService service) =>
             {
-                await service.ClearOverrides();
+                await service.ClearManualOverrides();
                 return TypedResults.Ok();
             });
 

@@ -3,6 +3,8 @@
 @inject ISnackbar snackbar
 @inject NavigationManager navManager
 
+<NavigationLock OnBeforeInternalNavigation="CheckNavigateAway"/>
+
 <div class="config-settings @DarkModeStyle">
     <h2>Solis Manager Configuration</h2>
 
@@ -127,7 +129,8 @@
     private SolisManagerConfig? config;
     private bool manualProductKey = false;
     private string DarkModeStyle => DarkMode ? "config-settings-dark" : string.Empty;
-
+    private string originalConfigJson = string.Empty;
+    
     private bool AutomaticAccount => config != null && !string.IsNullOrEmpty(config.OctopusAccountNumber) && !string.IsNullOrEmpty(config.OctopusAPIKey);
     
     private int PeakPercentageProxy
@@ -145,7 +148,21 @@
     protected override async Task OnInitializedAsync()
     {
         config = await inverterService.GetConfig();
+        originalConfigJson = JsonSerializer.Serialize(config);
+        
         await base.OnInitializedAsync();
+    }
+
+    private async Task CheckNavigateAway(LocationChangingContext context)
+    {
+        var newJson = JsonSerializer.Serialize(config);
+
+        if (newJson != originalConfigJson)
+        {
+            var result = await dialogService.ShowMessageBox("Navigate Away and Lost Changes?", "You have made config changes - do you want to discard them and navigate away?", "Discard", "Cancel");
+            if( result == null || !result.Value )
+                context.PreventNavigation();
+        }
     }
 
     private async Task SaveConfig()
@@ -159,6 +176,7 @@
                 await OnSettingsChanged.InvokeAsync();
 
                 snackbar.Add("Config Settings Updated", Severity.Info);
+                originalConfigJson = JsonSerializer.Serialize(config);
                 navManager.NavigateTo("/");
             }
             else
