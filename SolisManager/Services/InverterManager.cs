@@ -238,10 +238,11 @@ public class InverterManager(
             }
         }
 
+        // First, ensure the slots have the latest forecast data
+        EnrichWithSolcastData(slots);
+
         // Now reapply
         ApplyPreviouManualOverrides(slots, overrides);
-        
-        EnrichWithSolcastData(slots);
         
         var processedSlots = EvaluateSlotActions(slots.ToArray());
 
@@ -610,6 +611,9 @@ public class InverterManager(
         if (!config.IsValid())
             return;
 
+        // First, ensure the slots have the latest forecast data
+        EnrichWithSolcastData(InverterState.Prices);
+        
         // Get the battery charge state from the inverter
         var solisState = await solisApi.InverterState();
 

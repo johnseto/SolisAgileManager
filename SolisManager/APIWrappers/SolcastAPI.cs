@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using Flurl;
 using Flurl.Http;
+using SolisManager.Extensions;
 using SolisManager.Shared.Models;
 using static SolisManager.Extensions.EnergyExtensions;
 namespace SolisManager.APIWrappers;
@@ -13,7 +14,6 @@ namespace SolisManager.APIWrappers;
 /// </summary>
 public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
 {
-    private IEnumerable<SolarForecast>? lastForecastData;
     public DateTime? lastAPIUpdate => responseCache?.sites.SelectMany(x => x.updates).Max(x => x.lastUpdate);
     private SolcastResponseCache? responseCache = null;
 
@@ -109,6 +109,19 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
             await GetNewSolcastForecast(siteIdentifier);
         }
     }
+
+    private SolcastResponse GetFakeSolcastResponse(string siteId)
+    {
+        var rnd = new Random();
+        var start = DateTime.UtcNow.RoundToHalfHour();
+        var fakeForecasts = Enumerable.Range(0, 97).Select(x => new SolcastForecast
+        {
+            period_end = start.AddMinutes(30 * x),
+            pv_estimate = (decimal)(rnd.NextDouble() * 5.0),
+
+        });
+        return new SolcastResponse { lastUpdate = DateTime.UtcNow, forecasts = fakeForecasts.ToList() };
+    }
     
     private async Task GetNewSolcastForecast(string siteIdentifier)
     {
@@ -128,7 +141,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
         try
         {
             logger.LogInformation("Querying Solcast API for forecast (site ID: {ID})...", siteIdentifier);
-
+            
             var responseData = await url.GetJsonAsync<SolcastResponse>();
 
             if (responseData != null)
@@ -170,10 +183,10 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
         return siteIdentifiers;
     }
 
-    public void UpdateSolcastDataFromAPI()
+    private IEnumerable<SolarForecast>? GetSolcastDataFromCache()
     {
         if (!config.SolcastValid() || responseCache == null)
-            return;
+            return null;
 
         Dictionary<DateTime, decimal> data = new();
 
@@ -193,13 +206,15 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
 
         if (data.Values.Count != 0)
         {
-            lastForecastData = data.Select( x => new SolarForecast
+            return data.Select( x => new SolarForecast
             {  
                 PeriodStart = x.Key, 
                 ForecastkWh = x.Value
             }).OrderBy(x => x.PeriodStart)
                 .ToList();
         }
+
+        return null;
     }
 
     private List<(DateTime Start, decimal energy)> AggregateSiteData(SolcastResponseCacheEntry siteData)
@@ -231,12 +246,7 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
     {
         try
         {
-            if (lastForecastData is null || !lastForecastData.Any())
-            { 
-                UpdateSolcastDataFromAPI();
-            }
-
-            return lastForecastData;
+            return GetSolcastDataFromCache();
         }
         catch (FlurlHttpException ex)
         {
