@@ -67,7 +67,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
                 await Task.Delay(3000);
             }
             else
-                logger.LogError("HTTP Exception getting solcast data: {E}", ex);
+                logger.LogError("HTTP Exception getting octopus tariff rates: {E}", ex);
         }
         catch (Exception ex)
         {
