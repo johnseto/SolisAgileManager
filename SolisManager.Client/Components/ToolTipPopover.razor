@@ -7,14 +7,25 @@
 <div @onclick="ToggleOpen" title="@ToolTip" @onfocusout="ToggleOpen">
     @ChildContent
     <MudPopover Open="_open" OverflowBehavior="OverflowBehavior.FlipAlways" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
-        <div class="@Style" >
-            @ToolTip
+        <div class="@Style">
+            @if (TooltipContent != null)
+            {
+                <div class="tooltip-content">
+                    @TooltipContent
+                </div>
+            }
+            else
+            {
+                @ToolTip
+            }
         </div>
     </MudPopover>
 </div>
 
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    [Parameter] public RenderFragment? TooltipContent { get; set; }
     
     [Parameter] public string ToolTip { get; set; } = string.Empty;
 
