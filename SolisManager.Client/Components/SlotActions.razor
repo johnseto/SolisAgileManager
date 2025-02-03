@@ -1,9 +1,18 @@
 @if (Slot != null)
 {
     <div class="slot-actions" title="@Slot.ActionReason">
-        @foreach( var action in AvailableActions )
+        @if (Slot.OverrideType == OctopusPriceSlot.SlotOverrideType.Scheduled)
         {
-            <ActionIcon Action="action" OnActionChanged="OnActionChanged"></ActionIcon>
+            <MudIcon Icon="@Icons.Material.Filled.AccessTime" Title="Scheduled action" />
+            <text>Schedule Action</text>
+        }
+        else
+        {
+
+            @foreach (var action in AvailableActions)
+            {
+                <ActionIcon Action="action" OnActionChanged="OnActionChanged"></ActionIcon>
+            }
         }
     </div>
 }

@@ -111,7 +111,9 @@
                     {
                         <MudTd DataLabel="Forecast">@ForecastEstimate(context)</MudTd>
                     }
-                    <MudTd DataLabel="Manual Action"><SlotActions Slot="@context" OnChangeSlotAction="ChangeSlotAction"/></MudTd>
+                    <MudTd DataLabel="Manual Action">
+                        <SlotActions Slot="@context" OnChangeSlotAction="ChangeSlotAction"/>
+                    </MudTd>
                 </RowTemplate>
             </MudTable>
         }

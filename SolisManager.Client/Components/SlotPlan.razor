@@ -16,12 +16,6 @@
                     <MudIcon Icon="@Icons.Material.Filled.Person" Title="Manual override" @onclick="ClearOverride" Style="cursor:pointer;"/>
                 </div>
             }
-            else if (Slot.OverrideType == OctopusPriceSlot.SlotOverrideType.Scheduled)
-            {
-                <div class="override-icon" title="The slot action has been overriden via a scheduled action">
-                    <MudIcon Icon="@Icons.Material.Filled.AccessTime" Title="Scheduled override" />
-                </div>
-            }
         }
     </div>
 }
