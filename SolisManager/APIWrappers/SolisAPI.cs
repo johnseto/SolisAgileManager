@@ -187,7 +187,7 @@ public class SolisAPI
     /// <returns></returns>
     public async Task SetCharge( DateTime? chargeStart, DateTime? chargeEnd, 
                                           DateTime? dischargeStart, DateTime? dischargeEnd, 
-                                          bool simulateOnly )
+                                          bool holdCharge, bool simulateOnly )
     {
         const string clearChargeSlot = "00:00-00:00";
 
@@ -205,9 +205,9 @@ public class SolisAPI
         if (dischargeStart != null && dischargeEnd != null)
         {
             dischargeTimes = $"{dischargeStart:HH:mm}-{dischargeEnd:HH:mm}";
-            dischargePower = config.MaxChargeRateAmps;
+            dischargePower = holdCharge ? 0 : config.MaxChargeRateAmps;
         }
-
+        
         // Now check if we actually need to do anything. No point making a write call to the 
         // inverter if it's already in the correct state. It's an EEPROM, so the fewer writes
         // we can do for longevity, the better.

@@ -35,6 +35,7 @@
         SlotAction.Charge => "Click here to set this slot to charge the battery",
         SlotAction.Discharge => "Click here to set this slot to discharge the battery",
         SlotAction.ChargeIfLowBattery => "Click here to set this slot to boost the battery if low",
+        SlotAction.Hold => "Click here to set this slot to hold the battery without discharging",
         _ => Icons.Material.Filled.PauseCircle
     };
 
@@ -44,6 +45,7 @@
         SlotAction.Discharge => "icon-discharge",
         SlotAction.DoNothing => "icon-noaction",
         SlotAction.ChargeIfLowBattery => "icon-boost",
+        SlotAction.Hold => "icon-hold",
         _ => string.Empty
     };
     
@@ -53,6 +55,7 @@
         SlotAction.Charge => Icons.Material.Filled.Bolt,
         SlotAction.Discharge => Icons.Material.Filled.Battery0Bar,
         SlotAction.ChargeIfLowBattery => Icons.Material.Filled.BatteryUnknown,
+        SlotAction.Hold => Icons.Material.Filled.StopCircle,
         _ => Icons.Material.Filled.Warning
     };
 }

@@ -18,7 +18,8 @@ public enum SlotAction
     DoNothing,
     Charge,
     ChargeIfLowBattery,
-    Discharge
+    Discharge, 
+    Hold
 }
 
 public record OctopusPriceSlot

@@ -16,6 +16,7 @@
                         <MudSelectItem Value="@SlotAction.Charge">Charge</MudSelectItem>
                         <MudSelectItem Value="@SlotAction.Discharge">Discharge</MudSelectItem>
                         <MudSelectItem Value="@SlotAction.ChargeIfLowBattery">Charge If Low Battery</MudSelectItem>
+                        <MudSelectItem Value="@SlotAction.Hold">Hold Battery Charge</MudSelectItem>
                     </MudSelect>
                     <MudIcon Icon="@Icons.Material.Filled.Delete" Title="Remove this scheduled Action" @onclick="@(() => DeleteEntry(scheduledAction))" Style="cursor: pointer;"/>
                 </div>

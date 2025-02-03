@@ -317,16 +317,20 @@ public class InverterManager(
 
                 if (firstSlot.ActionToExecute == SlotAction.Charge)
                 {
-                    await solisApi.SetCharge(start, end, null, null, config.Simulate);
+                    await solisApi.SetCharge(start, end, null, null, false, config.Simulate);
                 }
                 else if (firstSlot.ActionToExecute == SlotAction.Discharge)
                 {
-                    await solisApi.SetCharge(null, null, start, end, config.Simulate);
+                    await solisApi.SetCharge(null, null, start, end, false, config.Simulate);
+                }
+                else if (firstSlot.ActionToExecute == SlotAction.Hold)
+                {
+                    await solisApi.SetCharge(null, null, start, end, true, config.Simulate);
                 }
                 else
                 {
                     // Clear the charge
-                    await solisApi.SetCharge(null, null, null, null, config.Simulate);
+                    await solisApi.SetCharge(null, null, null, null, false, config.Simulate);
                 }
             }
         }
@@ -819,7 +823,7 @@ public class InverterManager(
         logger.LogInformation("Starting test charge for 5 minutes");
         var start = DateTime.UtcNow;
         var end = start.AddMinutes(5);
-        await solisApi.SetCharge(start, end, null, null, false);
+        await solisApi.SetCharge(start, end, null, null, false, false);
     }
 
     public async Task ChargeBattery()

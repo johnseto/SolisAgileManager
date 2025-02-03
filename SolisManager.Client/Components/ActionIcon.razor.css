@@ -33,6 +33,10 @@
     color: darkorange;
 }
 
+::deep .icon-hold {
+    color: orangered;
+}
+
 @keyframes pulse-glow {
     0%, 100% {
         transform: scale(1);
