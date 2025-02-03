@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Reflection.Metadata;
 using Blazored.LocalStorage;
 using SolisManager.APIWrappers;
@@ -27,7 +28,7 @@ public class Program
     public static string ConfigFolder => configFolder;
     
     private static string configFolder = "config";
-    
+
     public static async Task Main(string[] args)
     {
         if (args.Length > 0)
@@ -52,7 +53,7 @@ public class Program
                 }
             }
 
-            if( string.IsNullOrEmpty(folder))
+            if (string.IsNullOrEmpty(folder))
             {
                 Console.WriteLine($"Using default folder \"{configFolder}\".");
             }
@@ -70,7 +71,7 @@ public class Program
             .AddInteractiveWebAssemblyComponents();
 
         builder.Services.AddDataProtection();
-        
+
         builder.Services.AddSingleton<SolisManagerConfig>();
         builder.Services.AddSingleton<InverterManager>();
         builder.Services.AddSingleton<IInverterService>(x => x.GetRequiredService<InverterManager>());
@@ -83,7 +84,7 @@ public class Program
         builder.Services.AddSingleton<VersionCheckScheduler>();
         builder.Services.AddSingleton<TariffScheduler>();
         builder.Services.AddSingleton<InverterTimeAdjustScheduler>();
-        
+
         builder.Services.AddSingleton<SolisAPI>();
         builder.Services.AddSingleton<SolcastAPI>();
         builder.Services.AddSingleton<OctopusAPI>();
@@ -92,10 +93,10 @@ public class Program
         builder.Services.AddMudServices();
         builder.Services.AddBlazoredLocalStorage();
         builder.Services.AddMemoryCache();
-        
+
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
         builder.Services.AddProblemDetails();
-        
+
         if (!Debugger.IsAttached)
         {
             // Use Kestrel options to set the port. Using .Urls.Add breaks WASM debugging.
@@ -107,10 +108,11 @@ public class Program
         var app = builder.Build();
 
         var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        
+
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
         logger.LogInformation("===========================================================");
-        logger.LogInformation("Application started. Logs being written to {C}", ConfigFolder);
-        
+        logger.LogInformation("Application started. Build version v{V} Logs being written to {C}", version, ConfigFolder);
+
         // First, load the config
         var config = app.Services.GetRequiredService<SolisManagerConfig>();
         if (!config.ReadFromFile(ConfigFolder))
@@ -166,7 +168,7 @@ public class Program
             .Schedule<InverterTimeAdjustScheduler>()
             .Cron("0 2 * * *")
             .RunOnceAtStart());
-        
+
         // Update the battery every 5 minutes. Skip the 0 / 30
         // minute slots, because it gets updated when we refresh
         // rates anyway. Don't need to run at startup, for the 
@@ -174,7 +176,7 @@ public class Program
         app.Services.UseScheduler(s => s
             .Schedule<BatteryScheduler>()
             .Cron("5,10,15,20,25,35,40,45,50,55 * * * *"));
-        
+
         // Check if the Octopus tariff has changed every 4 hours
         app.Services.UseScheduler(s => s
             .Schedule<TariffScheduler>()
@@ -195,8 +197,15 @@ public class Program
 
         var solcastAPI = app.Services.GetRequiredService<SolcastAPI>();
         await solcastAPI.InitialiseSolcastCache();
-            
-        await app.RunAsync();
+
+        try
+        {
+            await app.RunAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected exception in app.RunAdync!");
+        }
     }
 
     private const string template = "[{Timestamp:HH:mm:ss.fff}-{ThreadID}-{Level:u3}] {Message:lj}{NewLine}{Exception}";
