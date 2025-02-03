@@ -531,6 +531,7 @@ public class InverterManager(
                             {
                                 var timeStr = actionTime.ToString(@"hh\:mm");
                                 slot.OverrideAction = scheduledAction.Action;
+                                slot.ActionReason = "Overridden by a scheduled action";
                                 slot.OverrideType = OctopusPriceSlot.SlotOverrideType.Scheduled;
                             }
                         }

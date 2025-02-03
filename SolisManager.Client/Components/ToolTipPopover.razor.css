@@ -2,6 +2,7 @@
 .tooltip-text {
     max-width: 400px;
     padding: 5px;
+    margin: 3px;
     background-color: rgba(255, 255, 200, 0.5);
     border: solid 1px darkgray;
     display: flex;

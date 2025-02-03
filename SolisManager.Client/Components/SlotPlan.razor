@@ -4,9 +4,9 @@
 {
     <div class="action-icon" title="@Slot.ActionReason">
         <ActionIcon Action="Slot.ActionToExecute" Pulse="@isCurrentSlot" />
-        <div class="action-desc">
-            @Slot.ActionToExecute.Description()
-        </div>
+        <ToolTipPopover ToolTip="@Slot.ActionReason" PointerCursor="true">
+                @Slot.ActionToExecute.Description()
+        </ToolTipPopover>
         
         @if (Slot.OverrideAction != null)
         {
