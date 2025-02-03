@@ -1,8 +1,11 @@
 @using System.Reflection
 @inject IDialogService dialogService
 
-<div>
-    <MudButton OnClick="OpenScheduleDialog" Variant="UIConstants.MudVariant">@ButtonLabel</MudButton>
+<div class="schedule-manager">
+    <div>
+        @StatusText
+    </div>
+    <MudButton OnClick="OpenScheduleDialog" Variant="UIConstants.MudVariant">Configure...</MudButton>
 </div>
 
 @code {
@@ -12,7 +15,8 @@
     [Parameter]
     public EventCallback<List<ScheduledAction>> ActionsChanged { get; set; }
 
-    private string ButtonLabel => Actions == null || Actions.Count == 0 ? "Add Scheduled Actions" : $"Edit {Actions.Count} Scheduled Actions";
+    private string StatusText => Actions == null || Actions.Count == 0 ? "No Scheduled Actions" : 
+                        $"{Actions.Count} Scheduled Action{(Actions.Count > 1 ? "s":string.Empty)} defined";
     private async Task OpenScheduleDialog()
     {
         if (Actions == null)

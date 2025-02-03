@@ -109,7 +109,7 @@
                     <MudTd DataLabel="Plan"><SlotPlan Slot="@context" OnOverrideCleared="ClearOverride"/></MudTd>
                     @if (hasSolcastData)
                     {
-                        <MudTd DataLabel="Forecast">@ForecastEstimate(context)</MudTd>
+                        <MudTd Style="text-align: right;" DataLabel="Forecast">@ForecastEstimate(context)</MudTd>
                     }
                     <MudTd DataLabel="Manual Action">
                         <SlotActions Slot="@context" OnChangeSlotAction="ChangeSlotAction"/>
