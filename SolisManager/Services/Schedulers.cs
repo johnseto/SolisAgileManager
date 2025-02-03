@@ -18,7 +18,7 @@ public class BatteryScheduler( IInverterRefreshService service, ILogger<BatteryS
     public async Task Invoke()
     {
         logger.LogDebug("Executing Battery scheduler");
-        await service.RefreshBatteryState();
+        await service.UpdateInverterState();
     }
 }
 

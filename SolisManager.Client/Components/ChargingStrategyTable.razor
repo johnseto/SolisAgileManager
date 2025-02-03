@@ -45,7 +45,7 @@
             </div>
         }
 
-        <Battery ChargePercentage="@inverterService.InverterState.BatterySOC"/>
+        <Battery ChargePercentage="@inverterService.InverterState.BatterySOC" BatteryPowerKW="inverterService.InverterState.CurrentBatteryPowerKW"/>
         <ValueChip Icon="@Icons.Material.Filled.House" Value="@inverterService.InverterState.HouseLoadkW"
                    Description="Current load being consumed by the house" Units="kW"/>
         <ValueChip Icon="@Icons.Material.Filled.SolarPower" Value="@inverterService.InverterState.CurrentPVkW"

@@ -188,73 +188,81 @@ public class InverterManager(
     
     private async Task RecalculateSlotPlan()
     {
-        // Don't even attempt this if there's no config
-        if (!config.IsValid())
-            return;
-
-        // Save the overrides
-        var overrides = GetExistingManualSlotOverrides();
-        
-        // Our working set
-        IEnumerable<OctopusPriceSlot> slots;
-        
-        if (config.Simulate && simulationData != null)
+        try
         {
-            slots = simulationData;
-        }
-        else
-        {
-            var lastSlot = InverterState.Prices?.MaxBy(x => x.valid_from);
-            
-            logger.LogTrace("Refreshing data...");
+            // Don't even attempt this if there's no config
+            if (!config.IsValid())
+                return;
 
-            var octRatesTask = octopusAPI.GetOctopusRates(config.OctopusProductCode);
+            // Save the overrides
+            var overrides = GetExistingManualSlotOverrides();
 
-            await Task.WhenAll(RefreshBatteryState(), octRatesTask, LoadExecutionHistory());
-            
-            // Stamp the last time we did an update
-            InverterState.TimeStamp = DateTime.UtcNow;
+            // Our working set
+            IEnumerable<OctopusPriceSlot> slots;
 
-            // Now, process the octopus rates
-            slots = (await octRatesTask).ToList();
-
-            if(slots.Any())
+            if (config.Simulate && simulationData != null)
             {
-                var newlatestSlot = slots.MaxBy(x => x.valid_from);
+                slots = simulationData;
+            }
+            else
+            {
+                var lastSlot = InverterState.Prices?.MaxBy(x => x.valid_from);
 
-                if (newlatestSlot != null && (lastSlot == null || newlatestSlot.valid_from > lastSlot.valid_from))
+                logger.LogTrace("Refreshing data...");
+
+                var octRatesTask = octopusAPI.GetOctopusRates(config.OctopusProductCode);
+
+                await Task.WhenAll(UpdateInverterState(), octRatesTask, LoadExecutionHistory());
+
+                // Stamp the last time we did an update
+                InverterState.TimeStamp = DateTime.UtcNow;
+
+                // Now, process the octopus rates
+                slots = (await octRatesTask).ToList();
+
+                if (slots.Any())
                 {
-                    var newslots = (lastSlot == null ? slots : 
-                            slots.Where(x => x.valid_from > lastSlot.valid_from)).ToList();
+                    var newlatestSlot = slots.MaxBy(x => x.valid_from);
 
-                    var newSlotCount = newslots.Count;
-                    var cheapest = newslots.Min(x => x.value_inc_vat);
-                    var peak = newslots.Max(x => x.value_inc_vat);
+                    if (newlatestSlot != null && (lastSlot == null || newlatestSlot.valid_from > lastSlot.valid_from))
+                    {
+                        var newslots = (lastSlot == null ? slots : slots.Where(x => x.valid_from > lastSlot.valid_from))
+                            .ToList();
 
-                    logger.LogInformation("{N} new Octopus rates available to {L:dd-MMM-yyyy HH:mm} (cheapest: {C}p/kWh, peak: {P}p/kWh)",
-                        newSlotCount, newlatestSlot.valid_to, cheapest, peak);
+                        var newSlotCount = newslots.Count;
+                        var cheapest = newslots.Min(x => x.value_inc_vat);
+                        var peak = newslots.Max(x => x.value_inc_vat);
+
+                        logger.LogInformation(
+                            "{N} new Octopus rates available to {L:dd-MMM-yyyy HH:mm} (cheapest: {C}p/kWh, peak: {P}p/kWh)",
+                            newSlotCount, newlatestSlot.valid_to, cheapest, peak);
+                    }
                 }
             }
+
+            // First, ensure the slots have the latest forecast data
+            EnrichWithSolcastData(slots);
+
+            // Now reapply
+            ApplyPreviouManualOverrides(slots, overrides);
+
+            var processedSlots = EvaluateSlotActions(slots.ToArray());
+
+            // Update the state
+            InverterState.Prices = processedSlots;
+
+            await ExecuteSlotChanges(processedSlots);
+
+            if (config.Simulate && simulationData == null)
+                simulationData = InverterState.Prices.ToList();
+
+            // Do this last, as it uses a lot of API calls
+            await EnrichHistoryWithInverterData();
         }
-
-        // First, ensure the slots have the latest forecast data
-        EnrichWithSolcastData(slots);
-
-        // Now reapply
-        ApplyPreviouManualOverrides(slots, overrides);
-        
-        var processedSlots = EvaluateSlotActions(slots.ToArray());
-
-        // Update the state
-        InverterState.Prices = processedSlots;
-
-        await ExecuteSlotChanges(processedSlots);
-        
-        if( config.Simulate && simulationData == null )
-            simulationData = InverterState.Prices.ToList();
-
-        // Do this last, as it uses a lot of API calls
-        await EnrichHistoryWithInverterData();
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexexpected error recalculating slot plan");
+        }
     }
 
     private IEnumerable<ChangeSlotActionRequest> GetExistingManualSlotOverrides()
@@ -605,37 +613,45 @@ public class InverterManager(
         return Task.CompletedTask;
     }
 
-    public async Task RefreshBatteryState()
+    public async Task UpdateInverterState()
     {
         if (!config.IsValid())
             return;
 
-        if(InverterState.Prices.Any() && InverterState.SolcastTimeStamp != solcastApi.lastAPIUpdate)
+        try
         {
-            // If there's more recent solcast data, force a refresh
-            await RecalculateSlotPlan();
+            if (InverterState.Prices.Any() && InverterState.SolcastTimeStamp != solcastApi.lastAPIUpdate)
+            {
+                // If there's more recent solcast data, force a refresh
+                await RecalculateSlotPlan();
+            }
+
+            // Get the battery charge state from the inverter
+            var solisState = await solisApi.InverterState();
+
+            if (solisState != null)
+            {
+                InverterState.BatterySOC = solisState.data.batteryList
+                    .Select(x => x.batteryCapacitySoc)
+                    .FirstOrDefault();
+                InverterState.BatteryTimeStamp = DateTime.UtcNow;
+                InverterState.CurrentPVkW = solisState.data.pac;
+                InverterState.TodayPVkWh = solisState.data.eToday;
+                InverterState.CurrentBatteryPowerKW = solisState.data.batteryPower;
+                InverterState.TodayExportkWh = solisState.data.gridSellEnergy;
+                InverterState.TodayImportkWh = solisState.data.gridPurchasedEnergy;
+                InverterState.StationId = solisState.data.stationId;
+                InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
+
+                logger.LogInformation(
+                    "Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast today: {F}kWh, tomorrow: {T}kWh",
+                    InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW,
+                    InverterState.TodayForecastKWH, InverterState.TomorrowForecastKWH);
+            }
         }
-
-        // Get the battery charge state from the inverter
-        var solisState = await solisApi.InverterState();
-
-        if (solisState != null)
+        catch (Exception ex)
         {
-            InverterState.BatterySOC = solisState.data.batteryList
-                .Select(x => x.batteryCapacitySoc)
-                .FirstOrDefault();
-            InverterState.BatteryTimeStamp = DateTime.UtcNow;
-            InverterState.CurrentPVkW = solisState.data.pac;
-            InverterState.TodayPVkWh = solisState.data.eToday;
-            InverterState.TodayExportkWh = solisState.data.gridSellEnergy;
-            InverterState.TodayImportkWh = solisState.data.gridPurchasedEnergy;
-            InverterState.StationId = solisState.data.stationId;
-            InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
-
-            logger.LogInformation(
-                "Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast today: {F}kWh, tomorrow: {T}kWh",
-                InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW,
-                InverterState.TodayForecastKWH, InverterState.TomorrowForecastKWH);
+            logger.LogError(ex, "Unexpected exception during inverter state refresh");
         }
     }
     
@@ -646,19 +662,28 @@ public class InverterManager(
 
     private async Task<bool> UpdateConfigWithOctopusTariff(SolisManagerConfig theConfig)
     {
-        if (!string.IsNullOrEmpty(theConfig.OctopusAPIKey) && !string.IsNullOrEmpty(theConfig.OctopusAccountNumber))
+        try
         {
-            var productCode =
-                await octopusAPI.GetCurrentOctopusTariffCode(theConfig.OctopusAPIKey, theConfig.OctopusAccountNumber);
-
-            if (!string.IsNullOrEmpty(productCode))
+            if (!string.IsNullOrEmpty(theConfig.OctopusAPIKey) && !string.IsNullOrEmpty(theConfig.OctopusAccountNumber))
             {
-                if (theConfig.OctopusProductCode != productCode)
-                    logger.LogInformation("Octopus product code has changed: {Old} => {New}", theConfig.OctopusProductCode, productCode);
+                var productCode =
+                    await octopusAPI.GetCurrentOctopusTariffCode(theConfig.OctopusAPIKey,
+                        theConfig.OctopusAccountNumber);
 
-                theConfig.OctopusProductCode = productCode;
-                return true;
+                if (!string.IsNullOrEmpty(productCode))
+                {
+                    if (theConfig.OctopusProductCode != productCode)
+                        logger.LogInformation("Octopus product code has changed: {Old} => {New}",
+                            theConfig.OctopusProductCode, productCode);
+
+                    theConfig.OctopusProductCode = productCode;
+                    return true;
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected exception during Octopus tariff check");
         }
 
         return false;
@@ -675,9 +700,16 @@ public class InverterManager(
 
     public async Task UpdateInverterTime()
     {
-        if (config.AutoAdjustInverterTime)
+        try
         {
-            await solisApi.UpdateInverterTime();
+            if (config.AutoAdjustInverterTime)
+            {
+                await solisApi.UpdateInverterTime();
+            }
+        }
+        catch (Exception ex)
+        { 
+            logger.LogError(ex, "Unexpected exception during inverter time refresh");
         }
     }
 

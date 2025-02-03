@@ -30,7 +30,7 @@ public interface IInverterService
 
 public interface IInverterRefreshService
 {
-    public Task RefreshBatteryState();
+    public Task UpdateInverterState();
     public Task RefreshAgileRates();
     public Task RefreshTariff();
     public Task UpdateInverterTime();

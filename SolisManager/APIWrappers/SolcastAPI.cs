@@ -97,16 +97,23 @@ public class SolcastAPI(SolisManagerConfig config, ILogger<SolcastAPI> logger)
     
     public async Task GetNewSolcastForecasts()
     {
-        var siteIdentifiers = GetSolcastSites(config.SolcastSiteIdentifier);
-
-        if (siteIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Count() != siteIdentifiers.Length)
-            logger.LogWarning("Same Solcast site ID specified twice in config. Ignoring the second one");
-
-        // Only ever take the first 2
-        foreach (var siteIdentifier in siteIdentifiers.Take(2))
+        try
         {
-            // Use WhenAll here?
-            await GetNewSolcastForecast(siteIdentifier);
+            var siteIdentifiers = GetSolcastSites(config.SolcastSiteIdentifier);
+
+            if (siteIdentifiers.Distinct(StringComparer.OrdinalIgnoreCase).Count() != siteIdentifiers.Length)
+                logger.LogWarning("Same Solcast site ID specified twice in config. Ignoring the second one");
+
+            // Only ever take the first 2
+            foreach (var siteIdentifier in siteIdentifiers.Take(2))
+            {
+                // Use WhenAll here?
+                await GetNewSolcastForecast(siteIdentifier);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting new solcast forecasts");
         }
     }
 
