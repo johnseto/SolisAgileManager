@@ -27,39 +27,37 @@ public class InverterManager(
     {
         var solcast = solcastApi.GetSolcastForecast();
         
-        if (slots == null || solcast == null || !solcast.Any())
+        if (solcast == null || !solcast.Any())
             return;
 
-        // TODO: Move this and use it to check if changes
-        InverterState.SolcastTimeStamp = solcastApi.lastAPIUpdate;
+        // Calculate the totals for today and tomorrow
+        InverterState.TodayForecastKWH = solcast.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date )
+            .Sum(x => x.ForecastkWh);
+        InverterState.TomorrowForecastKWH = solcast.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date.AddDays(1) )
+            .Sum(x => x.ForecastkWh);
 
-        if (slots.Any())
+        if (slots == null || ! slots.Any())
+            return;
+
+        var lookup = solcast.ToDictionary(x => x.PeriodStart);
+
+        var matchedData = false;
+        foreach (var slot in slots)
         {
-            var lookup = solcast.ToDictionary(x => x.PeriodStart);
-
-            var matchedData = false;
-            foreach (var slot in slots)
+            if (lookup.TryGetValue(slot.valid_from, out var solcastEstimate))
             {
-                if (lookup.TryGetValue(slot.valid_from, out var solcastEstimate))
-                {
-                    slot.pv_est_kwh = solcastEstimate.ForecastkWh;
-                    matchedData = true;
-                }
-                else
-                {
-                    // No data
-                    slot.pv_est_kwh = null;
-                }
+                slot.pv_est_kwh = solcastEstimate.ForecastkWh;
+                matchedData = true;
             }
-            
-            InverterState.TodayForecastKWH = solcast.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date )
-                .Sum(x => x.ForecastkWh);
-            InverterState.TomorrowForecastKWH = solcast.Where( x => x.PeriodStart.Date == DateTime.UtcNow.Date.AddDays(1) )
-                .Sum(x => x.ForecastkWh);
-            
-            if( ! matchedData )
-                logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
+            else
+            {
+                // No data
+                slot.pv_est_kwh = null;
+            }
         }
+        
+        if( ! matchedData )
+            logger.LogError("Solcast Data was retrieved, but no entries matched current slots");
     }
 
     private async Task AddToExecutionHistory(OctopusPriceSlot slot)
