@@ -612,12 +612,12 @@ public class InverterManager(
         if (!config.IsValid())
             return;
 
-        if (InverterState.SolcastTimeStamp != solcastApi.lastAPIUpdate)
+        if(InverterState.Prices.Any() && InverterState.SolcastTimeStamp != solcastApi.lastAPIUpdate)
         {
             // If there's more recent solcast data, force a refresh
             await RecalculateSlotPlan();
         }
-        
+
         // Get the battery charge state from the inverter
         var solisState = await solisApi.InverterState();
 
@@ -633,10 +633,11 @@ public class InverterManager(
             InverterState.TodayImportkWh = solisState.data.gridPurchasedEnergy;
             InverterState.StationId = solisState.data.stationId;
             InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
-            
-            logger.LogInformation("Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast today: {F}kWh, tomorrow: {T}kWh",
+
+            logger.LogInformation(
+                "Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast today: {F}kWh, tomorrow: {T}kWh",
                 InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW,
-                InverterState.TodayForecastKWH, InverterState.TomorrowForecastKWH );
+                InverterState.TodayForecastKWH, InverterState.TomorrowForecastKWH);
         }
     }
     

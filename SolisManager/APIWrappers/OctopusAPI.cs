@@ -1,4 +1,5 @@
 
+using System.Net;
 using System.Text.Json;
 using Flurl;
 using Flurl.Http;
@@ -57,6 +58,16 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
                     return SplitToHalfHourSlots(orderedSlots);
                 }
             }
+        }
+        catch (FlurlHttpException ex)
+        {
+            if (ex.StatusCode == (int)HttpStatusCode.TooManyRequests)
+            {
+                logger.LogWarning("Octpus API failed - too many requests. Waiting 3 seconds before next call...");
+                await Task.Delay(3000);
+            }
+            else
+                logger.LogError("HTTP Exception getting solcast data: {E}", ex);
         }
         catch (Exception ex)
         {
