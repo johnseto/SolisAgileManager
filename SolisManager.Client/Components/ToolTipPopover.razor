@@ -9,7 +9,8 @@
 
     <div @onclick="ToggleOpen" title="@ToolTip" @onfocusout="ToggleOpen" style="@(PointerCursor ? "cursor:pointer;": string.Empty)">
         @ChildContent
-        <MudPopover Open="_open" OverflowBehavior="OverflowBehavior.FlipAlways" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+        <MudPopover Open="_open" OverflowBehavior="OverflowBehavior.FlipAlways" AnchorOrigin="Origin.BottomCenter" 
+                    TransformOrigin="Origin.TopCenter" Style="margin-top: 5px;">
             <div class="@ContentClass">
                 @if (TooltipContent != null)
                 {
