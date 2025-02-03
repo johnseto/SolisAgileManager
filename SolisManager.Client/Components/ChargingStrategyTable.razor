@@ -161,7 +161,7 @@
         if (forecastTotal != null)
         {
             var dampedForecast = Math.Round(forecastTotal.Value * forecastDamping, 2);
-            var ForcastDescription = $"Forecast PV for {date:dd-MMM}: {dampedForecast}kWh";
+            var ForcastDescription = $"Forecast PV for {date:dd-MMM}";
 
             forecastFragment = @<ValueChip Icon="@Icons.Material.Filled.Timeline" Value="@dampedForecast"
                                            Description="@ForcastDescription" Units="kWh" Decimals="2"/>;
