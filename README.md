@@ -142,6 +142,12 @@ You'll also need to set some other config settings that control the way the char
   low prices, set is value to just above the cheap price and it will guarantee that your battery always
   charges in the pricing 'troughs'. I set it to 15p/kWh when I'm on Cosy.
 
+* The `Charge if SOC below %` - this setting will maintain a particular minimum battery level. So for example,
+  if you set it to 35%, then any time the battery falls below 35% at the start of a slot, that slot will be
+  marked to Charge, regardless of price or PV availability.
+  Note - currently this is only checked once every 30 minutes (at the start of each slot). This will be made
+  more granular in future.
+
 * `Battery %age for peak period`: set this is an approximation of how much battery you need to get you
   through the peak period of 4pm-7pm. If you have a small battery and use a lot of power in the afternoon,
   you might want this to be 100% - so it'll allow enough charging to get to 100% before the peak time starts.
@@ -160,6 +166,21 @@ This can fix the natural time-drift of the inverter's clock, and ensure your cha
 times. 
 
 If you'd rather not have this feature, you can disable it in the config. 
+
+### Scheduled Actions
+
+A scheduled action allows you to specify a particular action that will always be applied for a particular 
+time of day (i.e., for a particular slot). You can add multiple scheduled actions, and they will take 
+precedence over all other rules except for the `Charge if SOC less than %` option.
+
+An example use case for this is as follows: 
+* You have a large battery that easily covers your house load for the entire day
+* You have an overnight charge rate of 7p/kWh from 11pm - 5am. 
+* You are on a fixed export rate of 15p/kWh (so cheaper than the overnight charge rate)
+* You configure 3 Scheduled actions to `Discharge` at 20:30, 21:00 and 21:30 - to export any unusage battery 
+  charge to the grid, earning 15p/kWh
+* Then your normal charging plan charges the battery up at 7p/kWh in the early hours of the morning
+* This means you earn a net 8p/kWh for every unused unit of charge in your battery at the end of the day.
 
 ### Getting Inverter Control Permission from Solis 
 
@@ -383,6 +404,7 @@ If you like this app, please check out some of my other applications, including 
 * Thanks also to [Jon Glass](https://github.com/jmg48/solis-cloud) for his sample .Net wrapper for the Solis API,
   without which I'd have spent an inordinate amount of time figuring out the complicated Solis Authentication
   process.
+* Thanks to Steve Mell, for his huge help (and amazing patience) in debugging and testing the application
 * Thanks must go to [Rob Tweed](https://github.com/robtweed) whose Agility project made me think about building
   this application.
 
