@@ -4,6 +4,14 @@
     row-gap: 15px;
 }
 
+.selection-item {
+    display: flex;
+    flex-direction: row;
+    row-gap: 0;
+    column-gap: 10px;
+    flex-wrap: nowrap;
+}
+
 .error-msg {
     padding: 10px;
     border: 1px solid red;

@@ -1,3 +1,4 @@
+@using Humanizer
 
 <MudDialog>
     <TitleContent>
@@ -12,11 +13,11 @@
                 <div class="time-selection">
                     <SlotPicker @bind-SlotTime="scheduledAction.StartTime" Label="Start"/>
                     <MudSelect @bind-Value="scheduledAction.Action" Label="Action">
-                        <MudSelectItem Value="@SlotAction.DoNothing">No Action</MudSelectItem>
-                        <MudSelectItem Value="@SlotAction.Charge">Charge</MudSelectItem>
-                        <MudSelectItem Value="@SlotAction.Discharge">Discharge</MudSelectItem>
-                        <MudSelectItem Value="@SlotAction.ChargeIfLowBattery">Charge If Low Battery</MudSelectItem>
-                        <MudSelectItem Value="@SlotAction.Hold">Hold Battery Charge</MudSelectItem>
+                        @SlotChoice(SlotAction.Charge)
+                        @SlotChoice(SlotAction.Discharge)
+                        @SlotChoice(SlotAction.DoNothing)
+                        @SlotChoice(SlotAction.Hold)
+                        @SlotChoice(SlotAction.ChargeIfLowBattery)
                     </MudSelect>
                     <MudIcon Icon="@Icons.Material.Filled.Delete" Title="Remove this scheduled Action" @onclick="@(() => DeleteEntry(scheduledAction))" Style="cursor: pointer;"/>
                 </div>
@@ -52,6 +53,12 @@
     [CascadingParameter] MudDialogInstance? MudDialog { get; set; }
 
     [Parameter] public List<ScheduledAction>? ScheduledActions { get; set; }
+
+    private RenderFragment? SlotChoice(SlotAction action) => @<MudSelectItem Value="@action">
+                                                                 <div class="selection-item"><ActionIcon Action="@action"/> 
+                                                                 <div>@action.Humanize()</div>
+                                                                 </div>
+                                                </MudSelectItem>;
 
     private IEnumerable<TimeSpan?>? UsedDates => ScheduledActions?.Select(x => x.StartTime);
 
