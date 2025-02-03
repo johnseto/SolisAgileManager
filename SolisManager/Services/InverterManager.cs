@@ -26,7 +26,10 @@ public class InverterManager(
     private void EnrichWithSolcastData(IEnumerable<OctopusPriceSlot>? slots)
     {
         var solcast = solcastApi.GetSolcastForecast();
-        
+
+        // Store the last update time
+        InverterState.SolcastTimeStamp = solcastApi.lastAPIUpdate;
+            
         if (solcast == null || !solcast.Any())
             return;
 
@@ -622,8 +625,8 @@ public class InverterManager(
         {
             if (InverterState.Prices.Any() && InverterState.SolcastTimeStamp != solcastApi.lastAPIUpdate)
             {
-                // If there's more recent solcast data, force a refresh
-                await RecalculateSlotPlan();
+                // First, ensure the slots have the latest forecast data
+                EnrichWithSolcastData(InverterState.Prices);
             }
 
             // Get the battery charge state from the inverter
