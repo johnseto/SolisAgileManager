@@ -93,6 +93,9 @@ public class Program
         builder.Services.AddBlazoredLocalStorage();
         builder.Services.AddMemoryCache();
         
+        builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+        builder.Services.AddProblemDetails();
+        
         if (!Debugger.IsAttached)
         {
             // Use Kestrel options to set the port. Using .Urls.Add breaks WASM debugging.
@@ -129,6 +132,7 @@ public class Program
             app.UseHsts();
         }
 
+        app.UseExceptionHandler();
         app.UseHttpsRedirection();
 
         app.UseRouting();
