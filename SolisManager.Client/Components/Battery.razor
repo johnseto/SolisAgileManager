@@ -1,21 +1,23 @@
 
 @if (ChargePercentage != null)
 {
-    <div class="battery-indicator" title="@BatteryToolTip">
-        <div class="battery-box">
-            @foreach (var block in Enumerable.Range(0, fullBlocks))
-            {
-                <div class="@BlockStyle"></div>
-            }
-            @foreach (var block in Enumerable.Range(0, emptyBlocks))
-            {
-                <div class="empty-block"></div>
-            }
+    <ToolTipPopover ToolTip="@BatteryToolTip">
+        <div class="battery-indicator" title="@BatteryToolTip">
+            <div class="battery-box">
+                @foreach (var block in Enumerable.Range(0, fullBlocks))
+                {
+                    <div class="@BlockStyle"></div>
+                }
+                @foreach (var block in Enumerable.Range(0, emptyBlocks))
+                {
+                    <div class="empty-block"></div>
+                }
+            </div>
+            <div class="charge-percentage">
+                @ChargePercentage%
+            </div>
         </div>
-        <div class="charge-percentage">
-            @ChargePercentage%
-        </div>
-    </div>
+    </ToolTipPopover>
 }
 
 @code {

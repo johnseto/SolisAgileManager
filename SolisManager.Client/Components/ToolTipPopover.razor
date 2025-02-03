@@ -1,0 +1,27 @@
+@if (_open)
+{
+    <div @onclick="ToggleOpen" class="vh-100 vw-100 position-fixed"
+         style="top: 0; left: 0; z-index: 1000; background-color:unset;">
+    </div>
+}
+<div @onclick="ToggleOpen" title="@ToolTip" @onfocusout="ToggleOpen">
+    @ChildContent
+    <MudPopover Open="_open" OverflowBehavior="OverflowBehavior.FlipAlways" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+        <div class="@Style" >
+            @ToolTip
+        </div>
+    </MudPopover>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    [Parameter] public string ToolTip { get; set; } = string.Empty;
+
+    [CascadingParameter] public bool DarkMode { get; set; }
+
+    private string Style =>  "tooltip-text" + (DarkMode ? " tooltip-text-dark" : string.Empty);
+    private bool TransparentOutside = false; 
+    private bool _open = false;
+    private void ToggleOpen() => _open = !_open;
+}

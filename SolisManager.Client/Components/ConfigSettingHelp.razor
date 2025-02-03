@@ -1,3 +1,9 @@
+@if (_open)
+{
+    <div @onclick="ToggleOpen" class="vh-100 vw-100 position-fixed"
+         style="top: 0; left: 0; z-index: 1000; background-color:unset;">
+    </div>
+}
 
 <div class="help-popup">
     <div class="child-content">

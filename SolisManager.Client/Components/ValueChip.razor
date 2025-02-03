@@ -1,16 +1,18 @@
 @if(Value != null && ( !HideIfZero || Value != 0) )
 {
-    <div class="value-chip" title="@Description">
-        @if (!string.IsNullOrEmpty(Icon))
-        {
-            <MudIcon Icon="@Icon"/>
-        }
-        <strong>@Math.Round(Value.Value, Decimals)</strong>
-        @if (!string.IsNullOrEmpty(Units))
-        {
-            @Units
-        }
-    </div>
+    <ToolTipPopover ToolTip="@FullDescription">
+        <div class="value-chip">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <MudIcon Icon="@Icon"/>
+            }
+            <strong>@Math.Round(Value.Value, Decimals)</strong>
+            @if (!string.IsNullOrEmpty(Units))
+            {
+                @Units
+            }
+        </div>
+    </ToolTipPopover>
 }
 
 @code {
@@ -25,4 +27,6 @@
     [Parameter] public string? Description { get; set; }
 
     [Parameter] public bool HideIfZero { get; set; } = false;
+
+    private string FullDescription => $@"{Description}: {Math.Round(Value!.Value, Decimals)}{Units}";
 }

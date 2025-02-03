@@ -1,0 +1,19 @@
+
+.tooltip-text {
+    max-width: 400px;
+    padding: 5px;
+    border: solid 1px darkgray;
+    display: flex;
+    flex-direction: row;
+    border-radius: 5px;
+    align-items: center;
+}
+
+.tooltip-text-dark {
+    background-color: rgba(30, 30, 30, 0.5);
+}
+
+::deep .close-icon {
+    color: darkgray;
+    cursor: pointer;
+}
