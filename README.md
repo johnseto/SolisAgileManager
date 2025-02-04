@@ -19,9 +19,9 @@ and then apply an opinionated strategy to manage your battery based on the cheap
 
 ### Mobile: 
 
-![Mobile](https://github.com/user-attachments/assets/946e6a3b-4261-4915-8ebf-3ff4b0e69db1)
-![MobilePlanGraph](https://github.com/user-attachments/assets/8bce3207-1c9d-4047-a5ff-f1540e288521)
-![MobileOverrides](https://github.com/user-attachments/assets/f9f5e92b-a881-43ec-87af-16d83e195322)
+<img width="300" src="https://github.com/user-attachments/assets/946e6a3b-4261-4915-8ebf-3ff4b0e69db1"/>
+<img width="300" src="https://github.com/user-attachments/assets/8bce3207-1c9d-4047-a5ff-f1540e288521"/>
+<img width="300" src="https://github.com/user-attachments/assets/f9f5e92b-a881-43ec-87af-16d83e195322"/>
 
 ### Warranty / Disclaimer 
 
