@@ -19,7 +19,8 @@
                         @SlotChoice(SlotAction.Hold)
                         @SlotChoice(SlotAction.ChargeIfLowBattery)
                     </MudSelect>
-                    <MudIcon Icon="@Icons.Material.Filled.Delete" Title="Remove this scheduled Action" @onclick="@(() => DeleteEntry(scheduledAction))" Style="cursor: pointer;"/>
+                    <MudIcon Icon="@Icons.Material.Filled.Delete" Title="Remove this scheduled Action" 
+                             @onclick="@(() => DeleteEntry(scheduledAction))" Style="cursor: pointer;margin-top: 15px;"/>
                 </div>
             }
         }
@@ -77,7 +78,7 @@
         StateHasChanged();
     }
 
-    private string errorMsg;
+    private string? errorMsg;
 
     private void DisplayError(string errorText)
     {
