@@ -5,18 +5,8 @@
     <div class="action-icon" title="@Slot.ActionReason">
         <ActionIcon Action="Slot.ActionToExecute" Pulse="@isCurrentSlot" />
         <ToolTipPopover ToolTip="@Slot.ActionReason" PointerCursor="true">
-                @Slot.ActionToExecute.Description()
+            @Slot.ActionToExecute.Description()
         </ToolTipPopover>
-        
-        @if (Slot.OverrideAction != null)
-        {
-            @if (Slot.OverrideType == OctopusPriceSlot.SlotOverrideType.Manual)
-            {
-                <div class="override-icon" title="The slot action has been manually overriden - click to cancel override">
-                    <MudIcon Icon="@Icons.Material.Filled.Person" Title="Manual override" @onclick="ClearOverride" Style="cursor:pointer;"/>
-                </div>
-            }
-        }
     </div>
 }
 
@@ -24,9 +14,6 @@
     [Parameter]
     public OctopusPriceSlot? Slot { get; set; }
     
-    [Parameter]
-    public EventCallback<OctopusPriceSlot> OnOverrideCleared { get; set; }
-
     private bool isCurrentSlot = false;
 
     protected override async Task OnParametersSetAsync()
@@ -35,10 +22,5 @@
             isCurrentSlot = Slot.valid_from < DateTime.Now && Slot.valid_to > DateTime.Now;
         
         await base.OnParametersSetAsync();
-    }
-    
-    private async Task ClearOverride()
-    {
-        await OnOverrideCleared.InvokeAsync(Slot);
     }
 }

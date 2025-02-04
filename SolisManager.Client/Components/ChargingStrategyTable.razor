@@ -106,7 +106,7 @@
                     <MudTd DataLabel="Price (p/kWh)">
                         <PriceIndicator Type="@context.PriceType" Price="@context.value_inc_vat"/>
                     </MudTd>
-                    <MudTd DataLabel="Plan"><SlotPlan Slot="@context" OnOverrideCleared="ClearOverride"/></MudTd>
+                    <MudTd DataLabel="Plan"><SlotPlan Slot="@context"/></MudTd>
                     @if (hasSolcastData)
                     {
                         <MudTd Style="text-align: right;" DataLabel="Forecast">@ForecastEstimate(context)</MudTd>

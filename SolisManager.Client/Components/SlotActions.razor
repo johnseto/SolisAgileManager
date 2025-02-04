@@ -1,20 +1,35 @@
+@inject IDialogService dialogService
+
 @if (Slot != null)
 {
-    <div class="slot-actions" title="@Slot.ActionReason">
         @if (Slot.OverrideType == OctopusPriceSlot.SlotOverrideType.Scheduled)
         {
-            <MudIcon Icon="@Icons.Material.Filled.AccessTime" Title="Scheduled action" />
-            <text>Schedule Action</text>
+            <div class="scheduled-override" title="@Slot.ActionReason">
+                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Title="Scheduled action" />
+                <text>Schedule Action</text>
+            </div>
         }
         else
         {
-
-            @foreach (var action in AvailableActions)
+            @if (Slot.OverrideType == OctopusPriceSlot.SlotOverrideType.None)
             {
-                <ActionIcon Action="action" OnActionChanged="OnActionChanged"></ActionIcon>
+                <div class="slot-buttons">
+                    @foreach (var action in AvailableActions)
+                    {
+                        <ActionIcon Action="action" OnActionChanged="OnActionChanged"/>
+                    }
+                </div>
+                <div class="manual-button">
+                    <MudButton OnClick="OpenActionPopup" Variant="UIConstants.MudVariant" Size="Size.Small">Override</MudButton>
+                </div>
+            }
+            else
+            {
+                <div class="reset-button">
+                    <MudButton OnClick="ClearOverride" Variant="UIConstants.MudVariant" Size="Size.Small">Reset</MudButton>
+                </div>
             }
         }
-    </div>
 }
 
 @code {
@@ -45,4 +60,24 @@
         }
     }
 
+    private async Task OpenActionPopup()
+    {
+        ArgumentNullException.ThrowIfNull(Slot);
+        
+        var parameters = new DialogParameters { { "Slot", Slot }, { "AvailableActions", AvailableActions } };
+        var dialog = await dialogService.ShowAsync<ManualOverrideDialog>(null, parameters);
+        var result = await dialog.Result;
+
+        if (result != null && result.Data != null)
+        {
+            await OnActionChanged((SlotAction)(result.Data));
+        }
+    }
+
+    private async Task ClearOverride()
+    {
+        var req = new ChangeSlotActionRequest { SlotStart = Slot.valid_from, NewAction = Slot.PlanAction };
+        await OnChangeSlotAction.InvokeAsync(req);
+
+    }
 }

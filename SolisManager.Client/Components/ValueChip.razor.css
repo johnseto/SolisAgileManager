@@ -10,6 +10,10 @@
     border-radius: 5px;
 }
 
+.value-chip:hover{
+    background-color: khaki;
+    transition: background-color 200ms ease-in;
+}
 
 @media screen and (max-width: 900px) {
     .value-chip {

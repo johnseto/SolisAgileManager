@@ -1,5 +1,10 @@
-<div class="@divStyle" title="@ToolTip">
-    <MudIcon Class="@SlotIconClass" Icon="@Icon" @onclick=OnActionClicked Size="Size.Medium"/>
+@using Humanizer
+<div class="@divStyle" title="@ToolTip" @onclick=OnActionClicked>
+    <MudIcon Class="@SlotIconClass" Icon="@Icon" Size="@Size"/>
+    @if (WithLabel)
+    {
+        <div>@Action.Humanize()</div>
+    }
 </div>
 
 @code {
@@ -8,6 +13,10 @@
     [Parameter] public EventCallback<SlotAction> OnActionChanged { get; set; }
 
     [Parameter] public bool Pulse { get; set; }
+    
+    [Parameter] public bool WithLabel { get; set;  }
+
+    [Parameter] public Size Size { get; set; } = Size.Medium;
 
     private string divStyle = "slot-icon";
     
@@ -20,6 +29,12 @@
 
         if (Pulse)
             divStyle += " pulse-glow";
+
+        if (Size == Size.Large)
+            divStyle += " wider-border";
+
+        if (!WithLabel)
+            divStyle += " expander";
         
         base.OnParametersSet();
     }

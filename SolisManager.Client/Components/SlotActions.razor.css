@@ -1,4 +1,5 @@
-.slot-actions {
+
+.scheduled-override {
     display: flex;
     flex-direction: row;
     justify-content: space-evenly;
@@ -6,4 +7,36 @@
     align-items: center;
     padding-left: 10px;
     padding-right: 10px;
+}
+
+.slot-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    column-gap: 10px;
+    align-items: center;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.reset-button {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+}
+
+.manual-button { 
+    display: none;
+}
+
+@media screen and (max-width: 900px) {
+    .slot-buttons {
+        display: none;
+    }
+
+    .manual-button {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+    }
 }

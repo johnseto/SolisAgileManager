@@ -1,0 +1,7 @@
+.action-list {
+    display: flex;
+    flex-direction: column;
+    row-gap: 20px;
+    column-gap: 15px;
+    margin-bottom: 10px;
+}

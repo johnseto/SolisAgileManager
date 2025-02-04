@@ -201,7 +201,7 @@ public class SolisAPI
             chargeTimes = $"{chargeStart:HH:mm}-{chargeEnd:HH:mm}";
             chargePower = config.MaxChargeRateAmps;
         }
-
+        
         if (dischargeStart != null && dischargeEnd != null)
         {
             dischargeTimes = $"{dischargeStart:HH:mm}-{dischargeEnd:HH:mm}";

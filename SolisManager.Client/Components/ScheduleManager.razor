@@ -1,4 +1,3 @@
-@using System.Reflection
 @inject IDialogService dialogService
 
 <div class="schedule-manager">
@@ -17,6 +16,7 @@
 
     private string StatusText => Actions == null || Actions.Count == 0 ? "No Scheduled Actions" : 
                         $"{Actions.Count} Scheduled Action{(Actions.Count > 1 ? "s":string.Empty)} defined";
+
     private async Task OpenScheduleDialog()
     {
         if (Actions == null)
