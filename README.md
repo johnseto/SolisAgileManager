@@ -9,19 +9,19 @@ and then apply an opinionated strategy to manage your battery based on the cheap
 
 ### Screenshots:
 
-<img width="1118" alt="SolisManagerView" src="https://github.com/user-attachments/assets/1f39bda4-35ff-4607-8437-1589e025d3ce" />
+<img width="1168" alt="PlanTable" src="https://github.com/user-attachments/assets/46c927e5-2d2e-4c29-a19b-a2bde24155b2" />
 
-<img width="1139" alt="ChartView" src="https://github.com/user-attachments/assets/41b313aa-0908-4ea8-9191-76946acdb54a" />
+<img width="1176" alt="PlanGraph" src="https://github.com/user-attachments/assets/a17d3445-b2cf-45c1-ac3c-60d92edeb5ef" />
 
 #### Dark Mode 
 
-<img width="1195" alt="Screenshot 2025-01-27 at 22 26 00" src="https://github.com/user-attachments/assets/3f5baa4e-2415-46fe-b6f7-37c4236cd105" />
+<img width="1169" alt="DarkMode" src="https://github.com/user-attachments/assets/2d67171e-b442-454f-8fd2-5b22a9e98579" />
 
 ### Mobile: 
 
-<img src="https://github.com/user-attachments/assets/4ab0001e-1fa9-42d9-a5b1-c94e4cddcf8a" width=400 height=auto/>
-&nbsp;
-<img src="https://github.com/user-attachments/assets/c6a36fe7-3f7d-451e-b339-8aed458f3e54" width=400 height=auto/>
+![Mobile](https://github.com/user-attachments/assets/946e6a3b-4261-4915-8ebf-3ff4b0e69db1)
+![MobilePlanGraph](https://github.com/user-attachments/assets/8bce3207-1c9d-4047-a5ff-f1540e288521)
+![MobileOverrides](https://github.com/user-attachments/assets/f9f5e92b-a881-43ec-87af-16d83e195322)
 
 ### Warranty / Disclaimer 
 
@@ -181,6 +181,8 @@ An example use case for this is as follows:
   charge to the grid, earning 15p/kWh
 * Then your normal charging plan charges the battery up at 7p/kWh in the early hours of the morning
 * This means you earn a net 8p/kWh for every unused unit of charge in your battery at the end of the day.
+
+<img width="758" alt="ScheduledActions" src="https://github.com/user-attachments/assets/28a90eea-a788-444a-aa4e-8d96f25befb4" />
 
 ### Getting Inverter Control Permission from Solis 
 
