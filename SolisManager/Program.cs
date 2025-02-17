@@ -26,7 +26,7 @@ public class Program
     private const int solisManagerPort = 5169;
 
     public static string ConfigFolder => configFolder;
-    
+    public static string? UserAgent;
     private static string configFolder = "config";
 
     public static async Task Main(string[] args)
@@ -68,7 +68,15 @@ public class Program
 
         // Add services to the container.
         builder.Services.AddRazorComponents()
-            .AddInteractiveWebAssemblyComponents();
+            .AddInteractiveWebAssemblyComponents()
+            .AddInteractiveServerComponents();
+
+        builder.Services.AddAntiforgery(options =>
+        {
+            options.Cookie.Expiration = TimeSpan.Zero;
+            options.SuppressXFrameOptionsHeader = true;
+            options.SuppressReadingTokenFromFormBody = true;
+        });
 
         builder.Services.AddDataProtection();
 
@@ -113,6 +121,8 @@ public class Program
         logger.LogInformation("===========================================================");
         logger.LogInformation("Application started. Build version v{V} Logs being written to {C}", version, ConfigFolder);
 
+        UserAgent = $"SolisAgileManager/{version}";
+        
         // First, load the config
         var config = app.Services.GetRequiredService<SolisManagerConfig>();
         if (!config.ReadFromFile(ConfigFolder))
@@ -135,7 +145,7 @@ public class Program
         }
 
         app.UseExceptionHandler();
-        app.UseHttpsRedirection();
+        // app.UseHttpsRedirection();
 
         app.UseRouting();
         app.UseAntiforgery();
@@ -143,6 +153,7 @@ public class Program
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
             .AddInteractiveWebAssemblyRenderMode()
+            .AddInteractiveServerRenderMode()
             .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 
         app.ConfigureAPIEndpoints();
@@ -175,12 +186,13 @@ public class Program
         // same reason.
         app.Services.UseScheduler(s => s
             .Schedule<BatteryScheduler>()
-            .Cron("5,10,15,20,25,35,40,45,50,55 * * * *"));
+            .Cron("0,5,10,15,20,25,35,40,45,50,55 * * * *")
+            .RunOnceAtStart());
 
         // Check if the Octopus tariff has changed every 4 hours
         app.Services.UseScheduler(s => s
             .Schedule<TariffScheduler>()
-            .Cron("0 */4 * * *")
+            .Cron("3 */4 * * *")
             .RunOnceAtStart());
 
         // Check for a new version periodically
@@ -243,14 +255,16 @@ public class Program
 
             config.WriteTo.Console(outputTemplate: template,
                     levelSwitch: logLevel)
-                  .WriteTo.File(logFilePattern,
+                .WriteTo.File(logFilePattern,
                     outputTemplate: template,
                     rollingInterval: RollingInterval.Day,
                     fileSizeLimitBytes: 104857600,
                     retainedFileCountLimit: 10,
                     levelSwitch: logLevel)
-                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Fatal)
+                .MinimumLevel.Override("Microsoft.AspNetCore.DataProtection", LogEventLevel.Fatal)
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning);
+
         }
         catch ( Exception ex )
         {

@@ -10,7 +10,8 @@ public enum PriceType
     BelowAverage,
     Dropping,
     MostExpensive,
-    Negative
+    Negative,
+    IOGDispatch
 }
 
 public enum SlotAction

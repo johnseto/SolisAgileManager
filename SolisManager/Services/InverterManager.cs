@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Humanizer;
+using Microsoft.AspNetCore.Mvc.TagHelpers;
 using Octokit;
 using SolisManager.APIWrappers;
 using SolisManager.Extensions;
@@ -21,7 +23,7 @@ public class InverterManager(
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
     private NewVersionResponse appVersion = new();
     private List<OctopusPriceSlot>? simulationData;
-    
+    private const int maxExecutionHistory = 180 * 48;
     
     private void EnrichWithSolcastData(IEnumerable<OctopusPriceSlot>? slots)
     {
@@ -89,10 +91,16 @@ public class InverterManager(
     {
         var historyFilePath = Path.Combine(Program.ConfigFolder, executionHistoryFile);
 
+        var lines = executionHistory.TakeLast(maxExecutionHistory)
+                                                    .Select(x => x.GetAsCSV());
+
         // And write
-        await File.WriteAllLinesAsync(historyFilePath, executionHistory.Select(x => x.GetAsCSV()));
+        await File.WriteAllLinesAsync(historyFilePath, lines);
     }
     
+    /// <summary>
+    /// Loads the execution history from disk if it's not already available
+    /// </summary>
     private async Task LoadExecutionHistory()
     {
         try
@@ -106,7 +114,7 @@ public class InverterManager(
                     executionHistoryFile);
 
                 // At 48 slots per day, we store 180 days or 6 months of data
-                var entries = lines.TakeLast(180 * 48)
+                var entries = lines.TakeLast(maxExecutionHistory)
                     .Select(HistoryEntry.TryParse)
                     .DistinctBy(x => x?.Start)
                     .Where(x => x != null)
@@ -191,7 +199,7 @@ public class InverterManager(
             await WriteExecutionHistory();
     }
     
-    private async Task RecalculateSlotPlan()
+    private async Task RefreshTariffDataAndRecalculate()
     {
         try
         {
@@ -211,55 +219,21 @@ public class InverterManager(
             }
             else
             {
-                var lastSlot = InverterState.Prices?.MaxBy(x => x.valid_from);
-
                 logger.LogTrace("Refreshing data...");
 
-                var octRatesTask = octopusAPI.GetOctopusRates(config.OctopusProductCode);
-
-                await Task.WhenAll(UpdateInverterState(), octRatesTask, LoadExecutionHistory());
+                slots = await octopusAPI.GetOctopusRates(config.OctopusProductCode);
 
                 // Stamp the last time we did an update
                 InverterState.TimeStamp = DateTime.UtcNow;
-
-                // Now, process the octopus rates
-                slots = (await octRatesTask).ToList();
-
-                if (slots.Any())
-                {
-                    var newlatestSlot = slots.MaxBy(x => x.valid_from);
-
-                    if (newlatestSlot != null && (lastSlot == null || newlatestSlot.valid_from > lastSlot.valid_from))
-                    {
-                        var newslots = (lastSlot == null ? slots : slots.Where(x => x.valid_from > lastSlot.valid_from))
-                            .ToList();
-
-                        var newSlotCount = newslots.Count;
-                        var cheapest = newslots.Min(x => x.value_inc_vat);
-                        var peak = newslots.Max(x => x.value_inc_vat);
-
-                        logger.LogInformation(
-                            "{N} new Octopus rates available to {L:dd-MMM-yyyy HH:mm} (cheapest: {C}p/kWh, peak: {P}p/kWh)",
-                            newSlotCount, newlatestSlot.valid_to, cheapest, peak);
-                    }
-                }
+                
+                LogSlotUpdateDetails(slots);
             }
 
-            // First, ensure the slots have the latest forecast data
-            EnrichWithSolcastData(slots);
-
-            // Now reapply
+            // Now reapply the overrides to the updated slots
             ApplyPreviouManualOverrides(slots, overrides);
 
-            var processedSlots = EvaluateSlotActions(slots.ToArray());
-
-            // Update the state
-            InverterState.Prices = processedSlots;
-
-            await ExecuteSlotChanges(processedSlots);
-
-            if (config.Simulate && simulationData == null)
-                simulationData = InverterState.Prices.ToList();
+            // And recalculate the plan
+            await RecalculateSlotPlan(slots);
 
             // Do this last, as it uses a lot of API calls
             await EnrichHistoryWithInverterData();
@@ -270,6 +244,60 @@ public class InverterManager(
         }
     }
 
+    private void LogSlotUpdateDetails(IEnumerable<OctopusPriceSlot> slots)
+    {
+        if (slots.Any())
+        {
+            var lastSlot = InverterState.Prices?.MaxBy(x => x.valid_from);
+
+            var newlatestSlot = slots.MaxBy(x => x.valid_from);
+
+            if (newlatestSlot != null && (lastSlot == null || newlatestSlot.valid_from > lastSlot.valid_from))
+            {
+                var newslots = (lastSlot == null ? slots : slots.Where(x => x.valid_from > lastSlot.valid_from))
+                    .ToList();
+
+                var newSlotCount = newslots.Count;
+                var cheapest = newslots.Min(x => x.value_inc_vat);
+                var peak = newslots.Max(x => x.value_inc_vat);
+
+                logger.LogInformation(
+                    "{N} new Octopus rates available to {L:dd-MMM-yyyy HH:mm} (cheapest: {C}p/kWh, peak: {P}p/kWh)",
+                    newSlotCount, newlatestSlot.valid_to, cheapest, peak);
+            }
+        }        
+    }
+
+    /// <summary>
+    /// Where the actual work happens - this gets evaluated every time a config
+    /// setting is changed, or otherwise every 5 minutes.
+    /// </summary>
+    private async Task RecalculateSlotPlan(IEnumerable<OctopusPriceSlot> sourceSlots)
+    {
+        // Take a copy so we can reprocess
+        var slots = sourceSlots.Clone();
+        ArgumentNullException.ThrowIfNull(slots);
+
+        await LoadExecutionHistory();
+        
+        // First, ensure the slots have the latest forecast data
+        EnrichWithSolcastData(slots);
+        
+        var processedSlots = EvaluateSlotActions(slots.ToArray());
+
+        // If the tariff is IOG, apply any charging when there's smart-charge slots
+        await ApplyIOGDispatches(processedSlots);
+
+        // Update the state
+        InverterState.Prices = processedSlots;
+
+        // And execute
+        await ExecuteSlotChanges(processedSlots);
+
+        if (config.Simulate && simulationData == null)
+            simulationData = InverterState.Prices.ToList();
+    }
+    
     private IEnumerable<ChangeSlotActionRequest> GetExistingManualSlotOverrides()
     {
         return InverterState.Prices
@@ -338,6 +366,11 @@ public class InverterManager(
         }
     }
     
+    /// <summary>
+    /// The main strategy calculation. Gets evaluated at least every 5 minutes
+    /// </summary>
+    /// <param name="slots"></param>
+    /// <returns></returns>
     private List<OctopusPriceSlot> EvaluateSlotActions(OctopusPriceSlot[]? slots)
     {
         if (slots == null)
@@ -494,95 +527,12 @@ public class InverterManager(
                 }
             }
 
-            // If there are any slots below our "Blimey it's cheap" threshold, elect to charge them anyway.
-            foreach (var slot in slots.Where(s => s.value_inc_vat < config.AlwaysChargeBelowPrice))
-            {
-                slot.PriceType = PriceType.BelowThreshold;
-                slot.PlanAction = SlotAction.Charge;
-                slot.ActionReason =
-                    $"Price is below the threshold of {config.AlwaysChargeBelowPrice}p/kWh, so always charge";
-            }
-
-            foreach (var slot in slots.Where(s => s.value_inc_vat < 0))
-            {
-                slot.PriceType = PriceType.Negative;
-                slot.PlanAction = SlotAction.Charge;
-                slot.ActionReason = "Negative price - always charge";
-            }
-
-            // For any slots that are set to "charge if low battery", update them to 'charge' if the 
-            // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
-            if (InverterState.BatterySOC < config.LowBatteryPercentage)
-            {
-                foreach (var slot in slots.Where(x => x.PlanAction == SlotAction.ChargeIfLowBattery)
-                             .Take(config.SlotsForFullBatteryCharge))
-                {
-                    slot.PlanAction = SlotAction.Charge;
-                    slot.ActionReason =
-                        $"Upcoming slot is set to charge if low battery; battery is currently at {InverterState.BatterySOC}%";
-                }
-            }
-
-            // Now apply any scheduled actions to the slots for the next 24-48 hours. 
-            if (config.ScheduledActions != null && config.ScheduledActions.Any())
-            {
-                foreach (var slot in slots)
-                {
-                    foreach (var scheduledAction in config.ScheduledActions)
-                    {
-                        if (scheduledAction.StartTime != null)
-                        {
-                            var actionTime = scheduledAction.StartTime.Value;
-                            if (slot.valid_from.TimeOfDay == actionTime)
-                            {
-                                var timeStr = actionTime.ToString(@"hh\:mm");
-                                slot.OverrideAction = scheduledAction.Action;
-                                slot.ActionReason = "Overridden by a scheduled action";
-                                slot.OverrideType = OctopusPriceSlot.SlotOverrideType.Scheduled;
-                            }
-                        }
-                    }
-                }
-            }
-
-            var firstSlot = slots.FirstOrDefault();
-
-            if (firstSlot != null)
-            {
-                // For any slots that are set to "charge if low battery", update them to 'charge' if the 
-                // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
-                if (InverterState.BatterySOC < config.AlwaysChargeBelowSOC)
-                {
-                   firstSlot.PlanAction = SlotAction.Charge;
-                   firstSlot.ActionReason =
-                        $"Battery SOC % is below minimum threshold of {config.AlwaysChargeBelowSOC}%.";
-                }
-            }
-
-            // Now it gets interesting. Find the groups of slots that have negative prices. So we
-            // might end up with 3 negative prices, and another group of 7 negative prices. For any
-            // groups that are long enough to charge the battery fully, discharge the battery for 
-            // all the slots that aren't needed to recharge the battery. 
-            // NOTE/TODO: We should check, and if any of the groups of negative slots are *now*
-            // then we should factor in the SOC.
-            var negativeSpans = slots.GetAdjacentGroups(x => x.PriceType == PriceType.Negative);
-
-            foreach (var negSpan in negativeSpans)
-            {
-                if (negSpan.Count() > config.SlotsForFullBatteryCharge)
-                {
-                    var dischargeSlots = negSpan.SkipLast(config.SlotsForFullBatteryCharge).ToList();
-
-                    dischargeSlots.ForEach(x =>
-                    {
-                        x.PlanAction = SlotAction.Discharge;
-                        x.OverrideAction = SlotAction.Discharge;
-                        x.OverrideType = OctopusPriceSlot.SlotOverrideType.NegativePrices; 
-                        x.ActionReason =
-                            "Contiguous negative slots allow the battery to be discharged and charged again.";
-                    });
-                }
-            }
+            EvaluateSolcastThresholdRule(slots);
+            EvaluatePriceBasedRules(slots);
+            EvaluateChargeIfLowBatteryRule(slots);
+            EvaluateScheduleActionRules(slots);
+            EvaluateMaintainChargeRule(slots);
+            EvaluateDumpAndRechargeIfFreeRule(slots);
         }
         catch (Exception ex)
         {
@@ -592,7 +542,177 @@ public class InverterManager(
         return slots.ToList();
     }
 
+    private void EvaluateDumpAndRechargeIfFreeRule(OctopusPriceSlot[] slots)
+    {
+        // Now it gets interesting. Find the groups of slots that have negative prices. So we
+        // might end up with 3 negative prices, and another group of 7 negative prices. For any
+        // groups that are long enough to charge the battery fully, discharge the battery for 
+        // all the slots that aren't needed to recharge the battery. 
+        // NOTE/TODO: We should check, and if any of the groups of negative slots are *now*
+        // then we should factor in the SOC.
+        var negativeSpans = slots.GetAdjacentGroups(x => x.PriceType == PriceType.Negative);
+
+        foreach (var negSpan in negativeSpans)
+        {
+            if (negSpan.Count() > config.SlotsForFullBatteryCharge)
+            {
+                var dischargeSlots = negSpan.SkipLast(config.SlotsForFullBatteryCharge).ToList();
+
+                dischargeSlots.ForEach(x =>
+                {
+                    x.PlanAction = SlotAction.Discharge;
+                    x.OverrideAction = SlotAction.Discharge;
+                    x.OverrideType = OctopusPriceSlot.SlotOverrideType.NegativePrices; 
+                    x.ActionReason =
+                        "Contiguous negative slots allow the battery to be discharged and charged again.";
+                });
+            }
+        }
+    }
     
+    private void EvaluateScheduleActionRules(OctopusPriceSlot[] slots)
+    {
+        // Now apply any scheduled actions to the slots for the next 24-48 hours. 
+        if (config.ScheduledActions != null && config.ScheduledActions.Any())
+        {
+            foreach (var slot in slots)
+            {
+                foreach (var scheduledAction in config.ScheduledActions)
+                {
+                    if (scheduledAction.StartTime != null)
+                    {
+                        var actionTime = scheduledAction.StartTime.Value;
+                        if (slot.valid_from.TimeOfDay == actionTime)
+                        {
+                            var timeStr = actionTime.ToString(@"hh\:mm");
+                            slot.OverrideAction = scheduledAction.Action;
+                            slot.ActionReason = "Overridden by a scheduled action";
+                            slot.OverrideType = OctopusPriceSlot.SlotOverrideType.Scheduled;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private void EvaluateChargeIfLowBatteryRule(OctopusPriceSlot[] slots)
+    {
+        // Very occasionally if there's an error, the inverter state
+        // returns zero as the SOC. So just ignore it and do nothing.
+        if (InverterState.BatterySOC == 0)
+        {
+            logger.LogWarning("SOC is zero, so skipping charge if low battery due to bad inverter state data");
+            return;
+        }
+
+        // For any slots that are set to "charge if low battery", update them to 'charge' if the 
+        // battery SOC is, indeed, low. Only do this for enough slots to fully charge the battery.
+        if (InverterState.BatterySOC < config.LowBatteryPercentage)
+        {
+            foreach (var slot in slots.Where(x => x.PlanAction == SlotAction.ChargeIfLowBattery)
+                         .Take(config.SlotsForFullBatteryCharge))
+            {
+                slot.PlanAction = SlotAction.Charge;
+                slot.ActionReason =
+                    $"Upcoming slot is set to charge if low battery; battery is currently at {InverterState.BatterySOC}%";
+            }
+        }
+    }
+
+    private void EvaluateMaintainChargeRule(OctopusPriceSlot[] slots)
+    {
+        var firstSlot = slots.FirstOrDefault();
+
+        if (firstSlot != null)
+        {
+            // Very occasionally if there's an error, the inverter state
+            // returns zero as the SOC. So just ignore it and do nothing.
+            if (InverterState.BatterySOC == 0)
+            {
+                logger.LogWarning("SOC is zero, so skipping maintain charge rule due to bad inverter state data");
+                return;
+            }
+
+            // High precedence rule - if the 'Always charge below SOC' is set, we want to maintain
+            // a minimum charge level. So we always charge if the battery is below this SOC. 
+            // We check this every 30 minutes
+            if (InverterState.BatterySOC < config.AlwaysChargeBelowSOC)
+            {
+                firstSlot.PlanAction = SlotAction.Charge;
+                firstSlot.ActionReason =
+                    $"Battery SOC % is below minimum threshold of {config.AlwaysChargeBelowSOC}%.";
+            }
+        }
+    }
+
+    private void EvaluatePriceBasedRules(OctopusPriceSlot[] slots)
+    {
+        var extraReason = string.Empty;
+
+        if (config.SkipOvernightCharge && config.ForecastThreshold < InverterState.TomorrowForecastKWH * config.SolcastDampFactor)
+            extraReason = " (even though forcast is above the threshold for tomorrow)";
+            
+        // If there are any slots below our "Blimey it's cheap" threshold, elect to charge them anyway.
+        foreach (var slot in slots.Where(s => s.value_inc_vat < config.AlwaysChargeBelowPrice))
+        {
+            slot.PriceType = PriceType.BelowThreshold;
+            slot.PlanAction = SlotAction.Charge;
+            slot.ActionReason =
+                $"Price is below the threshold of {config.AlwaysChargeBelowPrice}p/kWh, so always charge{extraReason}";
+        }
+
+        foreach (var slot in slots.Where(s => s.value_inc_vat < 0))
+        {
+            slot.PriceType = PriceType.Negative;
+            slot.PlanAction = SlotAction.Charge;
+            slot.ActionReason = "Negative price - always charge";
+        }
+    }
+
+    private void EvaluateSolcastThresholdRule(OctopusPriceSlot[] slots)
+    {
+        var dampedForecast = config.SolcastDampFactor * InverterState.TomorrowForecastKWH;
+        
+        if (config.SkipOvernightCharge && config.ForecastThreshold < dampedForecast )
+        {
+            // If the 'skip overnight charge if forecast is good' setting is enabled, we check that.
+            // First we need to find when 'night' is. Iterate through the slots, looking for the first
+            // one where the forecast is zero. That's the start of night. Then the first one where the
+            // forecast is non-zero, is the end of night. 
+            // We could possibly do this by the sunrise/sunset data from the inverter, but this will 
+            // do for now.
+            DateTime? nightStart = null, nightEnd = null;
+
+            foreach (var slot in slots)
+            {
+                if (nightStart == null && slot.pv_est_kwh == 0)
+                    nightStart = slot.valid_from;
+
+                if (nightStart != null && slot.pv_est_kwh > 0)
+                {
+                    nightEnd = slot.valid_to;
+                    break;
+                }
+            }
+
+            var overnightChargeSlots = slots.Where(x =>
+                    x.valid_from >= nightStart &&
+                    x.valid_to <= nightEnd &&
+                    x.PlanAction == SlotAction.Charge)
+                .ToList();
+
+            logger.LogInformation("Forecast = {F:F2}kWh (so > {T}kWh). Found {C} overnight charge slots to skip between {S} => {E}", 
+                dampedForecast, config.ForecastThreshold, overnightChargeSlots.Count, nightStart, nightEnd);
+
+            foreach (var slot in overnightChargeSlots)
+            {
+                slot.PlanAction = SlotAction.DoNothing;
+                slot.ActionReason = $"Skipping overnight charge due to forecast of {dampedForecast:F2}kWh tomorrow";
+            }
+        }
+    }
+
+
     private void CreateSomeNegativeSlots(IEnumerable<OctopusPriceSlot> slots)
     {
         if (Debugger.IsAttached && ! slots.Any(x => x.value_inc_vat < 0))
@@ -630,21 +750,23 @@ public class InverterManager(
 
         try
         {
-            if (InverterState.Prices.Any() && InverterState.SolcastTimeStamp != solcastApi.lastAPIUpdate)
-            {
-                // First, ensure the slots have the latest forecast data
-                EnrichWithSolcastData(InverterState.Prices);
-            }
-
             // Get the battery charge state from the inverter
             var solisState = await solisApi.InverterState();
 
             if (solisState != null)
             {
-                InverterState.BatterySOC = solisState.data.batteryList
+                var latestBatterySOC = solisState.data.batteryList
                     .Select(x => x.batteryCapacitySoc)
                     .FirstOrDefault();
-                InverterState.BatteryTimeStamp = DateTime.UtcNow;
+
+                if (latestBatterySOC != 0)
+                {
+                    InverterState.BatterySOC = latestBatterySOC;
+                    InverterState.BatteryTimeStamp = DateTime.UtcNow;
+                }
+                else
+                    logger.LogInformation("Battery SOC returned as zero. Invalid inverter state data");
+                
                 InverterState.CurrentPVkW = solisState.data.pac;
                 InverterState.TodayPVkWh = solisState.data.eToday;
                 InverterState.CurrentBatteryPowerKW = solisState.data.batteryPower;
@@ -658,6 +780,8 @@ public class InverterManager(
                     InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW,
                     InverterState.TodayForecastKWH, InverterState.TomorrowForecastKWH);
             }
+            else
+                logger.LogError("No state returned from the inverter");
         }
         catch (Exception ex)
         {
@@ -667,7 +791,7 @@ public class InverterManager(
     
     public async Task RefreshAgileRates()
     {
-        await RecalculateSlotPlan();
+        await RefreshTariffDataAndRecalculate();
     }
 
     private async Task<bool> UpdateConfigWithOctopusTariff(SolisManagerConfig theConfig)
@@ -697,6 +821,55 @@ public class InverterManager(
         }
 
         return false;
+    }
+
+    private async Task ApplyIOGDispatches(IEnumerable<OctopusPriceSlot> slots)
+    {
+        if (config is { TariffIsIntelligentGo: true, IntelligentGoCharging: true })
+        {
+            try
+            {
+                var dispatches = await octopusAPI.GetIOGSmartChargeTimes(config.OctopusAPIKey, config.OctopusAccountNumber);
+                if (dispatches != null && dispatches.Any())
+                {
+                    var iogChargeSlots = new Dictionary<DateTime, OctopusPriceSlot>();
+                    
+                    foreach (var dispatch in dispatches)
+                    {
+                        if (dispatch.end <= DateTime.UtcNow)
+                        {
+                            logger.LogInformation("Unexpected past dispatch - ignoring... ({S} - {E}", dispatch.start, dispatch.end);
+                            continue;
+                        }
+                        
+                        foreach (var slot in slots)
+                        {
+                            if( slot.valid_from < dispatch.end && slot.valid_to >= dispatch.start)
+                                iogChargeSlots.TryAdd(slot.valid_from, slot);
+                        }
+                    }
+
+                    if (iogChargeSlots.Any())
+                    {
+                        logger.LogInformation("Applying charge action to {N} slots for IOG Smart-Charge", iogChargeSlots.Count);
+
+                        foreach (var slot in iogChargeSlots.Values)
+                        {
+                            if (slot.PlanAction != SlotAction.Charge)
+                            {
+                                slot.PlanAction = SlotAction.Charge;
+                                slot.ActionReason = "IOG Smart-Charge period";
+                                slot.PriceType = PriceType.IOGDispatch;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Unexpected exception during IOG Dispatch Query");
+            }
+        }
     }
 
     public async Task RefreshTariff()
@@ -789,7 +962,7 @@ public class InverterManager(
         }
         newConfig.CopyPropertiesTo(config);
         await config.SaveToFile(Program.ConfigFolder);
-        await RecalculateSlotPlan();
+        await RefreshTariffDataAndRecalculate();
         
         return new ConfigSaveResponse{ Success = true };
     }
@@ -883,7 +1056,7 @@ public class InverterManager(
             }
         }
 
-        await RecalculateSlotPlan();
+        await RecalculateSlotPlan(InverterState.Prices);
     }
     
     public async Task ClearManualOverrides()
@@ -894,7 +1067,7 @@ public class InverterManager(
             slot.OverrideAction = null;
             slot.OverrideType = OctopusPriceSlot.SlotOverrideType.None;
         }
-        await RecalculateSlotPlan();
+        await RecalculateSlotPlan(InverterState.Prices);
     }
 
     public async Task AdvanceSimulation()
@@ -902,7 +1075,7 @@ public class InverterManager(
         if (config.Simulate && simulationData is { Count: > 0 })
         {
             simulationData.RemoveAt(0);
-            await RecalculateSlotPlan();
+            await RecalculateSlotPlan(simulationData);
         }
     }
 
@@ -911,7 +1084,7 @@ public class InverterManager(
         if (config.Simulate && simulationData is { Count: 0 })
         {
             simulationData = null;
-            await RecalculateSlotPlan();
+            await RecalculateSlotPlan(InverterState.Prices);
         }
     }
 

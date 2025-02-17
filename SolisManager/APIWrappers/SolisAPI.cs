@@ -46,6 +46,7 @@ public class SolisAPI
         var result = await Post<InverterDetails>(1,"inverterDetail", 
             new { sn = config.SolisInverterSerial
             });
+        
         return result;
     }
 
@@ -88,14 +89,40 @@ public class SolisAPI
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Error reading inverter charging state");
+                    // These are only warnings - if this call fails it just means we'll explicitly
+                    // write to the inverter instead of doing a no-op if the inverter is already
+                    // in the right state.
+                    logger.LogWarning(ex, "Error reading inverter charge slot state");
                 }
             }
             else
-                logger.LogError("ERROR returned when reading inverter charging state");
+                logger.LogWarning("ERROR returned when reading inverter charging state");
         }
 
         return null;
+    }
+
+    private TimeOnly ParseTime(string time)
+    {
+        if (!TimeOnly.TryParse(time, out var result))
+        {
+            var parts = time.Split(':', 2);
+            int hours = int.Parse(parts[0]);
+            int minutes = int.Parse(parts[1]);
+
+            if (hours > 24)
+            {
+                logger.LogWarning("Time returned from inverter was {H}hrs - wrapping...", hours);
+                hours %= 24;
+                time = $"{hours:D2}:{minutes:D2}";
+                if (TimeOnly.TryParse(time, out result))
+                    return result;
+            }
+        }
+        else
+            return result;
+
+        throw new ArgumentException($"Invalid time pair {time}");
     }
 
     /// <summary>
@@ -115,11 +142,8 @@ public class SolisAPI
         if (parts.Length != 2)
             throw new ArgumentException($"Invalid time pair {chargeTimePair}");
 
-        if (!TimeOnly.TryParse(parts[0], out var startTime))
-            throw new ArgumentException($"Invalid time pair {chargeTimePair}");
-
-        if (!TimeOnly.TryParse(parts[1], out var endTime))
-            throw new ArgumentException($"Invalid time pair {chargeTimePair}");
+        var startTime = ParseTime(parts[0]);
+        var endTime = ParseTime(parts[1]);
 
         var start = new DateTime(now, startTime);
         var end = new DateTime(now, endTime);
@@ -157,10 +181,11 @@ public class SolisAPI
         if (currentChargeState == null)
             return true;
         
-        var newchargeTime = ConvertToRealDates(chargeTimes);
-        var newdischargeTime = ConvertToRealDates(dischargeTimes);
         var currchargeTime = ConvertToRealDates(currentChargeState.chargeTimes);
         var currdischargeTime = ConvertToRealDates(currentChargeState.dischargeTimes);
+
+        var newchargeTime = ConvertToRealDates(chargeTimes);
+        var newdischargeTime = ConvertToRealDates(dischargeTimes);
         
         bool chargeIsEquivalent = newchargeTime.start >= currchargeTime.start &&
                                   newchargeTime.start <= currchargeTime.end &&
@@ -183,6 +208,7 @@ public class SolisAPI
     
     /// <summary>
     /// Set the inverter to charge or discharge for a particular period
+    /// All parameters passed in are UTC. This method will convert.
     /// </summary>
     /// <returns></returns>
     public async Task SetCharge( DateTime? chargeStart, DateTime? chargeEnd, 
@@ -198,13 +224,13 @@ public class SolisAPI
 
         if (chargeStart != null && chargeEnd != null)
         {
-            chargeTimes = $"{chargeStart:HH:mm}-{chargeEnd:HH:mm}";
+            chargeTimes = $"{chargeStart.Value.ToLocalTime():HH:mm}-{chargeEnd.Value.ToLocalTime():HH:mm}";
             chargePower = config.MaxChargeRateAmps;
         }
         
         if (dischargeStart != null && dischargeEnd != null)
         {
-            dischargeTimes = $"{dischargeStart:HH:mm}-{dischargeEnd:HH:mm}";
+            dischargeTimes = $"{dischargeStart.Value.ToLocalTime():HH:mm}-{dischargeEnd.Value.ToLocalTime():HH:mm}";
             dischargePower = holdCharge ? 0 : config.MaxChargeRateAmps;
         }
         
@@ -231,7 +257,7 @@ public class SolisAPI
         }
         else
         {
-            logger.LogInformation("Skipping charge request (Inverter state matches: {CA}, {DA}, {CT}, {DT})", 
+            logger.LogInformation("Inverter already in correct state ({CA}, {DA}, {CT}, {DT}) so no charge instructions need to be applied", 
                                                 chargePower, dischargePower, chargeTimes, dischargeTimes);
         }
     }
@@ -382,9 +408,22 @@ public class SolisAPI
     {
         var content = JsonSerializer.Serialize(body);
         var response = await Post($"/v{apiVersion}/api/{resource}", content);
-        return JsonSerializer.Deserialize<T>(response);
-    }
+        if (!string.IsNullOrEmpty(response))
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<T>(response);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error deserializing inverter response: {R}", response);
+            }
+        }
 
+        logger.LogError("No response data returned from Solis API: Resource={R} Body={B}", resource, body);
+        return default;
+    }
+    
     private async Task<string> Post(string url, string content)
     {
         try
@@ -403,6 +442,7 @@ public class SolisAPI
 
             request.Headers.Add("Time", date);
             request.Headers.Add("Authorization", auth);
+            request.Headers.Add("User-Agent", Program.UserAgent );
             request.Content.Headers.Add("Content-Md5", contentMd5);
 
             var result = await client.SendAsync(request);

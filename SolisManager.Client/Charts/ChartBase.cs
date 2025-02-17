@@ -15,10 +15,18 @@ public abstract class ChartBase<T> : ComponentBase where T : class
     protected override void OnInitialized()
     {
         InitOptions();
+
         base.OnInitialized();
     }
 
     protected override async Task OnParametersSetAsync()
+    {
+        await InitChart();
+        
+        await base.OnParametersSetAsync();
+    }
+
+    private async Task InitChart()
     {
         if (chart != null)
         {
@@ -32,8 +40,6 @@ public abstract class ChartBase<T> : ComponentBase where T : class
 
             await GraphStateChanged();
         }
-
-        await base.OnParametersSetAsync();
     }
 
     protected async Task GraphStateChanged()

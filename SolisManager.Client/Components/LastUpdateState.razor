@@ -1,9 +1,9 @@
 
-@if (InverterState != null)
+@if (InverterState != null && InverterState.BatteryTimeStamp != DateTime.MinValue)
 {
     <div class="@Style">
-        Last update: @InverterState.TimeStamp.DisplayDateTime(), 
-        last battery update: @InverterState.BatteryTimeStamp.DisplayDateTime(), 
+        Last Inverter/Plan update: @InverterState.BatteryTimeStamp.DisplayDateTime(),
+        last Octopus Rates update: @InverterState.TimeStamp.DisplayDateTime(), 
         last Solcast update: @SolcastUpdate
     </div>
 }

@@ -24,6 +24,12 @@ public record SolisManagerConfig
     public decimal SolcastDampFactor { get; set; } = 1M; // Default to 100% of the solcast value
     public bool SolcastExtraUpdates { get; set; } = false;
 
+    public bool IntelligentGoCharging { get; set; } = false;
+    
+    // Solcast Rules
+    public bool SkipOvernightCharge { get; set; }
+    public decimal ForecastThreshold { get; set; } = 20.0M;
+
     public decimal PeakPeriodBatteryUse { get; set; } = 0.5M;
     public bool Simulate { get; set; } = true;
     public string? LastComparisonTariff { get; set; }
@@ -70,10 +76,12 @@ public record SolisManagerConfig
 
         if (string.IsNullOrEmpty(OctopusAPIKey) && string.IsNullOrEmpty(OctopusAccountNumber))
         {
-            if (string.IsNullOrEmpty(OctopusProductCode)) return false;
+            if (string.IsNullOrEmpty(OctopusProductCode))
                 return false;
         }
 
         return true;
     }
+
+    public bool TariffIsIntelligentGo => OctopusProductCode.Contains("-INTELLI-VAR-");
 }

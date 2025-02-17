@@ -11,10 +11,15 @@ namespace SolisManager.APIWrappers;
 
 public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
 {
-    private readonly MemoryCacheEntryOptions _cacheOptions =
+    private readonly MemoryCacheEntryOptions _productCacheOptions =
         new MemoryCacheEntryOptions()
                     .SetSize(1)
                     .SetAbsoluteExpiration(TimeSpan.FromDays(7));
+    
+    private readonly MemoryCacheEntryOptions _authTokenCacheOptions =
+        new MemoryCacheEntryOptions()
+            .SetSize(1)
+            .SetAbsoluteExpiration(TimeSpan.FromMinutes(45));
 
     public async Task<IEnumerable<OctopusPriceSlot>> GetOctopusRates(string tariffCode, DateTime? startTime = null)
     {
@@ -31,6 +36,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         try
         {
             var result = await "https://api.octopus.energy"
+                .WithHeader("User-Agent", Program.UserAgent)
                 .AppendPathSegment("/v1/products")
                 .AppendPathSegment(product)
                 .AppendPathSegment("electricity-tariffs")
@@ -124,6 +130,11 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
 
     private async Task<string?> GetAuthToken(string apiKey)
     {
+        const string cacheKey = "octAuthToken";
+        
+        if (memoryCache.TryGetValue<string?>(cacheKey, out var token))
+            return token;
+
         var krakenQuery = """
                           mutation krakenTokenAuthentication($api: String!) {
                           obtainKrakenToken(input: {APIKey: $api}) {
@@ -135,13 +146,83 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         var payload = new { query = krakenQuery, variables = variables };
 
         var response = await "https://api.octopus.energy"
+            .WithHeader("User-Agent", Program.UserAgent)
             .AppendPathSegment("/v1/graphql/")
             .PostJsonAsync(payload)
             .ReceiveJson<KrakenTokenResponse>();
         
-        return response?.data?.obtainKrakenToken?.token;
+        token = response?.data?.obtainKrakenToken?.token;
+
+        memoryCache.Set(cacheKey, token, _authTokenCacheOptions);
+
+        return token;
     }
 
+    public async Task<KrakenPlannedDispatch[]?> GetIOGSmartChargeTimes(string apiKey, string accountNumber)
+    {
+        var token = await GetAuthToken(apiKey);
+        
+        var krakenQuery = """
+                          query getData($input: String!) {
+                              plannedDispatches(accountNumber: $input) {
+                                  start 
+                                  end
+                                  delta
+                                  meta {
+                                      location
+                                      source
+                                  }
+                              }
+                              completedDispatches(accountNumber: $input) {
+                                  start 
+                                  end
+                                  delta
+                                  meta {
+                                      location
+                                      source
+                                  }
+                              }
+                          }
+                          """;
+        var variables = new { input = accountNumber };
+        var payload = new { query = krakenQuery, variables = variables };
+
+        var responseStr = await "https://api.octopus.energy"
+            .WithHeader("Authorization", token)
+            .WithHeader("User-Agent", Program.UserAgent)
+            .AppendPathSegment("/v1/graphql/")
+            .PostJsonAsync(payload)
+            .ReceiveString();
+
+        if (!string.IsNullOrEmpty(responseStr))
+        {
+            var response = JsonSerializer.Deserialize<KrakenDispatchResponse>(responseStr);
+
+            if (response?.data != null)
+            {
+                // Pick out the ones with smart-charge, they're the ones we care about
+                var smartChargeDispatches = response.data.plannedDispatches
+                    .Where(x => !string.IsNullOrEmpty(x.meta?.source ) && 
+                                        x.meta.source.Equals("smart-charge", StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                logger.LogInformation("Found {S} IOG Smart-Charge slots (out of a total of {N} planned and {C} completed dispatches)", 
+                                    smartChargeDispatches.Length, response.data.plannedDispatches.Length, response.data.completedDispatches.Length);
+                if( smartChargeDispatches.Any() )
+                    logger.LogInformation("SmartCharge Dispatches: {S}", JsonSerializer.Serialize(smartChargeDispatches) );
+                
+                return smartChargeDispatches;
+            }
+        }
+
+        return [];
+    }
+
+    public record KrakenDispatchMeta(string? location, string? source);
+    public record KrakenPlannedDispatch(DateTime? start, DateTime? end, string? startDt, string? endDt, string delta, KrakenDispatchMeta? meta);
+    public record KrakenDispatchData(KrakenPlannedDispatch[] plannedDispatches, KrakenPlannedDispatch[] completedDispatches);
+    public record KrakenDispatchResponse(KrakenDispatchData data);
+    
     private record KrakenToken(string token);
     private record KrakenResponse(KrakenToken obtainKrakenToken);
 
@@ -157,6 +238,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         {
             var response = await "https://api.octopus.energy/"
                 .WithHeader("Authorization", token)
+                .WithHeader("User-Agent", Program.UserAgent)
                 .AppendPathSegment($"/v1/accounts/{accountNumber}/")
                 .GetStringAsync();
 
@@ -194,7 +276,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
 
                     if (contract != null)
                     {
-                        logger.LogInformation("Found Octopus Product/Contract: {P}, Starts {S}",
+                        logger.LogInformation("Found Octopus Product/Contract: {P}, Starts {S:dd-MMM-yyyy}",
                             contract.tariff_code, contract.valid_from);
                         return contract.tariff_code;
                     }
@@ -215,13 +297,14 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         try
         {
             var response = await "https://api.octopus.energy/"
+                .WithHeader("User-Agent", Program.UserAgent)
                 .AppendPathSegment($"/v1/products/{code}")
                 .GetStringAsync();
 
             tariff = JsonSerializer.Deserialize<OctopusTariffResponse>(response);
             if (tariff != null)
             {
-                memoryCache.Set(cacheKey, tariff, _cacheOptions);
+                memoryCache.Set(cacheKey, tariff, _productCacheOptions);
                 return tariff;
             }
         }
@@ -243,6 +326,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         try
         {
             var response = await "https://api.octopus.energy/"
+                .WithHeader("User-Agent", Program.UserAgent)
                 .AppendPathSegment($"/v1/products/")
                 .GetStringAsync();
 
@@ -250,7 +334,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
 
             if (products != null)
             {
-                memoryCache.Set(cacheKey, products, _cacheOptions);
+                memoryCache.Set(cacheKey, products, _productCacheOptions);
                 return products;
             }
         }
