@@ -1,4 +1,5 @@
-@inject IInverterService inverterService
+@using SolisManager.Client.Pages
+@inject IInverterManagerService inverterManagerService
 @inject IDialogService dialogService
 @inject ISnackbar snackbar
 @inject NavigationManager navManager
@@ -11,10 +12,10 @@
     @if (config != null)
     {
         <div class="config-fields">
-            <h5>Solis Inverter Settings</h5>
-            <MudTextField T="string" Label="Solis API Key" @bind-Value="@config.SolisAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Solis API Secret" @bind-Value="@config.SolisAPISecret" Immediate="true" Variant="UIConstants.MudVariant"/>
-            <MudTextField T="string" Label="Solis Inverter Serial Number" @bind-Value="@config.SolisInverterSerial" Immediate="true" Variant="UIConstants.MudVariant"/>
+            <InverterTypeSelector @bind-InverterConfig="config.InverterConfig"/>
+
+            @InverterSettings()
+
             <ConfigSettingHelp HelpText="Enabling this setting will automatically update the inverter's clock every day at 2am, to avoid time drift">
                 <MudCheckBox Label="Auto Update Inverter Time" LabelPlacement="Placement.End" @bind-Value="@config.AutoAdjustInverterTime"/>
             </ConfigSettingHelp>
@@ -66,7 +67,7 @@
                 <MudTextField T="string" Label="Solcast API Key" @bind-Value="@config.SolcastAPIKey" Immediate="true" Variant="UIConstants.MudVariant"/>
             </ConfigSettingHelp>
             <ConfigSettingHelp HelpText="Set your Solcast Site Identifier here. If you have multiple strings, add the site IDs separated by a comma.">
-                <MudTextField T="string" Label="Solcast Site ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
+                <MudTextField T="string" Label="Solcast Site ID / Resource ID" @bind-Value="@config.SolcastSiteIdentifier" Immediate="true" Variant="UIConstants.MudVariant"/>
             </ConfigSettingHelp>
             <ConfigSettingHelp HelpText="Damping factor for Solcast (e.g., if Solcast estimates are double actual yield, set this to 50%). A value of 100% will use the raw solcast data">
                 <MudNumericField T="int" Label="Solcast Damping/Reduction %" @bind-Value="@DampingPercentageProxy" Min="0" Max="100" Variant="UIConstants.MudVariant"/>
@@ -112,12 +113,10 @@
                     </ChildContent>
                 </ConfigSettingHelp>
             </MudSlider>
-            <div class="config-field-row">
+            <div class="config-fields">
                 <h5>Charging Options</h5>
-                <ConfigSettingHelp HelpText="Specifies the maximum charge and discharge rate in Amps">
-                    <MudNumericField T="int" Label="Max Charge Rate (Amps)" @bind-Value="@config.MaxChargeRateAmps" Min="5" Max="95" 
-                                     Variant="UIConstants.MudVariant" class="wrapped-field"/>
-                </ConfigSettingHelp>
+            </div>
+            <div class="config-field-row">
                 <ConfigSettingHelp HelpText="Target SOC percentage to be achieved prior to the highest-priced peak period in the day.">
                     <MudNumericField T="int" Label="Battery % for Peak Period" @bind-Value="@PeakPercentageProxy" Min="20" Max="100" 
                                      Variant="UIConstants.MudVariant" class="wrapped-field"/>
@@ -131,7 +130,7 @@
                                      Clearable="true" Variant="UIConstants.MudVariant" class="wrapped-field"/>
                 </ConfigSettingHelp>
                 <ConfigSettingHelp HelpText="If slots are available with below-average prices, they will be used to boost-charge the battery if the SOC is below this value">
-                    <MudNumericField T="int" Label="Battery Boost Threshold (%)" @bind-Value="@config.LowBatteryPercentage" Min="1" Max="95" 
+                    <MudNumericField T="int" Label="Battery Boost Threshold (%)" @bind-Value="@config.LowBatteryPercentage" Min="1" Max="150" 
                                      Variant="UIConstants.MudVariant" class="wrapped-field"/>
                 </ConfigSettingHelp>
                 <ConfigSettingHelp HelpText="Simulation mode allows you to see the charging strategy without actually making changes to the inverter, including stepping forwards through time.">
@@ -158,7 +157,7 @@
     private bool manualProductKey = false;
     private string DarkModeStyle => DarkMode ? "config-settings-dark" : string.Empty;
     private string originalConfigJson = string.Empty;
-    
+
     private bool AutomaticAccount => config != null && !string.IsNullOrEmpty(config.OctopusAccountNumber) && !string.IsNullOrEmpty(config.OctopusAPIKey);
     
     private int PeakPercentageProxy
@@ -175,7 +174,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        config = await inverterService.GetConfig();
+        config = await inverterManagerService.GetConfig();
         originalConfigJson = JsonSerializer.Serialize(config);
         
         await base.OnInitializedAsync();
@@ -197,7 +196,7 @@
     {
         if (config != null)
         {
-            var response = await inverterService.SaveConfig(config);
+            var response = await inverterManagerService.SaveConfig(config);
 
             if (response.Success)
             {
@@ -223,9 +222,22 @@
         if (result != null && result.Value)
         {
             await SaveConfig();
-            await inverterService.TestCharge();
+            await inverterManagerService.TestCharge();
 
             snackbar.Add("Config Settings Updated and Test Charge Initiated", Severity.Warning);
         }
+    }
+
+    private RenderFragment? InverterSettings()
+    {
+        if (config?.InverterConfig == null)
+            return null;
+        
+        return config.InverterConfig switch
+        {
+            InverterConfigSolis _ => @<SolisInverterConfig @bind-InverterConfig="config.InverterConfig" />,
+            InverterConfigSolarEdge _ => @<SolarEdgeInverterConfig @bind-InverterConfig="config.InverterConfig" />,
+            _ => @<div>No config options found for this inverter type. Please raise an issue on Github.</div>
+        };
     }
 }

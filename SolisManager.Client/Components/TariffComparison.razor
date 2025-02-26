@@ -1,42 +1,51 @@
 @using ApexCharts
+@using SolisManager.Shared.Interfaces
 @using Size = MudBlazor.Size
-@inject IInverterService inverterService
+@inject IInverterManagerService inverterManagerService
 
 <PageTitle>Solis Manager</PageTitle>
 
-<div class="title-bar">
-    <h5>Comparison vs Current Tariff</h5>
-
-    <div class="product-selector">
-        <OctopusProductSelector @bind-TariffCode="@selectedTariff" @bind-TariffCode:after="@RecalcNewComparison" 
-                            RegionCode="@currentTariff?.Last()" RegionClearable="false"/>
-    </div>
-</div>
-
-@if (comparison != null)
+@if (!loading)
 {
-    <ComparisonChart FirstName="@($"Current Tariff ({currentTariff})")" FirstSeries="comparison.TariffAPrices"
-                     SecondName="@selectedTariff" SecondSeries="@comparison.TariffBPrices" />
+    <div class="title-bar">
+        <h5>Comparison vs Current Tariff</h5>
+
+        <div class="product-selector">
+            <OctopusProductSelector @bind-TariffCode="@selectedTariff" @bind-TariffCode:after="@RecalcNewComparison"
+                                    RegionCode="@currentTariff?.Last()" RegionClearable="false"/>
+        </div>
+    </div>
+
+    @if (comparison != null)
+    {
+        <ComparisonChart FirstName="@($"Current Tariff ({currentTariff})")" FirstSeries="comparison.TariffAPrices"
+                         SecondName="@selectedTariff" SecondSeries="@comparison.TariffBPrices"/>
+    }
+    else
+    {
+        <ProgressIndicator ProgressText="Loading Octopus Tariff Data..."/>
+    }
 }
 else
 {
-    <ProgressIndicator ProgressText="Loading Octopus Tariff Data..."/>
+    <ProgressIndicator ProgressText="Initialising comparison data..."/>
 }
 
 @code {
     Shared.Models.TariffComparison? comparison;
     private string? selectedTariff;
     private string? currentTariff;
+    private bool loading = true;
     
     private async Task RecalcNewComparison()
     {
         if (! string.IsNullOrEmpty(currentTariff) && ! string.IsNullOrEmpty(selectedTariff))
         {
-            var config = await inverterService.GetConfig();
+            var config = await inverterManagerService.GetConfig();
             config.LastComparisonTariff = selectedTariff;
-            await inverterService.SaveConfig(config);
+            await inverterManagerService.SaveConfig(config);
             
-            comparison = await inverterService.GetTariffComparisonData(currentTariff, selectedTariff);
+            comparison = await inverterManagerService.GetTariffComparisonData(currentTariff, selectedTariff);
             
             StateHasChanged();
         }
@@ -44,11 +53,14 @@ else
     
     protected override async Task OnInitializedAsync()
     {
-        var config = await inverterService.GetConfig();
+        var config = await inverterManagerService.GetConfig();
         currentTariff = config.OctopusProductCode;
         selectedTariff = config.LastComparisonTariff;
 
         await RecalcNewComparison();
+
+        loading = false;
+        StateHasChanged();
         
         await base.OnInitializedAsync();
     }

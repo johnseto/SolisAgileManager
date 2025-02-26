@@ -1,6 +1,7 @@
 using Coravel.Invocable;
 using SolisManager.APIWrappers;
 using SolisManager.Shared;
+using SolisManager.Shared.Interfaces;
 
 namespace SolisManager.Services;
 
@@ -13,7 +14,7 @@ public class RatesScheduler( IInverterRefreshService service, ILogger<RatesSched
     }
 }
 
-public class BatteryScheduler( IInverterRefreshService service, ILogger<BatteryScheduler> logger) : IInvocable
+public class InverterStateScheduler( IInverterRefreshService service, ILogger<InverterStateScheduler> logger) : IInvocable
 {
     public async Task Invoke()
     {
@@ -31,11 +32,11 @@ public class SolcastScheduler( SolcastAPI solcastService, ILogger<SolcastSchedul
     }
 }
 
-public class SolcastExtraScheduler( SolcastAPI solcastService, IInverterService invService, ILogger<SolcastExtraScheduler> logger ) : IInvocable
+public class SolcastExtraScheduler( SolcastAPI solcastService, IInverterManagerService invManagerService, ILogger<SolcastExtraScheduler> logger ) : IInvocable
 {
     public async Task Invoke()
     {
-        var config = await invService.GetConfig();
+        var config = await invManagerService.GetConfig();
 
         if (config.SolcastExtraUpdates)
         {
@@ -63,7 +64,7 @@ public class TariffScheduler( IInverterRefreshService inverterRefresh, ILogger<T
     }
 }
 
-public class VersionCheckScheduler( InverterManager service, ILogger<BatteryScheduler> logger) : IInvocable
+public class VersionCheckScheduler( InverterManager service, ILogger<InverterStateScheduler> logger) : IInvocable
 {
     public async Task Invoke()
     {

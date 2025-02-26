@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Metadata;
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+using System.Xml.Linq;
 using Blazored.LocalStorage;
 using SolisManager.APIWrappers;
 using SolisManager.Components;
@@ -17,7 +20,10 @@ using SolisManager.Client.Services;
 using SolisManager.Extensions;
 using SolisManager.Services;
 using SolisManager.Shared;
+using SolisManager.Shared.Interfaces;
+using SolisManager.Shared.InverterConfigs;
 using SolisManager.Shared.Models;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace SolisManager;
 
@@ -26,7 +32,6 @@ public class Program
     private const int solisManagerPort = 5169;
 
     public static string ConfigFolder => configFolder;
-    public static string? UserAgent;
     private static string configFolder = "config";
 
     public static async Task Main(string[] args)
@@ -80,12 +85,14 @@ public class Program
 
         builder.Services.AddDataProtection();
 
+        builder.Services.AddSingleton<IUserAgentProvider, UserAgentProvider>();
         builder.Services.AddSingleton<SolisManagerConfig>();
         builder.Services.AddSingleton<InverterManager>();
-        builder.Services.AddSingleton<IInverterService>(x => x.GetRequiredService<InverterManager>());
+        builder.Services.AddSingleton<IInverterManagerService>(x => x.GetRequiredService<InverterManager>());
         builder.Services.AddSingleton<IInverterRefreshService>(x => x.GetRequiredService<InverterManager>());
+        builder.Services.AddSingleton<IToolsService, RestartService>();
 
-        builder.Services.AddSingleton<BatteryScheduler>();
+        builder.Services.AddSingleton<InverterStateScheduler>();
         builder.Services.AddSingleton<RatesScheduler>();
         builder.Services.AddSingleton<SolcastScheduler>();
         builder.Services.AddSingleton<SolcastExtraScheduler>();
@@ -93,9 +100,11 @@ public class Program
         builder.Services.AddSingleton<TariffScheduler>();
         builder.Services.AddSingleton<InverterTimeAdjustScheduler>();
 
-        builder.Services.AddSingleton<SolisAPI>();
+        builder.Services.AddSingleton<RestartService>();
         builder.Services.AddSingleton<SolcastAPI>();
         builder.Services.AddSingleton<OctopusAPI>();
+
+        builder.Services.AddSingleton<InverterFactory>();
 
         builder.Services.AddScheduler();
         builder.Services.AddMudServices();
@@ -120,8 +129,6 @@ public class Program
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         logger.LogInformation("===========================================================");
         logger.LogInformation("Application started. Build version v{V} Logs being written to {C}", version, ConfigFolder);
-
-        UserAgent = $"SolisAgileManager/{version}";
         
         // First, load the config
         var config = app.Services.GetRequiredService<SolisManagerConfig>();
@@ -130,6 +137,13 @@ public class Program
             config.OctopusProductCode = "E-1R-AGILE-24-10-01-J";
             config.SlotsForFullBatteryCharge = 6;
             config.AlwaysChargeBelowPrice = 10;
+        }
+        else
+        {
+            if (config.InverterConfig == null)
+            {
+                await UpgradeConfig(config, logger);
+            }
         }
 
         // Configure the HTTP request pipeline.
@@ -180,13 +194,12 @@ public class Program
             .Cron("0 2 * * *")
             .RunOnceAtStart());
 
-        // Update the battery every 5 minutes. Skip the 0 / 30
-        // minute slots, because it gets updated when we refresh
-        // rates anyway. Don't need to run at startup, for the 
-        // same reason.
+        // Update the intverter state every 2 minutes. The actual inverter
+        // data only gets updated in SolisCloud every 5 minutes, but requesting
+        // it regularly means we won't end up with 10-minute stale data
         app.Services.UseScheduler(s => s
-            .Schedule<BatteryScheduler>()
-            .Cron("0,5,10,15,20,25,35,40,45,50,55 * * * *")
+            .Schedule<InverterStateScheduler>()
+            .Cron("*/1 * * * *")
             .RunOnceAtStart());
 
         // Check if the Octopus tariff has changed every 4 hours
@@ -218,6 +231,27 @@ public class Program
         {
             logger.LogError(ex, "Unexpected exception in app.RunAdync!");
         }
+    }
+
+    private static async Task UpgradeConfig(SolisManagerConfig config, ILogger logger)
+    {
+#pragma warning disable 612,618
+        config.InverterConfig = new InverterConfigSolis
+        {
+            SolisAPIKey = config.SolisAPIKey ?? string.Empty,
+            SolisInverterSerial = config.SolisInverterSerial ?? string.Empty,
+            SolisAPISecret = config.SolisAPISecret ?? string.Empty,
+            MaxChargeRateAmps = config.MaxChargeRateAmps ?? 50
+        };
+
+        logger.LogInformation("Upgrading config to new format...");
+        config.SolisAPIKey = null;
+        config.SolisInverterSerial = null;
+        config.SolisAPISecret = null;
+        config.MaxChargeRateAmps = null;
+#pragma warning restore 612,618
+
+        await config.SaveToFile(Program.ConfigFolder);
     }
 
     private const string template = "[{Timestamp:HH:mm:ss.fff}-{ThreadID}-{Level:u3}] {Message:lj}{NewLine}{Exception}";

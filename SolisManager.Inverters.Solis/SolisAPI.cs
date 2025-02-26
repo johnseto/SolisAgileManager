@@ -4,15 +4,19 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using SolisManager.Shared;
+using SolisManager.Shared.Interfaces;
+using SolisManager.Shared.InverterConfigs;
 using SolisManager.Shared.Models;
 
-namespace SolisManager.APIWrappers;
+namespace SolisManager.Inverters.Solis;
 
 /// A wrapper for the Solis API Based on Jon Glass's implementation
 /// here: https://github.com/jmg48/solis-cloud
 /// But extended to support setting charges (based on
 /// https://github.com/stevegal/solis-control
-public class SolisAPI
+public class SolisAPI : InverterBase<InverterConfigSolis>, IInverter
 {
     private readonly MemoryCacheEntryOptions _cacheOptions =
         new MemoryCacheEntryOptions()
@@ -20,72 +24,111 @@ public class SolisAPI
             .SetAbsoluteExpiration(TimeSpan.FromDays(7));
     
     private readonly HttpClient client = new();
-    private readonly ILogger<SolisAPI> logger;
-    private readonly SolisManagerConfig config;
+    private readonly ILogger logger;
+    private readonly IUserAgentProvider userAgentProvider;
     private readonly IMemoryCache memoryCache;
+    private bool? newFirmwareVersion;
 
     private string simulatedChargeState = string.Empty;
 
     private enum CommandIDs
     {
+        CheckFirmware = 6798,
         SetInverterTime = 56,
+        
+        // CIDs for the older firmware
         SetCharge = 103,
-        ReadChargeState = 4643
+        ReadChargeState = 4643,
+
+        // CIDs for the newer firmware
+        ChargeSlot1_Time = 5946,
+        ChargeSlot1_Amps = 5948,
+        ChargeSlot1_SOC = 5928,
+        
+        DischargeSlot1_Time = 5964,
+        DischargeSlot1_Amps = 5967,
+        DischargeSlot1_SOC = 5965,
     }
     
-    public SolisAPI(SolisManagerConfig _config, IMemoryCache _cache, ILogger<SolisAPI> _logger)
+    public SolisAPI(SolisManagerConfig _config, IMemoryCache _cache, IUserAgentProvider _userAgentProvider, ILogger<SolisAPI> _logger)
     {
-        config = _config;
+        SetInverterConfig(_config);
+
+        userAgentProvider = _userAgentProvider;
         logger = _logger;
         memoryCache = _cache;
         client.BaseAddress = new Uri("https://www.soliscloud.com:13333");
     }
-
-    public async Task<InverterDetails?> InverterState()
+    
+    private async Task<InverterDetails?> InverterState()
     {
+        ArgumentNullException.ThrowIfNull(inverterConfig);
+
         var result = await Post<InverterDetails>(1,"inverterDetail", 
-            new { sn = config.SolisInverterSerial
+            new { sn = inverterConfig.SolisInverterSerial
             });
         
         return result;
     }
-
-    public async Task<IReadOnlyList<UserStation>> UserStationList(int pageNo, int pageSize)
+    
+    private async Task<bool> IsNewFirmwareVersion()
     {
-        var result = await Post<ListResponse<UserStation>>(1,"userStationList", new UserStationListRequest(pageNo, pageSize));
-        if(result != null)
-            return result.data.page.records;
+        if( newFirmwareVersion.HasValue )
+            return newFirmwareVersion.Value;
 
-        return [];
+        var result = await ReadControlState(CommandIDs.CheckFirmware);
+        
+        if (int.TryParse(result, out var firmwareVersion))
+        {
+            var hex = firmwareVersion.ToString("X");
+            if (hex == "AA55")
+            {
+                // It's the new firmware version
+                newFirmwareVersion = true;
+                logger.LogInformation("Detected new firmware version: {V} ({H})", firmwareVersion, hex);
+                return newFirmwareVersion.Value;
+            }
+        }
+        
+        // Assume it's the old one.
+        newFirmwareVersion = false;
+        return newFirmwareVersion.Value;
     }
-
-    public async Task<IReadOnlyList<Inverter>> InverterList(int pageNo, int pageSize, int? stationId)
-    {
-        var result = await Post<ListResponse<Inverter>>(1,"inverterList", new InverterListRequest(pageNo, pageSize, stationId));
-        if( result != null )
-            return result.data.page.records;
-        return [];
-    }
-
+    
     private async Task<ChargeStateData?> ReadChargingState()
     {
-        if (config.Simulate && !string.IsNullOrEmpty(simulatedChargeState))
+        if (!string.IsNullOrEmpty(simulatedChargeState))
         { 
             return ChargeStateData.FromChargeStateData(simulatedChargeState);
         }
-        
-        var result = await Post<AtReadResponse>(2, "atRead", 
-            new { inverterSn = config.SolisInverterSerial, 
-                cid = CommandIDs.ReadChargeState });
 
-        if (result != null && !string.IsNullOrEmpty(result.data.msg))
+        if (await IsNewFirmwareVersion())
         {
-            if (result.data.msg != "ERROR")
+            var chargeAmp = await ReadControlStateInt(CommandIDs.ChargeSlot1_Amps);
+            var chargeTime = await ReadControlState(CommandIDs.ChargeSlot1_Time);
+            var dischargeAmp = await ReadControlStateInt(CommandIDs.DischargeSlot1_Amps);
+            var dischargeTime = await ReadControlState(CommandIDs.DischargeSlot1_Time);
+
+            if (chargeAmp.HasValue && chargeTime != null && dischargeAmp.HasValue && dischargeTime != null)
             {
-                simulatedChargeState = result.data.msg;
+                return new ChargeStateData(
+                    chargeAmp.Value,
+                    dischargeAmp.Value,
+                    chargeTime,
+                    dischargeTime
+                );
+            }
+        }
+        else
+        {
+            var result = await ReadControlState(CommandIDs.ReadChargeState);
+
+            if (!string.IsNullOrEmpty(result))
+            {
+                simulatedChargeState = result;
                 try
                 {
-                    return ChargeStateData.FromChargeStateData(result.data.msg);
+                    return ChargeStateData.FromChargeStateData(result);
                 }
                 catch (Exception ex)
                 {
@@ -95,8 +138,6 @@ public class SolisAPI
                     logger.LogWarning(ex, "Error reading inverter charge slot state");
                 }
             }
-            else
-                logger.LogWarning("ERROR returned when reading inverter charging state");
         }
 
         return null;
@@ -206,17 +247,93 @@ public class SolisAPI
         return false;
     }
     
+    public async Task<bool> UpdateInverterState(SolisManagerState inverterState)
+    {
+        // Get the battery charge state from the inverter
+        var solisState = await InverterState();
+
+        if (solisState?.data != null)
+        {
+            var latestBatterySOC = solisState.data.batteryList
+                .Select(x => x.batteryCapacitySoc)
+                .FirstOrDefault();
+
+            if (latestBatterySOC != 0)
+                inverterState.BatterySOC = latestBatterySOC;
+            else
+                logger.LogInformation("Battery SOC returned as zero. Invalid inverter state data");
+            
+            inverterState.CurrentPVkW = solisState.data.pac;
+            inverterState.TodayPVkWh = solisState.data.eToday;
+            inverterState.CurrentBatteryPowerKW = solisState.data.batteryPower;
+            inverterState.TodayExportkWh = solisState.data.gridSellEnergy;
+            inverterState.TodayImportkWh = solisState.data.gridPurchasedEnergy;
+            inverterState.StationId = solisState.data.stationId;
+            inverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
+            if( ParseTimeStr(solisState.data.timeStr, out var timestamp))
+                inverterState.InverterDataTimestamp = timestamp;
+            else
+                inverterState.InverterDataTimestamp = DateTime.UtcNow;
+            return true;
+        }
+
+        logger.LogError("No state returned from the inverter");
+
+        return false;
+    }
+    
+    /// <summary>
+    /// Reads the state of a particular CID
+    /// </summary>
+    /// <param name="cid"></param>
+    private async Task<string?> ReadControlState(CommandIDs cid)
+    {
+        ArgumentNullException.ThrowIfNull(inverterConfig);
+
+        var result = await Post<AtReadResponse>(2, "atRead",
+            new { inverterSn = inverterConfig.SolisInverterSerial, cid });
+
+        if (result?.data != null && !string.IsNullOrEmpty(result.data.msg))
+        {
+            if (result.data.msg != "ERROR")
+            {
+                return result.data.msg;
+            }
+
+            logger.LogWarning("ERROR reading control state (CID = {C})", cid);
+        }
+        else
+            logger.LogWarning("No data returned reading control state (CID = {C})", cid);
+
+        return null;
+    }
+
+    private async Task<int?> ReadControlStateInt(CommandIDs cid)
+    {
+        var result = await ReadControlState(cid);
+        
+        if( result != null && int.TryParse(result, out var resultInt))
+            return resultInt;
+
+        return null;
+    }
+    
+
     /// <summary>
     /// Set the inverter to charge or discharge for a particular period
     /// All parameters passed in are UTC. This method will convert.
     /// </summary>
     /// <returns></returns>
-    public async Task SetCharge( DateTime? chargeStart, DateTime? chargeEnd, 
+    public async Task SetCharge(DateTime? chargeStart, DateTime? chargeEnd, 
                                           DateTime? dischargeStart, DateTime? dischargeEnd, 
                                           bool holdCharge, bool simulateOnly )
     {
+        ArgumentNullException.ThrowIfNull(inverterConfig);
+        
         const string clearChargeSlot = "00:00-00:00";
 
+        bool newFirmWare = await IsNewFirmwareVersion();
+        
         var chargeTimes = clearChargeSlot;
         var dischargeTimes = clearChargeSlot;
         int chargePower = 0;
@@ -225,13 +342,13 @@ public class SolisAPI
         if (chargeStart != null && chargeEnd != null)
         {
             chargeTimes = $"{chargeStart.Value.ToLocalTime():HH:mm}-{chargeEnd.Value.ToLocalTime():HH:mm}";
-            chargePower = config.MaxChargeRateAmps;
+            chargePower = inverterConfig.MaxChargeRateAmps;
         }
         
         if (dischargeStart != null && dischargeEnd != null)
         {
             dischargeTimes = $"{dischargeStart.Value.ToLocalTime():HH:mm}-{dischargeEnd.Value.ToLocalTime():HH:mm}";
-            dischargePower = holdCharge ? 0 : config.MaxChargeRateAmps;
+            dischargePower = holdCharge ? 0 : inverterConfig.MaxChargeRateAmps;
         }
         
         // Now check if we actually need to do anything. No point making a write call to the 
@@ -239,20 +356,42 @@ public class SolisAPI
         // we can do for longevity, the better.
         if (await InverterNeedsUpdating(chargePower, dischargePower, chargeTimes, dischargeTimes))
         {
-            string chargeValues = $"{chargePower},{dischargePower},{chargeTimes},{dischargeTimes},0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
+            // This is only used for the old FW
+            var chargeValues = $"{chargePower},{dischargePower},{chargeTimes},{dischargeTimes},0,0,00:00-00:00,00:00-00:00,0,0,00:00-00:00,00:00-00:00";
             
-
-            logger.LogInformation("Sending new charge instruction to {Inv}: {CA}, {DA}, {CT}, {DT}", 
-                            simulateOnly ? "mock inverter" : "Solis Inverter",
-                            chargePower, dischargePower, chargeTimes, dischargeTimes);
-
             if (simulateOnly)
             {
                 simulatedChargeState = chargeValues;
             }
             else
             {
-                await SendControlRequest(CommandIDs.SetCharge, chargeValues);
+                if(newFirmWare)
+                {
+                    // To discharge, it seems you have to make the Charge SOC lower than the current SOC
+                    var chargeSOC = dischargePower > 0 ? 15 : 100;
+                    var dischargeSOC = 15;
+
+                    logger.LogInformation("Sending new charge instruction to {Inv}: {CA}, {DA}, {CT}, {DT}, SOC: {SoC}%, D-SOC: {DSoC}%", 
+                        simulateOnly ? "mock inverter" : "Solis Inverter",
+                        chargePower, dischargePower, chargeTimes, dischargeTimes, chargeSOC, dischargeSOC);
+
+                    await SendControlRequest(CommandIDs.ChargeSlot1_SOC, $"{chargeSOC}", simulateOnly);
+                    await SendControlRequest(CommandIDs.DischargeSlot1_SOC, "15", simulateOnly);
+
+                    // Now, set the actual state.
+                    await SendControlRequest(CommandIDs.ChargeSlot1_Amps, chargePower, simulateOnly);
+                    await SendControlRequest(CommandIDs.ChargeSlot1_Time, chargeTimes, simulateOnly);
+                    await SendControlRequest(CommandIDs.DischargeSlot1_Amps, dischargePower, simulateOnly);
+                    await SendControlRequest(CommandIDs.DischargeSlot1_Time, dischargeTimes, simulateOnly);
+                }
+                else
+                {
+                    logger.LogInformation("Sending new charge instruction to {Inv}: {CA}, {DA}, {CT}, {DT}", 
+                        simulateOnly ? "mock inverter" : "Solis Inverter",
+                        chargePower, dischargePower, chargeTimes, dischargeTimes);
+
+                    await SendControlRequest(CommandIDs.SetCharge, chargeValues, simulateOnly);
+                }
             }
         }
         else
@@ -262,13 +401,19 @@ public class SolisAPI
         }
     }
 
-    public async Task<IEnumerable<InverterFiveMinData>?> GetInverterDay(int dayOffset = 0)
+    public async Task<IEnumerable<InverterFiveMinData>?> GetHistoricData(int dayOffset = 0)
     {
         var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
-        return await GetInverterDay(dayToQuery);
+        return await GetHistoricData(dayToQuery);
     }
 
-    public async Task<IEnumerable<InverterFiveMinData>?> GetInverterDay(DateTime dayToQuery)
+    private bool ParseTimeStr(string timeStr, out DateTime date)
+    {
+        return DateTime.TryParseExact(timeStr, "yyyy-MM-dd HH:mm:ss", 
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+    }
+
+    public async Task<IEnumerable<InverterFiveMinData>?> GetHistoricData(DateTime dayToQuery)
     {
         var cacheKey = $"inverterDay-{dayToQuery:yyyyMMdd}";
 
@@ -293,8 +438,7 @@ public class SolisAPI
 
             foreach (var entry in rawData.data)
             {
-                if (DateTime.TryParseExact(entry.timeStr, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out var date))
+                if (ParseTimeStr(entry.timeStr, out var date))
                 {
                     result.Add(new InverterFiveMinData(date,
                         entry.batteryCapacitySoc,
@@ -328,10 +472,12 @@ public class SolisAPI
     /// <returns></returns>
     private async Task<InverterDayResponse?> GetInverterDayInternal(DateTime dayToQuery)
     {
+        ArgumentNullException.ThrowIfNull(inverterConfig);
+
         var result = await Post<InverterDayResponse>(1, "inverterDay",
             new
             {
-                sn = config.SolisInverterSerial,
+                sn = inverterConfig.SolisInverterSerial,
                 money = "UKP",
                 time = $"{dayToQuery:yyyy-MM-dd}",
                 timezone = 0
@@ -343,64 +489,60 @@ public class SolisAPI
         return result;
     }
     
-    /// <summary>
-    /// Get the historic graph data for the inverter
-    /// </summary>
-    /// <returns></returns>
-    public async Task<StationEnergyDayResponse?> GetStationEnergyDay(int dayOffset = 0)
-    {
-        var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
-        var cacheKey = $"stationDayEnergyList-{dayToQuery:yyyyMMdd}";
-        
-        if( memoryCache.TryGetValue(cacheKey, out StationEnergyDayResponse? inverterDay))
-            return inverterDay;
-
-        logger.LogInformation("Getting inverter stats for {D:dd-MMM-yyyy}...", dayToQuery);
-
-        var result = await Post<StationEnergyDayResponse>(1, "stationDayEnergyList",
-            new
-            {
-                pageNo = 0,
-                pageSize = 100,
-                time = $"{dayToQuery:yyyy-MM-dd}",
-            });
-
-        if (result != null)
-            memoryCache.Set(cacheKey, result, _cacheOptions);
-
-        return result;
-    }
-    
-    public async Task UpdateInverterTime()
+    public async Task UpdateInverterTime(bool simulateOnly)
     {
         logger.LogInformation("Updating inverter time to avoid drift...");
         
         var time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        await SendControlRequest(CommandIDs.SetInverterTime, time);
+        await SendControlRequest(CommandIDs.SetInverterTime, time, simulateOnly);
+    }
+
+    private async Task SendControlRequest(CommandIDs cmdId, int value, bool simulateOnly)
+    {
+        await SendControlRequest(cmdId, value.ToString(), simulateOnly);
     }
 
     /// <summary>
     /// Send the actual control request to the inverter. 
     /// </summary>
     /// <param name="cmdId"></param>
-    /// <param name="payload"></param>
-    private async Task SendControlRequest(CommandIDs cmdId, string payload)
+    /// <param name="value"></param>
+    /// <param name="simulateOnly"></param>
+    private async Task SendControlRequest(CommandIDs cmdId, string value, bool simulateOnly)
     {
+        const int retries = 3;
+        ArgumentNullException.ThrowIfNull(inverterConfig);
+
         var requestBody = new
         {
-            inverterSn = config.SolisInverterSerial,
+            inverterSn = inverterConfig.SolisInverterSerial,
             cid = (int)cmdId,
-            value = payload
+            value
         };
         
-        if (config.Simulate)
+        if (simulateOnly)
         {
             logger.LogInformation("Simulated inverter control request: {B}", requestBody);
         }
         else
         {
-            // Actually submit it. 
-            await Post<object>(2, "control", requestBody);
+            for (var attempt = 0; attempt < retries; attempt++)
+            {
+                // Actually write it. 
+                await Post<object>(2, "control", requestBody);
+
+                // Now try and read it back
+                var result = await ReadControlState(cmdId);
+
+                if (result == value)
+                {
+                    if (attempt > 0)
+                        logger.LogInformation("Control request (CID: {C}, Value: {V}) succeeded on retry {A}", cmdId, value, attempt);
+                    return; // Success
+                }
+    
+                logger.LogWarning("Inverter control request did not stick: CID: {C}, Value: {V} (attempt: {A})", cmdId, value, attempt);
+            }
         }
     }
 
@@ -426,6 +568,8 @@ public class SolisAPI
     
     private async Task<string> Post(string url, string content)
     {
+        ArgumentNullException.ThrowIfNull(inverterConfig);
+
         try
         {
             var request = new HttpRequestMessage(HttpMethod.Post, url);
@@ -435,14 +579,14 @@ public class SolisAPI
             request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json;charset=UTF-8");
 
             var contentMd5 = Convert.ToBase64String(MD5.HashData(Encoding.UTF8.GetBytes(content)));
-            var hmacSha1 = new HMACSHA1(Encoding.UTF8.GetBytes(config.SolisAPISecret));
+            var hmacSha1 = new HMACSHA1(Encoding.UTF8.GetBytes(inverterConfig.SolisAPISecret));
             var param = $"POST\n{contentMd5}\napplication/json\n{date}\n{url}";
             var sign = Convert.ToBase64String(hmacSha1.ComputeHash(Encoding.UTF8.GetBytes(param)));
-            var auth = $"API {config.SolisAPIKey}:{sign}";
+            var auth = $"API {inverterConfig.SolisAPIKey}:{sign}";
 
             request.Headers.Add("Time", date);
             request.Headers.Add("Authorization", auth);
-            request.Headers.Add("User-Agent", Program.UserAgent );
+            request.Headers.Add("User-Agent", userAgentProvider.UserAgent );
             request.Content.Headers.Add("Content-Md5", contentMd5);
 
             var result = await client.SendAsync(request);
@@ -460,98 +604,49 @@ public class SolisAPI
 
         return string.Empty;
     }
-}
-
-
-public record StationEnergyRecord(
-    decimal energy,
-    string date,
-    decimal gridPurchasedEnergy,
-    decimal gridSellEnergy
-);
-
-public record StationEnergyDayResponse(string msg, StationEnergyDayRecords data);
-
-public record StationEnergyDayRecords(IEnumerable<StationEnergyRecord> recordss);
-
-public record InverterFiveMinData(
-    DateTime Start,
-    decimal BatterySOC,
-    decimal BatteryChargePowerKW,
-    decimal CurrentPVYieldKW,
-    decimal CurrentHouseLoadKW,
-    decimal HomeLoadKWH,
-    decimal PVYieldKWH,
-    decimal ImportKWH,
-    decimal ExportKWH
-);
-
-public record InverterDayRecord(
-    string timeStr,
-    string dataTimestamp,
-    decimal batteryCapacitySoc, // Battery charge level
-    decimal batteryPower, // Battery Charge power
-    decimal pSum, // Current PV Output
-    decimal familyLoadPower, // House load
-    decimal homeLoadTodayEnergy, // Total house load today
-    decimal gridPurchasedTodayEnergy, // Cumulative import kwh
-    decimal gridSellTodayEnergy, // Cumulative export kwh
-    decimal pac, // PV output 
-    string pacStr,
-    decimal eToday // Today PV total
-);
-
-public record InverterDayResponse(string msg, IEnumerable<InverterDayRecord> data);
-
-public record UserStationListRequest(int pageNo, int pageSize);
-
-public record InverterListRequest(int pageNo, int pageSize, int? stationId);
-
-public record ListResponse<T>(Data<T> data);
-
-public record Data<T>(Page<T> page);
-
-public record Page<T>(int current, int pages, List<T> records);
-
-public record AtReadData(string msg);
-public record AtReadResponse(AtReadData data);
-
-public record ChargeStateData( int chargeAmps, int dischargeAmps, string chargeTimes, string dischargeTimes)
-{
-    public static ChargeStateData FromChargeStateData(string msg)
+    
+    private async Task<IReadOnlyList<UserStation>> UserStationList(int pageNo, int pageSize)
     {
-        var parts = msg.Split(',', 5, StringSplitOptions.TrimEntries);
-        if (parts.Length == 5)
-        {
-            return new ChargeStateData(
-                int.Parse(parts[0]),
-                int.Parse(parts[1]),
-                parts[2],
-                parts[3]);
-        }
+        var result = await Post<ListResponse<UserStation>>(1,"userStationList", new UserStationListRequest(pageNo, pageSize));
+        if(result != null)
+            return result.data.page.records;
 
-        throw new AggregateException($"Unable to parse atRead response: {msg}");
+        return [];
+    }
+
+    private async Task<IReadOnlyList<Inverter>> InverterList(int pageNo, int pageSize, int? stationId)
+    {
+        var result = await Post<ListResponse<Inverter>>(1,"inverterList", new InverterListRequest(pageNo, pageSize, stationId));
+        if( result != null )
+            return result.data.page.records;
+        return [];
+    }
+
+    /// <summary>
+    /// Get the historic graph data for the inverter
+    /// </summary>
+    /// <returns></returns>
+    private async Task<StationEnergyDayResponse?> GetStationEnergyDay(int dayOffset = 0)
+    {
+        var dayToQuery = DateTime.UtcNow.AddDays(-1 * dayOffset);
+        var cacheKey = $"stationDayEnergyList-{dayToQuery:yyyyMMdd}";
+        
+        if( memoryCache.TryGetValue(cacheKey, out StationEnergyDayResponse? inverterDay))
+            return inverterDay;
+
+        logger.LogInformation("Getting inverter stats for {D:dd-MMM-yyyy}...", dayToQuery);
+
+        var result = await Post<StationEnergyDayResponse>(1, "stationDayEnergyList",
+            new
+            {
+                pageNo = 0,
+                pageSize = 100,
+                time = $"{dayToQuery:yyyy-MM-dd}",
+            });
+
+        if (result != null)
+            memoryCache.Set(cacheKey, result, _cacheOptions);
+
+        return result;
     }
 }
-
-public record InverterDetails(InverterData data);
-public record InverterData(IEnumerable<Battery> batteryList, 
-    decimal eToday, 
-    decimal pac, // Power
-    string stationId, 
-    decimal batteryPower,
-    decimal gridSellEnergy, // Today export KWH
-    decimal homeLoadEnergy, // Today load KWH
-    decimal gridPurchasedEnergy, // Today import KWH
-    decimal psum);
-
-public record Battery(int batteryCapacitySoc);
-public record UserStation(string id, string installer, string installerId, double allEnergy1, double allIncome,
-    double dayEnergy1, double dayIncome, double gridPurchasedTodayEnergy, double gridPurchasedTotalEnergy,
-    double gridSellTodayEnergy, double gridSellTotalEnergy, double homeLoadTodayEnergy, double homeLoadTotalEnergy,
-    double monthEnergy1, double power1, double yearEnergy1);
-
-public record Inverter(string id, string collectorId, string collectorSn, string dataTimestamp, string dataTimestampStr,
-    double etoday1, double etotal1, double familyLoadPower, double gridPurchasedTodayEnergy, double gridSellTodayEnergy,
-    double homeLoadTodayEnergy, double pac1, double pow1, double pow2, double power1, double totalFullHour,
-    double totalLoadPower);

@@ -1,29 +1,47 @@
 using System.Diagnostics;
-using System.Text.Json;
-using Humanizer;
-using Microsoft.AspNetCore.Mvc.TagHelpers;
 using Octokit;
 using SolisManager.APIWrappers;
 using SolisManager.Extensions;
+using SolisManager.Inverters.Solis;
 using SolisManager.Shared;
+using SolisManager.Shared.Interfaces;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.Services;
 
-public class InverterManager(
-    SolisManagerConfig config,
-    OctopusAPI octopusAPI,
-    SolisAPI solisApi,
-    SolcastAPI solcastApi,
-    ILogger<InverterManager> logger) : IInverterService, IInverterRefreshService
+public class InverterManager : IInverterManagerService, IInverterRefreshService
 {
     public SolisManagerState InverterState { get; } = new();
 
     private readonly List<HistoryEntry> executionHistory = [];
     private const string executionHistoryFile = "SolisManagerExecutionHistory.csv";
-    private NewVersionResponse appVersion = new();
+    private readonly NewVersionResponse appVersion = new();
     private List<OctopusPriceSlot>? simulationData;
     private const int maxExecutionHistory = 180 * 48;
+
+    private readonly SolisManagerConfig config;
+    private readonly OctopusAPI octopusAPI;
+    private readonly IInverter inverterAPI;
+    private readonly SolcastAPI solcastApi;
+    private readonly ILogger<InverterManager> logger;
+    
+    public InverterManager(
+        SolisManagerConfig _config,
+        OctopusAPI _octopusAPI,
+        InverterFactory _inverterFactory,
+        SolcastAPI _solcastApi,
+        ILogger<InverterManager> _logger)
+    {
+        config = _config;
+        octopusAPI = _octopusAPI;
+        solcastApi = _solcastApi; 
+        logger = _logger;
+
+        var inverterImplementation = _inverterFactory.GetInverter();
+        
+        if( inverterImplementation != null )
+            inverterAPI = inverterImplementation;
+    }
     
     private void EnrichWithSolcastData(IEnumerable<OctopusPriceSlot>? slots)
     {
@@ -155,7 +173,7 @@ public class InverterManager(
 
         foreach (var day in daysToProcess)
         {
-            var data = await solisApi.GetInverterDay(day);
+            var data = await inverterAPI.GetHistoricData(day);
 
             if (data != null && data.Any())
                 allData.AddRange(data);
@@ -224,7 +242,7 @@ public class InverterManager(
                 slots = await octopusAPI.GetOctopusRates(config.OctopusProductCode);
 
                 // Stamp the last time we did an update
-                InverterState.TimeStamp = DateTime.UtcNow;
+                InverterState.PricesUpdate = DateTime.UtcNow;
                 
                 LogSlotUpdateDetails(slots);
             }
@@ -288,14 +306,36 @@ public class InverterManager(
         // If the tariff is IOG, apply any charging when there's smart-charge slots
         await ApplyIOGDispatches(processedSlots);
 
-        // Update the state
         InverterState.Prices = processedSlots;
+
+        // Update the state
+        if (config.Simulate)
+            simulationData = processedSlots;
 
         // And execute
         await ExecuteSlotChanges(processedSlots);
+    }
 
-        if (config.Simulate && simulationData == null)
-            simulationData = InverterState.Prices.ToList();
+    private void ExecuteSimulationUpdates(IEnumerable<OctopusPriceSlot> slots)
+    {
+        if (config.Simulate)
+        {
+            var rnd = new Random();
+            var firstSlot = slots.FirstOrDefault();
+
+            if (firstSlot != null)
+            {
+                InverterState.BatterySOC = firstSlot.PlanAction switch
+                {
+                    SlotAction.Charge => Math.Min(InverterState.BatterySOC += 100 / config.SlotsForFullBatteryCharge,
+                        100),
+                    SlotAction.DoNothing => Math.Max(InverterState.BatterySOC -= rnd.Next(4, 7), 20),
+                    SlotAction.Discharge => Math.Max(InverterState.BatterySOC -= 100 / config.SlotsForFullBatteryCharge,
+                        20),
+                    _ => InverterState.BatterySOC
+                };
+            }
+        }
     }
     
     private IEnumerable<ChangeSlotActionRequest> GetExistingManualSlotOverrides()
@@ -347,20 +387,20 @@ public class InverterManager(
 
                 if (firstSlot.ActionToExecute == SlotAction.Charge)
                 {
-                    await solisApi.SetCharge(start, end, null, null, false, config.Simulate);
+                    await inverterAPI.SetCharge(start, end, null, null, false, config.Simulate);
                 }
                 else if (firstSlot.ActionToExecute == SlotAction.Discharge)
                 {
-                    await solisApi.SetCharge(null, null, start, end, false, config.Simulate);
+                    await inverterAPI.SetCharge(null, null, start, end, false, config.Simulate);
                 }
                 else if (firstSlot.ActionToExecute == SlotAction.Hold)
                 {
-                    await solisApi.SetCharge(null, null, start, end, true, config.Simulate);
+                    await inverterAPI.SetCharge(null, null, start, end, true, config.Simulate);
                 }
                 else
                 {
                     // Clear the charge
-                    await solisApi.SetCharge(null, null, null, null, false, config.Simulate);
+                    await inverterAPI.SetCharge(null, null, null, null, false, config.Simulate);
                 }
             }
         }
@@ -386,31 +426,41 @@ public class InverterManager(
             
             OctopusPriceSlot[]? cheapestSlots = null;
             OctopusPriceSlot[]? priciestSlots = null;
-
-            // Calculate how many slots we'd need to charge from full starting *right now*
-            int chargeSlotsNeeededNow = (int)Math.Round(config.SlotsForFullBatteryCharge * config.PeakPeriodBatteryUse, MidpointRounding.ToPositiveInfinity);
-
-            // First, find the cheapest period for charging the battery. This is the set of contiguous
-            // slots, long enough when combined that they can charge the battery from empty to full, and
-            // that has the cheapest average price for that period. This will typically be around 1am in 
-            // the morning, but can shift around a bit. 
-            for (var i = 0; i <= slots.Length - config.SlotsForFullBatteryCharge; i++)
+            decimal cheapestPrice = 100, mostExpensivePrice = 0;
+            
+            // See what the difference is between the target SOC and what we need now.
+            decimal chargeNeededForPeak = config.PeakPeriodBatteryUse - (InverterState.BatterySOC / 100.0M);
+            int chargeSlotsNeeededNow = 0;
+            
+            // See if we actually need a charge
+            if (chargeNeededForPeak > 0)
             {
-                var chargePeriod = slots[i .. (i + config.SlotsForFullBatteryCharge)];
-                var chargePeriodTotal = chargePeriod.Sum(x => x.value_inc_vat);
+                // Calculate how many slots we'd need to charge from full starting *right now*
+                chargeSlotsNeeededNow = (int)Math.Round(config.SlotsForFullBatteryCharge * chargeNeededForPeak,
+                    MidpointRounding.ToPositiveInfinity);
 
-                if (cheapestSlots == null || chargePeriodTotal < cheapestSlots.Sum(x => x.value_inc_vat))
-                    cheapestSlots = chargePeriod;
-            }
+                // First, find the cheapest period for charging the battery. This is the set of contiguous
+                // slots, long enough when combined that they can charge the battery from empty to full, and
+                // that has the cheapest average price for that period. This will typically be around 1am in 
+                // the morning, but can shift around a bit. 
+                for (var i = 0; i <= slots.Length - chargeSlotsNeeededNow; i++)
+                {
+                    var chargePeriod = slots[i .. (i + chargeSlotsNeeededNow)];
+                    var chargePeriodTotal = chargePeriod.Sum(x => x.value_inc_vat);
 
-            if (cheapestSlots != null && cheapestSlots.First().valid_from == slots[0].valid_from)
-            {
-                // If the cheapest period starts *right now* then reduce the number of slots
-                // required down based on the battery SOC. E.g., if we've got 6 slots, but
-                // the battery is 50% full, we don't need all six. So take the n cheapest. 
-                cheapestSlots = cheapestSlots.OrderBy(x => x.value_inc_vat)
-                                             .Take(chargeSlotsNeeededNow)
-                                             .ToArray();
+                    if (cheapestSlots == null || chargePeriodTotal < cheapestSlots.Sum(x => x.value_inc_vat))
+                        cheapestSlots = chargePeriod;
+                }
+
+                if (cheapestSlots != null && cheapestSlots.First().valid_from == slots[0].valid_from)
+                {
+                    // If the cheapest period starts *right now* then reduce the number of slots
+                    // required down based on the battery SOC. E.g., if we've got 6 slots, but
+                    // the battery is 50% full, we don't need all six. So take the n cheapest. 
+                    cheapestSlots = cheapestSlots.OrderBy(x => x.value_inc_vat)
+                        .Take(chargeSlotsNeeededNow)
+                        .ToArray();
+                }
             }
 
             // Similar calculation for the peak period.
@@ -431,6 +481,9 @@ public class InverterManager(
                 {
                     slot.PriceType = PriceType.MostExpensive;
                     slot.ActionReason = "Peak price slot - avoid charging";
+                    
+                    if( slot.value_inc_vat > mostExpensivePrice )
+                        mostExpensivePrice = slot.value_inc_vat;
                 }
             }
 
@@ -445,9 +498,31 @@ public class InverterManager(
                     slot.PriceType = PriceType.Cheapest;
                     slot.PlanAction = SlotAction.Charge;
                     slot.ActionReason = "This is the cheapest set of slots, to fully charge the battery";
+
+                    if( slot.value_inc_vat < cheapestPrice )
+                        cheapestPrice = slot.value_inc_vat;
                 }
             }
 
+            // We've calculated the most expensive price and the cheapest price. So go through and
+            // find any slots which have the same peak or cheap price and categorise them the same.
+            // This will make it more consisten for all tariffs - those like Go and Cosy will show
+            // all cheapest and most expensive categorisations.
+            foreach (var slot in slots)
+            {
+                if (slot.value_inc_vat == cheapestPrice)
+                {
+                    slot.PriceType = PriceType.Cheapest;
+                    slot.ActionReason = "This is the cheapest set of slots, to fully charge the battery";
+                }
+
+                if (slot.value_inc_vat == mostExpensivePrice)
+                {
+                    slot.PriceType = PriceType.MostExpensive;
+                    slot.ActionReason = "Peak price slot - avoid charging";
+                }
+            }
+            
             // Now, we've calculated the cheapest and most expensive slots. From the remaining slots, calculate
             // the average rate across them. We then use that average rate to determine if any other slots across
             // the day are a bit cheaper. So look for anything that's 90% of the average, or below, and mark it
@@ -743,6 +818,7 @@ public class InverterManager(
         return Task.CompletedTask;
     }
 
+    private string lastStateMessage = string.Empty;
     public async Task UpdateInverterState()
     {
         if (!config.IsValid())
@@ -750,38 +826,25 @@ public class InverterManager(
 
         try
         {
+            InverterState.LastUpdate = DateTime.UtcNow;
+
             // Get the battery charge state from the inverter
-            var solisState = await solisApi.InverterState();
-
-            if (solisState != null)
+            if (await inverterAPI.UpdateInverterState(InverterState))
             {
-                var latestBatterySOC = solisState.data.batteryList
-                    .Select(x => x.batteryCapacitySoc)
-                    .FirstOrDefault();
+                var stateMsg = string.Format(
+                    $"Refreshed state: SOC = {InverterState.BatterySOC}%, Current PV = {InverterState.CurrentPVkW}kW, " +
+                    $"House Load = {InverterState.HouseLoadkW}kW, Forecast today: {InverterState.TodayForecastKWH}kWh, " +
+                    $"tomorrow: {InverterState.TomorrowForecastKWH}kWh");
 
-                if (latestBatterySOC != 0)
+                if (stateMsg != lastStateMessage)
                 {
-                    InverterState.BatterySOC = latestBatterySOC;
-                    InverterState.BatteryTimeStamp = DateTime.UtcNow;
+                    lastStateMessage = stateMsg;
+                    // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+                    logger.LogInformation(stateMsg);
                 }
-                else
-                    logger.LogInformation("Battery SOC returned as zero. Invalid inverter state data");
-                
-                InverterState.CurrentPVkW = solisState.data.pac;
-                InverterState.TodayPVkWh = solisState.data.eToday;
-                InverterState.CurrentBatteryPowerKW = solisState.data.batteryPower;
-                InverterState.TodayExportkWh = solisState.data.gridSellEnergy;
-                InverterState.TodayImportkWh = solisState.data.gridPurchasedEnergy;
-                InverterState.StationId = solisState.data.stationId;
-                InverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
-
-                logger.LogInformation(
-                    "Refreshed state: SOC = {S}%, Current PV = {PV}kW, House Load = {L}kW, Forecast today: {F}kWh, tomorrow: {T}kWh",
-                    InverterState.BatterySOC, InverterState.CurrentPVkW, InverterState.HouseLoadkW,
-                    InverterState.TodayForecastKWH, InverterState.TomorrowForecastKWH);
             }
             else
-                logger.LogError("No state returned from the inverter");
+                logger.LogWarning("Unable to read state from inverter");
         }
         catch (Exception ex)
         {
@@ -887,7 +950,7 @@ public class InverterManager(
         {
             if (config.AutoAdjustInverterTime)
             {
-                await solisApi.UpdateInverterTime();
+                await inverterAPI.UpdateInverterTime(config.Simulate);
             }
         }
         catch (Exception ex)
@@ -901,7 +964,7 @@ public class InverterManager(
         for (int i = 0; i < 7; i++)
         {
             // Call this to prime the cache with the last 7 days' inverter data
-            await solisApi.GetInverterDay(i);
+            await inverterAPI.GetHistoricData(i);
             // Max 3 calls every 5 seconds
             await Task.Delay(1750);
         }
@@ -962,6 +1025,13 @@ public class InverterManager(
         }
         newConfig.CopyPropertiesTo(config);
         await config.SaveToFile(Program.ConfigFolder);
+        
+        // Update the inverter with the new config
+        inverterAPI.SetInverterConfig(config);
+        
+        if (config.Simulate)
+            await ResetSimulation();
+        
         await RefreshTariffDataAndRecalculate();
         
         return new ConfigSaveResponse{ Success = true };
@@ -998,7 +1068,9 @@ public class InverterManager(
         logger.LogInformation("Starting test charge for 5 minutes");
         var start = DateTime.UtcNow;
         var end = start.AddMinutes(5);
-        await solisApi.SetCharge(start, end, null, null, false, false);
+        
+        // Explicitly pass false for 'simulate' - we always do this
+        await inverterAPI.SetCharge(start, end, null, null, false, false);
     }
 
     public async Task ChargeBattery()
@@ -1072,19 +1144,29 @@ public class InverterManager(
 
     public async Task AdvanceSimulation()
     {
-        if (config.Simulate && simulationData is { Count: > 0 })
+        if (config.Simulate)
         {
-            simulationData.RemoveAt(0);
-            await RecalculateSlotPlan(simulationData);
+            if (simulationData is { Count: > 0 })
+            {
+                // Apply some charging or discharging for the slot that's about to drop off
+                ExecuteSimulationUpdates(simulationData);
+
+                simulationData.RemoveAt(0);
+                await RefreshTariffDataAndRecalculate();
+            }
+            else
+            {
+                await ResetSimulation();
+            }
         }
     }
 
     public async Task ResetSimulation()
     {
-        if (config.Simulate && simulationData is { Count: 0 })
+        if (config.Simulate)
         {
             simulationData = null;
-            await RecalculateSlotPlan(InverterState.Prices);
+            await RefreshTariffDataAndRecalculate();
         }
     }
 
@@ -1154,7 +1236,7 @@ public class InverterManager(
 
         for (int i = 0; i < 7; i++)
         {
-            var result = await solisApi.GetInverterDay(i);
+            var result = await inverterAPI.GetHistoricData(i);
 
             if (result != null)
             {
@@ -1213,11 +1295,5 @@ public class InverterManager(
         {
             logger.LogInformation("PV forecast power {D:dd-MMM-yyyy} = {Y:F2} kW", d.Date, d.Energy);
         }
-    }
-
-    private record SlotTotals
-    {
-        public List<InverterDayRecord> day { get; init; } = new();
-        public decimal totalPowerKWH { get; set; }
     }
 }

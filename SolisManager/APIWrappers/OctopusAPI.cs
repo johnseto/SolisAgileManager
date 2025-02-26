@@ -1,15 +1,15 @@
 
 using System.Net;
 using System.Text.Json;
-using Flurl;
 using Flurl.Http;
 using Microsoft.Extensions.Caching.Memory;
 using SolisManager.Shared;
+using SolisManager.Shared.Interfaces;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.APIWrappers;
 
-public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
+public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger, IUserAgentProvider userAgentProvider)
 {
     private readonly MemoryCacheEntryOptions _productCacheOptions =
         new MemoryCacheEntryOptions()
@@ -36,7 +36,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         try
         {
             var result = await "https://api.octopus.energy"
-                .WithHeader("User-Agent", Program.UserAgent)
+                .WithHeader("User-Agent", userAgentProvider.UserAgent)
                 .AppendPathSegment("/v1/products")
                 .AppendPathSegment(product)
                 .AppendPathSegment("electricity-tariffs")
@@ -146,7 +146,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         var payload = new { query = krakenQuery, variables = variables };
 
         var response = await "https://api.octopus.energy"
-            .WithHeader("User-Agent", Program.UserAgent)
+            .WithHeader("User-Agent", userAgentProvider.UserAgent)
             .AppendPathSegment("/v1/graphql/")
             .PostJsonAsync(payload)
             .ReceiveJson<KrakenTokenResponse>();
@@ -189,7 +189,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
 
         var responseStr = await "https://api.octopus.energy"
             .WithHeader("Authorization", token)
-            .WithHeader("User-Agent", Program.UserAgent)
+            .WithHeader("User-Agent", userAgentProvider.UserAgent)
             .AppendPathSegment("/v1/graphql/")
             .PostJsonAsync(payload)
             .ReceiveString();
@@ -198,7 +198,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         {
             var response = JsonSerializer.Deserialize<KrakenDispatchResponse>(responseStr);
 
-            if (response?.data != null)
+            if (response?.data?.plannedDispatches != null && response.data.plannedDispatches.Length != 0)
             {
                 // Pick out the ones with smart-charge, they're the ones we care about
                 var smartChargeDispatches = response.data.plannedDispatches
@@ -208,8 +208,14 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
 
                 logger.LogInformation("Found {S} IOG Smart-Charge slots (out of a total of {N} planned and {C} completed dispatches)", 
                                     smartChargeDispatches.Length, response.data.plannedDispatches.Length, response.data.completedDispatches.Length);
-                if( smartChargeDispatches.Any() )
-                    logger.LogInformation("SmartCharge Dispatches: {S}", JsonSerializer.Serialize(smartChargeDispatches) );
+
+                if (smartChargeDispatches.Any())
+                {
+                    var logLines = smartChargeDispatches
+                                .Select( x => $"  Time: {x.start:HH:mm} - {x.end:HH:mm}, Type: {x.meta?.source}, Delta: {x.delta}")
+                                .ToArray();
+                    logger.LogInformation("SmartCharge Dispatches:\n{L}", string.Join("\n", logLines) );
+                }
                 
                 return smartChargeDispatches;
             }
@@ -219,7 +225,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
     }
 
     public record KrakenDispatchMeta(string? location, string? source);
-    public record KrakenPlannedDispatch(DateTime? start, DateTime? end, string? startDt, string? endDt, string delta, KrakenDispatchMeta? meta);
+    public record KrakenPlannedDispatch(DateTime? start, DateTime? end, string delta, KrakenDispatchMeta? meta);
     public record KrakenDispatchData(KrakenPlannedDispatch[] plannedDispatches, KrakenPlannedDispatch[] completedDispatches);
     public record KrakenDispatchResponse(KrakenDispatchData data);
     
@@ -238,7 +244,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         {
             var response = await "https://api.octopus.energy/"
                 .WithHeader("Authorization", token)
-                .WithHeader("User-Agent", Program.UserAgent)
+                .WithHeader("User-Agent", userAgentProvider.UserAgent)
                 .AppendPathSegment($"/v1/accounts/{accountNumber}/")
                 .GetStringAsync();
 
@@ -297,7 +303,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         try
         {
             var response = await "https://api.octopus.energy/"
-                .WithHeader("User-Agent", Program.UserAgent)
+                .WithHeader("User-Agent", userAgentProvider.UserAgent)
                 .AppendPathSegment($"/v1/products/{code}")
                 .GetStringAsync();
 
@@ -326,7 +332,7 @@ public class OctopusAPI(IMemoryCache memoryCache, ILogger<OctopusAPI> logger)
         try
         {
             var response = await "https://api.octopus.energy/"
-                .WithHeader("User-Agent", Program.UserAgent)
+                .WithHeader("User-Agent", userAgentProvider.UserAgent)
                 .AppendPathSegment($"/v1/products/")
                 .GetStringAsync();
 

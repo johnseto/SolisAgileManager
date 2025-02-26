@@ -1,11 +1,12 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using SolisManager.Shared;
+using SolisManager.Shared.Interfaces;
 using SolisManager.Shared.Models;
 
 namespace SolisManager.Client.Services;
 
-public class ClientInverterService( HttpClient httpClient ) : IInverterService
+public class ClientInverterManagerService( HttpClient httpClient, ILogger<ClientInverterManagerService> logger ) : IInverterManagerService
 {
     public SolisManagerState InverterState { get; private set; } = new();
 
@@ -54,7 +55,16 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
     {
         // TODO - investigate why passing the object directly, rather than the json
         // as a queryparam, doesn't work. 
-        var json = JsonSerializer.Serialize(config);
+        string json;
+        try
+        {
+            json = JsonSerializer.Serialize(config);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unable to serialize config - did you add the JsonDerived on InverterConfigBase?");
+            throw;
+        }
         var response = await httpClient.PostAsync($"inverter/saveconfig?configJson={json}", null);
 
         if (response.IsSuccessStatusCode)
@@ -107,6 +117,11 @@ public class ClientInverterService( HttpClient httpClient ) : IInverterService
         var result = await httpClient.GetFromJsonAsync<NewVersionResponse>("inverter/versioninfo");
         ArgumentNullException.ThrowIfNull(result);
         return result;
+    }
+
+    public async Task RestartApplication()
+    {
+        await httpClient.GetAsync("inverter/restartapplication");
     }
 
     public async Task<OctopusProductResponse?> GetOctopusProducts()

@@ -4,6 +4,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <InvariantGlobalization>true</InvariantGlobalization>
     </PropertyGroup>
 
     <ItemGroup>
@@ -17,6 +18,8 @@
         <PackageReference Include="Flurl" />
         <PackageReference Include="Flurl.Http" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+        <ProjectReference Include="..\SolisManager.Inverters.SolarEdge\SolisManager.Inverters.SolarEdge.csproj" />
+        <ProjectReference Include="..\SolisManager.Inverters.Solis\SolisManager.Inverters.Solis.csproj" />
     </ItemGroup>
 
     <ItemGroup>
