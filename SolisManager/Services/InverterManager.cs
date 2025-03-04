@@ -653,7 +653,7 @@ public class InverterManager : IInverterManagerService, IInverterRefreshService
         {
             foreach (var slot in slots)
             {
-                foreach (var scheduledAction in config.ScheduledActions)
+                foreach (var scheduledAction in config.ScheduledActions.Where( x => !x.Disabled))
                 {
                     if (scheduledAction.StartTime != null)
                     {
@@ -920,12 +920,16 @@ public class InverterManager : IInverterManagerService, IInverterRefreshService
 
                     if (iogChargeSlots.Any())
                     {
+                        // The smart charge price should be the same as the lowest price in the tariff data.
+                        var iogPrice = slots.Min(x => x.value_inc_vat);
+                        
                         logger.LogInformation("Applying charge action to {N} slots for IOG Smart-Charge", iogChargeSlots.Count);
 
                         foreach (var slot in iogChargeSlots.Values)
                         {
                             if (slot.PlanAction != SlotAction.Charge)
                             {
+                                slot.pv_est_kwh = iogPrice;
                                 slot.PlanAction = SlotAction.Charge;
                                 slot.ActionReason = "IOG Smart-Charge period";
                                 slot.PriceType = PriceType.IOGDispatch;
