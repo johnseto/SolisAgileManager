@@ -388,20 +388,22 @@ public class InverterManager : IInverterManagerService, IInverterRefreshService
 
                 if (firstSlot.ActionToExecute == SlotAction.Charge)
                 {
-                    await inverterAPI.SetCharge(start, end, null, null, false, config.Simulate);
+                    await inverterAPI.SetCharge(start, end, null, null, false, 
+                        firstSlot.OverrideAmps, config.Simulate);
                 }
                 else if (firstSlot.ActionToExecute == SlotAction.Discharge)
                 {
-                    await inverterAPI.SetCharge(null, null, start, end, false, config.Simulate);
+                    await inverterAPI.SetCharge(null, null, start, end, false, 
+                        firstSlot.OverrideAmps, config.Simulate);
                 }
                 else if (firstSlot.ActionToExecute == SlotAction.Hold)
                 {
-                    await inverterAPI.SetCharge(null, null, start, end, true, config.Simulate);
+                    await inverterAPI.SetCharge(null, null, start, end, true, null, config.Simulate);
                 }
                 else
                 {
                     // Clear the charge
-                    await inverterAPI.SetCharge(null, null, null, null, false, config.Simulate);
+                    await inverterAPI.SetCharge(null, null, null, null, false, null, config.Simulate);
                 }
             }
         }
@@ -423,14 +425,18 @@ public class InverterManager : IInverterManagerService, IInverterRefreshService
         {
             // First, reset all the slot states
             foreach (var slot in slots)
+            {
                 slot.PlanAction = SlotAction.DoNothing;
+                slot.ActionReason = "Average price - no charge or discharge required";
+                slot.OverrideAmps = null;
+            }
             
             OctopusPriceSlot[]? cheapestSlots = null;
             OctopusPriceSlot[]? priciestSlots = null;
             decimal cheapestPrice = 100, mostExpensivePrice = 0;
             
             // See what the difference is between the target SOC and what we need now.
-            decimal chargeNeededForPeak = config.PeakPeriodBatteryUse - (InverterState.BatterySOC / 100.0M);
+            decimal chargeNeededForPeak = Math.Max(0, config.PeakPeriodBatteryUse - (InverterState.BatterySOC / 100.0M));
             int chargeSlotsNeeededNow = 0;
             
             // See if we actually need a charge
@@ -660,9 +666,19 @@ public class InverterManager : IInverterManagerService, IInverterRefreshService
                         var actionTime = scheduledAction.StartTime.Value;
                         if (slot.valid_from.TimeOfDay == actionTime)
                         {
-                            var timeStr = actionTime.ToString(@"hh\:mm");
+                            string reason = "Overridden by a scheduled action";
+                            if (scheduledAction.Action is SlotAction.Charge or SlotAction.Discharge)
+                            {
+                                var actionText = scheduledAction.Action.ToString().ToLower();
+                                if( scheduledAction.Amps != null)
+                                    reason += $" ({actionText} at {scheduledAction.Amps}A)";
+                                else
+                                    reason += $" ({actionText})";
+                            }
+                            
                             slot.OverrideAction = scheduledAction.Action;
-                            slot.ActionReason = "Overridden by a scheduled action";
+                            slot.OverrideAmps = scheduledAction.Amps;
+                            slot.ActionReason = reason;
                             slot.OverrideType = OctopusPriceSlot.SlotOverrideType.Scheduled;
                         }
                     }
@@ -1080,7 +1096,7 @@ public class InverterManager : IInverterManagerService, IInverterRefreshService
         var end = start.AddMinutes(5);
         
         // Explicitly pass false for 'simulate' - we always do this
-        await inverterAPI.SetCharge(start, end, null, null, false, false);
+        await inverterAPI.SetCharge(start, end, null, null, false, null, false);
     }
 
     public async Task ChargeBattery()

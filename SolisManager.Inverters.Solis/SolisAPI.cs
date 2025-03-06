@@ -255,12 +255,13 @@ public class SolisAPI : InverterBase<InverterConfigSolis>, IInverter
             else
                 logger.LogInformation("Battery SOC returned as zero. Invalid inverter state data");
             
+            inverterState.StationId = solisState.data.stationId;
             inverterState.CurrentPVkW = solisState.data.pac;
             inverterState.TodayPVkWh = solisState.data.eToday;
             inverterState.CurrentBatteryPowerKW = solisState.data.batteryPower;
             inverterState.TodayExportkWh = solisState.data.gridSellEnergy;
             inverterState.TodayImportkWh = solisState.data.gridPurchasedEnergy;
-            inverterState.StationId = solisState.data.stationId;
+            inverterState.ExportPowerKW = Math.Max(0, solisState.data.psum);
             inverterState.HouseLoadkW = solisState.data.pac - solisState.data.psum - solisState.data.batteryPower;
             if( ParseTimeStr(solisState.data.timeStr, out var timestamp))
                 inverterState.InverterDataTimestamp = timestamp;
@@ -318,7 +319,7 @@ public class SolisAPI : InverterBase<InverterConfigSolis>, IInverter
     /// <returns></returns>
     public async Task SetCharge(DateTime? chargeStart, DateTime? chargeEnd, 
                                           DateTime? dischargeStart, DateTime? dischargeEnd, 
-                                          bool holdCharge, bool simulateOnly )
+                                          bool holdCharge, int? overrideAmps = null, bool simulateOnly = false)
     {
         ArgumentNullException.ThrowIfNull(inverterConfig);
         
@@ -334,13 +335,13 @@ public class SolisAPI : InverterBase<InverterConfigSolis>, IInverter
         if (chargeStart != null && chargeEnd != null)
         {
             chargeTimes = $"{chargeStart.Value.ToLocalTime():HH:mm}-{chargeEnd.Value.ToLocalTime():HH:mm}";
-            chargePower = inverterConfig.MaxChargeRateAmps;
+            chargePower = overrideAmps ?? inverterConfig.MaxChargeRateAmps;
         }
         
         if (dischargeStart != null && dischargeEnd != null)
         {
             dischargeTimes = $"{dischargeStart.Value.ToLocalTime():HH:mm}-{dischargeEnd.Value.ToLocalTime():HH:mm}";
-            dischargePower = holdCharge ? 0 : inverterConfig.MaxChargeRateAmps;
+            dischargePower = holdCharge ? 0 : (overrideAmps ?? inverterConfig.MaxChargeRateAmps);
         }
         
         // Now check if we actually need to do anything. No point making a write call to the 
@@ -495,7 +496,6 @@ public class SolisAPI : InverterBase<InverterConfigSolis>, IInverter
     /// <param name="simulateOnly"></param>
     private async Task SendControlRequest(CommandIDs cmdId, string value, bool simulateOnly)
     {
-        const int retries = 3;
         ArgumentNullException.ThrowIfNull(inverterConfig);
 
         var requestBody = new
@@ -511,13 +511,16 @@ public class SolisAPI : InverterBase<InverterConfigSolis>, IInverter
         }
         else
         {
-            for (var attempt = 0; attempt < retries; attempt++)
+            // Wait gradually longer and longer
+            int[] backoffRetryDelays = [50, 200, 500, 1000, 5000];
+            
+            for (var attempt = 0; attempt < backoffRetryDelays.Length; attempt++)
             {
                 // Actually write it. 
                 await Post<object>(2, "control", requestBody);
 
                 // Give it a chance to persist.
-                await Task.Delay(50);
+                await Task.Delay(backoffRetryDelays[attempt]);
                 
                 // Now try and read it back
                 var result = await ReadControlState(cmdId);

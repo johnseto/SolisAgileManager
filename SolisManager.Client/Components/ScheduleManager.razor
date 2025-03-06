@@ -15,15 +15,16 @@
     public EventCallback<List<ScheduledAction>> ActionsChanged { get; set; }
 
     private string StatusText => Actions == null || Actions.Count == 0 ? "No Scheduled Actions" : 
-                        $"{Actions.Count} Scheduled Action{(Actions.Count > 1 ? "s":string.Empty)} defined";
+                        $"{Actions.Count} scheduled action{(Actions.Count > 1 ? "s":string.Empty)} ({Actions.Count(x => !x.Disabled)} active) defined";
 
     private async Task OpenScheduleDialog()
     {
         if (Actions == null)
             Actions = new();
         
+        var options = new DialogOptions { MaxWidth = MaxWidth.ExtraLarge, BackdropClick = false };
         var parameters = new DialogParameters { { "ScheduledActions", Actions } };
-        var dialog = await dialogService.ShowAsync<ScheduleDialog>("Scheduled Action", parameters);
+        var dialog = await dialogService.ShowAsync<ScheduleDialog>("Scheduled Action", parameters, options);
         var result = await dialog.Result;
 
         if (result != null)
