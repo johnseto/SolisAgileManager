@@ -120,7 +120,7 @@ public class Program
             // Use Kestrel options to set the port. Using .Urls.Add breaks WASM debugging.
             // This line also breaks wasm debugging in Rider.
             // See https://github.com/dotnet/aspnetcore/issues/43703
-            builder.WebHost.UseKestrel(serverOptions => { serverOptions.ListenAnyIP(solisManagerPort); });
+            //builder.WebHost.UseKestrel(serverOptions => { serverOptions.ListenAnyIP(solisManagerPort); });  
         }
 
         var app = builder.Build();
